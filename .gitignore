@@ -1,0 +1,61 @@
+# Local reference inputs and analysis output. Never commit APK/APKM content.
+/line-apk/
+/reference/local/
+/analysis/
+/decompiled/
+/apktool-out/
+
+# Android packages and patched artifacts.
+*.apk
+*.apkm
+*.apks
+*.aab
+*.xapk
+*.idsig
+*.mpe
+*.mpp
+/patches-list.json
+/patches-bundle.json
+
+# Gradle and build output.
+.gradle/
+**/build/
+out/
+
+# Android and IDE local configuration.
+/local.properties
+/gradle.local.properties
+/.idea/
+*.iml
+.vscode/
+
+# Signing material.
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+*.csr
+*.der
+*.cer
+*.crt
+key.properties
+signing.properties
+keystore.properties
+
+# Secrets and local environment files.
+.env
+.env.*
+!.env.example
+*.secret
+*.secrets
+credentials.properties
+secrets.properties
+
+# Logs and crash reports.
+*.log
+hs_err_pid*
+
+# OS files.
+.DS_Store
