@@ -36,9 +36,27 @@ v1 開発中は上記の reference version のみを対象とします。
 
 ## Morphe への追加
 
-ビルドした `.mpp` を Morphe へ読み込ませて LINE へ適用します。Linimal は公式 Morphe のパッチソースには含まれないため、ローカルのパッチバンドルとして自分で追加します。
+Linimal は公式 Morphe のパッチソースには含まれないため、パッチソースとして自分で追加します。
 
-対象は reference version の APKM のみです。Morphe には `line-apk/` に置いた APKM をそのまま渡し、base と ABI/density split を分解しないでください。
+対象は reference version の APKM のみです。Morphe には APKM をそのまま渡し、base と ABI/density split を分解しないでください。
+
+### パッチソースとして追加 (Android)
+
+Android 端末で以下をタップすると Morphe Manager が開き、確認のうえで Linimal がパッチソースとして追加されます。以降は Morphe のパッチ一覧に `Linimal` が表示されます。
+
+[**➕ Linimal を Morphe に追加**](https://morphe.software/add-source?github=uta-a/linimal)
+
+> [!IMPORTANT]
+> このリンクは、リポジトリが public であり、かつ `.mpp` を添付した GitHub リリースが存在する場合にのみ機能します。どちらかが欠けていると Morphe はバンドルを取得できません。
+
+パッチソースとして追加すると、新しいリリースを Morphe が自動で検出します。以下のローカル `.mpp` を使う方法は自動更新されません。
+
+### ローカル `.mpp` から追加 (Morphe Manager)
+
+1. パッチソース画面を開く
+2. `+` から `Local` を選ぶ
+3. 端末へ転送した `patches-*.mpp` を選択する
+4. LINE の APKM を選び、`Linimal` を適用する
 
 ### Morphe Desktop (GUI)
 
@@ -62,15 +80,6 @@ java -jar morphe-desktop-*-all.jar patch \
 Morphe Desktop は Java 21 以上を必要とします。ビルド用の Java 17 とは別要件です。
 
 `--force` は APK のバージョン互換チェックを飛ばすため、Linimal では使用しないでください。reference version 以外への適用は検証していません。
-
-### Morphe Manager (Android)
-
-1. パッチソース画面を開く
-2. `+` から `Local` を選ぶ
-3. 端末へ転送した `patches-*.mpp` を選択する
-4. LINE の APKM を選び、`Linimal` を適用する
-
-ローカルソースは自動更新されません。新しくビルドしたら `.mpp` を差し替えます。
 
 ### 適用後
 
