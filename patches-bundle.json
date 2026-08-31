@@ -1,0 +1,6 @@
+{
+  "created_at": "2026-08-31T18:11:11",
+  "description": "Linimal のパッチ基盤の初回リリース。\n\nこのリリースには LINE の挙動を変更する機能パッチは含まれません。含まれるのは、設定基盤、パッチ状態レポート、および LINE の挙動を変えない probe patch です。\n\n対象: LINE 26.11.0 (versionCode 261100124) arm64-v8a の APKM のみ。\n\n注意: パッチ適用後の APK は公式版と署名が異なるため、公式アプリへ上書きインストールできず、既存のアプリデータも引き継げません。実機での動作検証は未完了です。",
+  "download_url": "https://github.com/uta-a/linimal/releases/download/v0.1.0/patches-0.1.0.mpp",
+  "version": "0.1.0"
+}

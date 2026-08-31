@@ -14,8 +14,6 @@
 *.idsig
 *.mpe
 *.mpp
-/patches-list.json
-/patches-bundle.json
 
 # Gradle and build output.
 .gradle/
