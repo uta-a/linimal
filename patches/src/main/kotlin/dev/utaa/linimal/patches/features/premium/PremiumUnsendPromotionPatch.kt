@@ -90,13 +90,14 @@ val premiumUnsendPromotionPatch = bytecodePatch {
 
 /** 変更しなかった対象を、設定側が有効と誤認しない状態として残します。 */
 private fun recordUnappliedStatus(matchCount: Int, reason: String) {
-    patchStatusCollector.record(
-        PatchStatusRecord(
-            patchId = PatchId.PREMIUM_UNSEND,
-            status = if (matchCount > 1) PatchStatus.ERROR else PatchStatus.TARGET_NOT_FOUND,
-            expectedTargetCount = 1,
-            actualTargetCount = 0,
-            reason = reason,
-        ),
-    )
+    patchStatusCollector.record(premiumUnsendUnappliedRecord(matchCount, reason))
 }
+
+/** 一意性エラーでも実際の一致数を保持し、runtime parser と同じ count 契約に従います。 */
+internal fun premiumUnsendUnappliedRecord(matchCount: Int, reason: String) = PatchStatusRecord(
+    patchId = PatchId.PREMIUM_UNSEND,
+    status = if (matchCount > 1) PatchStatus.ERROR else PatchStatus.TARGET_NOT_FOUND,
+    expectedTargetCount = 1,
+    actualTargetCount = matchCount,
+    reason = reason,
+)
