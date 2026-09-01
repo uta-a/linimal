@@ -7,7 +7,29 @@ import dev.utaa.linimal.patches.core.linimalBootstrapPatch
 import dev.utaa.linimal.patches.core.linimalExtensionMergePatch
 import dev.utaa.linimal.patches.core.linimalManifestComponentRegistrationPatch
 import dev.utaa.linimal.patches.core.noOpProbePatch
+import dev.utaa.linimal.patches.features.ads.homeTopAdPatch
+import dev.utaa.linimal.patches.features.ads.smartChannelAdsPatch
+import dev.utaa.linimal.patches.features.agenti.agentIChatComposerPatch
+import dev.utaa.linimal.patches.features.agenti.agentIChatListSearchPatch
+import dev.utaa.linimal.patches.features.agenti.agentIHomeHeaderPatch
+import dev.utaa.linimal.patches.features.agenti.agentISettingsPatch
+import dev.utaa.linimal.patches.features.agenti.agentIWalletHeaderPatch
+import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatch
+import dev.utaa.linimal.patches.features.chat.chatPlusMenuPatch
+import dev.utaa.linimal.patches.features.home.homeContentsRecommendationPatch
+import dev.utaa.linimal.patches.features.home.homeFeaturedCollectionsPatch
+import dev.utaa.linimal.patches.features.home.homeFeedPostCardsPatch
+import dev.utaa.linimal.patches.features.home.homeTrendingPatch
+import dev.utaa.linimal.patches.features.lineai.lineAiEntryPatch
+import dev.utaa.linimal.patches.features.lineai.lineAiGalleryViewerPatch
+import dev.utaa.linimal.patches.features.lineai.lineAiMessageContextMenuPatch
+import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
+import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
 import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptManualCallerPatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierRegistrationPatch
 import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
 import dev.utaa.linimal.patches.settings.settingsEntryPatch
 import dev.utaa.linimal.patches.status.patchStatusResourcePatch
@@ -43,7 +65,29 @@ class LinimalPatchTest {
     @Test
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertEquals(setOf(premiumUnsendPromotionPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(homeFeaturedCollectionsPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(premiumSettingsRowPatch), homeFeaturedCollectionsPatch.dependencies)
+        assertEquals(setOf(homeFeedPostCardsPatch), premiumSettingsRowPatch.dependencies)
+        assertEquals(setOf(agentIChatListSearchPatch), homeFeedPostCardsPatch.dependencies)
+        assertEquals(setOf(lineAiGalleryViewerPatch), agentIChatListSearchPatch.dependencies)
+        assertEquals(setOf(lineAiMessageContextMenuPatch), lineAiGalleryViewerPatch.dependencies)
+        assertEquals(setOf(agentIChatComposerPatch), lineAiMessageContextMenuPatch.dependencies)
+        assertEquals(setOf(agentISettingsPatch), agentIChatComposerPatch.dependencies)
+        assertEquals(setOf(agentIWalletHeaderPatch), agentISettingsPatch.dependencies)
+        assertEquals(setOf(agentIHomeHeaderPatch), agentIWalletHeaderPatch.dependencies)
+        assertEquals(setOf(homeTopAdPatch), agentIHomeHeaderPatch.dependencies)
+        assertEquals(setOf(readReceiptSupplierPreparationPatch), homeTopAdPatch.dependencies)
+        assertEquals(setOf(readReceiptSupplierRegistrationPatch), readReceiptSupplierPreparationPatch.dependencies)
+        assertEquals(setOf(readReceiptManualCallerPatch), readReceiptSupplierRegistrationPatch.dependencies)
+        assertEquals(setOf(readReceiptOutboundGatePatch), readReceiptManualCallerPatch.dependencies)
+        assertEquals(setOf(externalBrowserChatTextLinkPatch), readReceiptOutboundGatePatch.dependencies)
+        assertEquals(setOf(smartChannelAdsPatch), externalBrowserChatTextLinkPatch.dependencies)
+        assertEquals(setOf(homeTrendingPatch), smartChannelAdsPatch.dependencies)
+        assertEquals(setOf(homeContentsRecommendationPatch), homeTrendingPatch.dependencies)
+        assertEquals(setOf(lineAiEntryPatch), homeContentsRecommendationPatch.dependencies)
+        assertEquals(setOf(chatPlusMenuPatch), lineAiEntryPatch.dependencies)
+        assertEquals(setOf(mainTabsPatch), chatPlusMenuPatch.dependencies)
+        assertEquals(setOf(premiumUnsendPromotionPatch), mainTabsPatch.dependencies)
         assertEquals(setOf(settingsEntryPatch), premiumUnsendPromotionPatch.dependencies)
         assertEquals(setOf(linimalSettingsResourcePatch), settingsEntryPatch.dependencies)
         assertEquals(setOf(linimalBootstrapPatch), linimalSettingsResourcePatch.dependencies)

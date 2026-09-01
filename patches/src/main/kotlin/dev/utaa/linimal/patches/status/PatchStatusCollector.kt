@@ -71,6 +71,8 @@ class PatchStatusCollector {
         /**
          * 一意な expected target は完全一致しなければなりません。optional target set は expected
          * count に 1 より大きい値を指定でき、target の一部だけが存在する場合は partial になります。
+         * opcode/register/reference shape が unsafe な場合は raw match count を保った explicit ERROR を
+         * 記録でき、runtime parser も actual が 1 以上のその失敗状態を受け入れます。
          */
         fun statusFor(expectedTargetCount: Int, actualTargetCount: Int): PatchStatus {
             require(expectedTargetCount >= 0) { "expectedTargetCount must not be negative" }

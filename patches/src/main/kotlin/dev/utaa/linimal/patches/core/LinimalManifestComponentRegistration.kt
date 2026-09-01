@@ -9,6 +9,9 @@ object LinimalManifestComponentRegistration {
     private const val ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
     private const val SETTINGS_ACTIVITY = "dev.utaa.linimal.extension.settings.LinimalSettingsActivity"
 
+    /** ActionBar なしの公開プラットフォームテーマ。配色は Activity 側の LinimalPalette が決めます。 */
+    private const val SETTINGS_ACTIVITY_THEME = "@android:style/Theme.DeviceDefault.Light.NoActionBar"
+
     fun register(document: Document) {
         val manifest = document.documentElement
             ?: throw ManifestComponentRegistrationException("AndroidManifestRootMissing")
@@ -36,7 +39,9 @@ object LinimalManifestComponentRegistration {
         activity.setAttribute("android:exported", "false")
         activity.setAttribute("android:excludeFromRecents", "true")
         activity.setAttribute("android:label", "Linimal")
-        activity.setAttribute("android:theme", "@android:style/Theme.DeviceDefault.Settings")
+        // 設定画面はヘッダーを自前で描画するため、ActionBar のないテーマで登録します。
+        // ActionBar 付きのテーマでは android:label がタイトルとして重なり、ヘッダーを覆います。
+        activity.setAttribute("android:theme", SETTINGS_ACTIVITY_THEME)
         application.appendChild(activity)
     }
 

@@ -163,6 +163,16 @@ public final class PatchStatusParser {
             return;
         }
 
+        // ERROR は target の過剰一致に加え、cardinality 自体は正しくても opcode/register/reference
+        // shape が安全に検証できず変更を見送った build-time failure を表せます。後者でも raw match count
+        // を保持するため、actualTargetCount が 1 以上なら strict report として受け入れます。
+        if (status == PatchStatus.ERROR) {
+            if (actualTargetCount == 0) {
+                throw new IllegalArgumentException("ERROR patch must have a matched target");
+            }
+            return;
+        }
+
         PatchStatus expectedStatus;
         if (actualTargetCount > expectedTargetCount) {
             expectedStatus = PatchStatus.ERROR;

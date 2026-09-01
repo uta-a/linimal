@@ -74,16 +74,28 @@ public final class LinimalConfigStore {
         write(updates);
     }
 
+    /**
+     * 各 migration の commit 後に storage を再読込します。backend が process 間で変化しても、
+     * 次に進める version は実際に保存された marker だけから決まります。
+     */
     private void ensureCurrentSchema(Map<String, ?> values) {
         int version = readSchemaVersion(values);
         while (version < LinimalConfigSchema.CURRENT_VERSION) {
+            int expectedNextVersion = version + 1;
             switch (version) {
                 case 0:
-                    migrateV0ToV1();
-                    version = 1;
+                    migrateV0ToV1(values);
+                    break;
+                case 1:
+                    migrateV1ToV2(values);
                     break;
                 default:
                     throw new ConfigStoreException("Unsupported configuration schema version");
+            }
+            values = readAll();
+            version = readSchemaVersion(values);
+            if (version != expectedNextVersion) {
+                throw new ConfigStoreException("Configuration schema migration made no valid progress");
             }
         }
         if (version != LinimalConfigSchema.CURRENT_VERSION) {
@@ -91,11 +103,120 @@ public final class LinimalConfigStore {
         }
     }
 
-    /** v0 には schema marker がありませんでした。既存の v1-compatible な値は変更せず保持します。 */
-    private void migrateV0ToV1() {
+    /** v0 には schema marker がありませんでした。v1 の既存値は保持したまま marker だけを追加します。 */
+    private void migrateV0ToV1(Map<String, ?> values) {
+        validateMigratableValues(values);
         Map<String, Object> updates = new HashMap<>();
+        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
+        write(updates);
+    }
+
+    /**
+     * v1 の広域設定を場所別の v2 設定へ移します。
+     *
+     * <p>新しい場所別キーと version marker は同じ write で commit します。既に正しい型で
+     * 保存されている v2 値は、v1 source より優先します。</p>
+     */
+    private void migrateV1ToV2(Map<String, ?> values) {
+        validateMigratableValues(values);
+
+        boolean legacyAds = readLegacyBoolean(
+                values,
+                LinimalConfigSchema.ADS_ENABLED_KEY,
+                LinimalDefaults.isEnabled(LinimalFeature.ADS));
+        boolean legacyLineAi = readLegacyBoolean(
+                values,
+                LinimalConfigSchema.LINE_AI_ENABLED_KEY,
+                LinimalDefaults.isEnabled(LinimalFeature.LINE_AI));
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put(
+                LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY,
+                        legacyAds));
+        updates.put(
+                LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY,
+                        legacyAds));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY,
+                readNewValueOrLegacy(
+                        values,
+                        LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY,
+                        legacyLineAi));
+        updates.put(
+                LinimalConfigSchema.SHOPPING_ENABLED_KEY,
+                readOptionalBoolean(
+                        values,
+                        LinimalConfigSchema.SHOPPING_ENABLED_KEY,
+                        LinimalDefaults.isEnabled(LinimalFeature.SHOPPING)));
         updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
         write(updates);
+    }
+
+    /**
+     * schema を進める前に、migration source、新しい destination、および既存の型付き値を検証します。
+     * そのため不正な型は marker を更新する前に必ず fail-open になります。
+     */
+    private void validateMigratableValues(Map<String, ?> values) {
+        readLegacyBoolean(
+                values,
+                LinimalConfigSchema.ADS_ENABLED_KEY,
+                LinimalDefaults.isEnabled(LinimalFeature.ADS));
+        readLegacyBoolean(
+                values,
+                LinimalConfigSchema.LINE_AI_ENABLED_KEY,
+                LinimalDefaults.isEnabled(LinimalFeature.LINE_AI));
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            readBoolean(values, feature);
+        }
+        readReadReceiptMode(values);
     }
 
     private int readSchemaVersion(Map<String, ?> values) {
@@ -110,9 +231,23 @@ public final class LinimalConfigStore {
     }
 
     private boolean readBoolean(Map<String, ?> values, LinimalFeature feature) {
-        String key = LinimalConfigSchema.keyFor(feature);
+        return readOptionalBoolean(
+                values,
+                LinimalConfigSchema.keyFor(feature),
+                LinimalDefaults.isEnabled(feature));
+    }
+
+    private boolean readLegacyBoolean(Map<String, ?> values, String key, boolean defaultValue) {
+        return readOptionalBoolean(values, key, defaultValue);
+    }
+
+    private boolean readNewValueOrLegacy(Map<String, ?> values, String key, boolean legacyValue) {
+        return readOptionalBoolean(values, key, legacyValue);
+    }
+
+    private boolean readOptionalBoolean(Map<String, ?> values, String key, boolean defaultValue) {
         if (!values.containsKey(key)) {
-            return LinimalDefaults.isEnabled(feature);
+            return defaultValue;
         }
         Object value = values.get(key);
         if (!(value instanceof Boolean)) {

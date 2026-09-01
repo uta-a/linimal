@@ -24,9 +24,20 @@ class LinimalManifestComponentRegistrationTest {
         assertEquals("true", activity.getAttribute("android:excludeFromRecents"))
         assertEquals("Linimal", activity.getAttribute("android:label"))
         assertEquals(
-            "@android:style/Theme.DeviceDefault.Settings",
+            "@android:style/Theme.DeviceDefault.Light.NoActionBar",
             activity.getAttribute("android:theme"),
         )
+    }
+
+    @Test
+    fun `Settings Activity theme has no system ActionBar`() {
+        val document = manifestDocument("<application />")
+
+        LinimalManifestComponentRegistration.register(document)
+
+        // ActionBar 付きのテーマだと android:label が自前ヘッダーへ重なるため、NoActionBar を必須にします。
+        val activity = document.getElementsByTagName("activity").item(0) as org.w3c.dom.Element
+        assertTrue(activity.getAttribute("android:theme").endsWith(".NoActionBar"))
     }
 
     @Test

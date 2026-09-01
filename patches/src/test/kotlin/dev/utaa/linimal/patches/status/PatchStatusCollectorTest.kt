@@ -27,6 +27,19 @@ class PatchStatusCollectorTest {
     }
 
     @Test
+    fun `unsafe shape error retains a raw unique match count`() {
+        val record = unsafeFeatureStatus(
+            PatchId.AGENT_I_CHAT_INFORMATION_ENTRY,
+            expectedTargetCount = 1,
+            actualTargetCount = 1,
+            reason = "LineAiEntryInstructionShapeMismatch",
+        )
+
+        assertEquals(PatchStatus.ERROR, record.status)
+        assertEquals(1, record.actualTargetCount)
+    }
+
+    @Test
     fun `class names and message content are omitted from reasons`() {
         assertEquals("Details omitted.", PatchStatusCollector.sanitizeReason("com.example.internal.Target"))
         assertEquals("Details omitted.", PatchStatusCollector.sanitizeReason("message content received"))
