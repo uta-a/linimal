@@ -8,10 +8,9 @@
   *;
 }
 
-# extension コードから利用される Kotlin intrinsics は shrink 対象から除外します。
--keep class kotlin.jvm.internal.Intrinsics {
-    public static *;
-}
+# Linimal の extension は Java のみで実装するため、Kotlin stdlib は注入しません。
+# LINE 本体に同名のクラスが存在するため、重複した定義を持ち込まないようにします。
+-dontwarn kotlin.**
 
 -dontwarn java.lang.reflect.AnnotatedType
 -dontwarn javax.lang.model.element.Modifier

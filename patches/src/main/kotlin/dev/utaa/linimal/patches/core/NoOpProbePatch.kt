@@ -1,17 +1,18 @@
 package dev.utaa.linimal.patches.core
 
 import app.morphe.patcher.patch.bytecodePatch
+import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.patchStatusCollector
-import dev.utaa.linimal.patches.status.patchStatusResourcePatch
 
 /**
  * bytecode patch pipeline が、対象コードを選択・変更せずに実行されたことを確認します。
  * fingerprint は意図的に宣言せず、命令も出力しません。
  */
 val noOpProbePatch = bytecodePatch {
-    // この依存関係により、Set の反復順にかかわらず probe より先に reset が実行されます。
-    dependsOn(patchStatusResourcePatch)
+    // この依存関係により、Set の反復順にかかわらず全ての機能パッチより後に probe が実行されます。
+    // 機能パッチは bootstrap、extension 統合、component 登録、status reset の順に依存します。
+    dependsOn(premiumUnsendPromotionPatch)
 
     execute {
         patchStatusCollector.record(

@@ -3,7 +3,13 @@ package dev.utaa.linimal.patches
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.InstallerType
 import app.morphe.patcher.patch.PatchAvailability
+import dev.utaa.linimal.patches.core.linimalBootstrapPatch
+import dev.utaa.linimal.patches.core.linimalExtensionMergePatch
+import dev.utaa.linimal.patches.core.linimalManifestComponentRegistrationPatch
 import dev.utaa.linimal.patches.core.noOpProbePatch
+import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
+import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
+import dev.utaa.linimal.patches.settings.settingsEntryPatch
 import dev.utaa.linimal.patches.status.patchStatusResourcePatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,8 +41,17 @@ class LinimalPatchTest {
     }
 
     @Test
-    fun `status reset precedes the probe through an explicit dependency chain`() {
+    fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertTrue(noOpProbePatch.dependencies.contains(patchStatusResourcePatch))
+        assertEquals(setOf(premiumUnsendPromotionPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(settingsEntryPatch), premiumUnsendPromotionPatch.dependencies)
+        assertEquals(setOf(linimalSettingsResourcePatch), settingsEntryPatch.dependencies)
+        assertEquals(setOf(linimalBootstrapPatch), linimalSettingsResourcePatch.dependencies)
+        assertEquals(setOf(linimalExtensionMergePatch), linimalBootstrapPatch.dependencies)
+        assertEquals(
+            setOf(linimalManifestComponentRegistrationPatch),
+            linimalExtensionMergePatch.dependencies,
+        )
+        assertTrue(linimalManifestComponentRegistrationPatch.dependencies.contains(patchStatusResourcePatch))
     }
 }

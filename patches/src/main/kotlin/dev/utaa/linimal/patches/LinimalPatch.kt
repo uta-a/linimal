@@ -12,7 +12,7 @@ import dev.utaa.linimal.patches.status.patchStatusCollector
 @Suppress("unused")
 val linimalPatch = bytecodePatch(
     name = "Linimal",
-    description = "LINE向けに、実行時設定に対応したLinimalのパッチ基盤を導入します。",
+    description = "LINE の設定画面に Linimal を追加し、実行時設定で不要な機能を無効化できるようにします。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)
     availability { _, architecture ->
