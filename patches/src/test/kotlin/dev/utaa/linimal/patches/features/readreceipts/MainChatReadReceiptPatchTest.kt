@@ -1,0 +1,270 @@
+package dev.utaa.linimal.patches.features.readreceipts
+
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction10x
+import com.android.tools.smali.dexlib2.iface.ExceptionHandler
+import com.android.tools.smali.dexlib2.iface.MethodImplementation
+import com.android.tools.smali.dexlib2.iface.TryBlock
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.immutable.ImmutableExceptionHandler
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.ImmutableTryBlock
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction10t
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11n
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21t
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22t
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/**
+ * 注入位置の回帰テスト。dexlib2 の `addInstructions(index, ...)` は新しい MethodLocation を挿入し、
+ * 既存 location は Label を保持したまま後ろへずれるため、既存の分岐先や例外 handler の先頭へ
+ * 注入するとその経路だけが注入コードを飛び越します。
+ */
+class MainChatReadReceiptPatchTest {
+    // --- outbound gate (Lq33/e;->d(JLjava/lang/String;Z)V) ---
+
+    @Test
+    fun `outbound gate is injected after the branch merge point`() {
+        // 合流点 index 5 (addr 000c) は命令 0 の if-eqz の分岐先そのものです。そこへ注入すると
+        // 第 4 引数 Z が false の経路だけが gate を飛び越し、抑制されないまま送信へ到達します。
+        val instructions = outboundGateInstructions()
+
+        assertTrue(isDivertedInjectionIndex(instructions, 5))
+        assertFalse(isDivertedInjectionIndex(instructions, 6))
+        assertEquals(6, outboundGateInsertionIndex(instructions, emptySet()))
+    }
+
+    @Test
+    fun `outbound gate is rejected when the insertion site is another branch target`() {
+        // 末尾に addr 000e (index 6) へ戻る goto を足すと、注入位置がその分岐先と一致します。
+        val instructions = outboundGateInstructions(trailing = listOf(ImmutableInstruction10t(Opcode.GOTO, -6)))
+
+        assertTrue(isDivertedInjectionIndex(instructions, 6))
+        assertNull(outboundGateInsertionIndex(instructions, emptySet()))
+    }
+
+    @Test
+    fun `outbound gate is rejected when the insertion site is an exception handler head`() {
+        val instructions = outboundGateInstructions()
+
+        assertTrue(isDivertedInjectionIndex(instructions, 6, handlerAddresses = setOf(0x0e)))
+        assertNull(outboundGateInsertionIndex(instructions, setOf(0x0e)))
+    }
+
+    @Test
+    fun `outbound gate is rejected when the leading branch does not skip the local update`() {
+        // 分岐先が合流点 index 5 でなくなった shape は、注入位置を導けないので拒否します。
+        assertNull(outboundGateInsertionIndex(outboundGateInstructions(skipOffset = 14), emptySet()))
+        assertNull(
+            outboundGateInsertionIndex(outboundGateInstructions().drop(1), emptySet()),
+        )
+    }
+
+    // --- manual caller (Lv11/a;->a(Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;) ---
+
+    @Test
+    fun `generic handler cleanup is injected after the handler head`() {
+        val instructions = manualCallerInstructions()
+
+        // handler 先頭 (addr 0007 / const/4 v3, 0) へ注入すると例外経路が飛び越します。
+        assertTrue(isDivertedInjectionIndex(instructions, GENERIC_HANDLER_INDEX, MANUAL_CALLER_HANDLER_ADDRESSES))
+        // さらに直前は return-object なので fall-through も無く、cleanup は一度も実行されません。
+        assertFalse(fallsThrough(instructions[GENERIC_HANDLER_INDEX - 1]))
+
+        assertEquals(GENERIC_HANDLER_INDEX + 1, exceptionHandlerCleanupIndex(instructions, GENERIC_HANDLER_INDEX))
+    }
+
+    @Test
+    fun `cancellation handler cleanup stays right after move-exception`() {
+        val instructions = manualCallerInstructions()
+
+        assertEquals(
+            CANCELLATION_HANDLER_INDEX + 1,
+            exceptionHandlerCleanupIndex(instructions, CANCELLATION_HANDLER_INDEX),
+        )
+    }
+
+    @Test
+    fun `handler cleanup is rejected when the handler head cannot fall through`() {
+        val instructions = manualCallerInstructions()
+
+        // return-object / throw の直後へ置いた cleanup は実行されません。
+        assertNull(exceptionHandlerCleanupIndex(instructions, GENERIC_HANDLER_INDEX - 1))
+        assertNull(exceptionHandlerCleanupIndex(instructions, instructions.lastIndex))
+    }
+
+    @Test
+    fun `injecting at the handler head is skipped by the exception path`() {
+        // dexlib2 の実挙動での再現。handler ラベルは既存 location に残るため、handler 先頭へ
+        // 注入した命令は例外経路から到達できません。
+        val implementation = MutableMethodImplementation(manualCallerImplementation())
+        implementation.addInstruction(GENERIC_HANDLER_INDEX, BuilderInstruction10x(Opcode.NOP))
+
+        val entryIndex = genericHandlerEntryIndex(implementation)
+
+        assertEquals(Opcode.NOP, implementation.instructions[GENERIC_HANDLER_INDEX].opcode)
+        assertNotEquals(GENERIC_HANDLER_INDEX, entryIndex)
+        assertEquals(Opcode.CONST_4, implementation.instructions[entryIndex].opcode)
+    }
+
+    @Test
+    fun `injecting after the handler head is reached by the exception path`() {
+        val implementation = MutableMethodImplementation(manualCallerImplementation())
+        implementation.addInstruction(GENERIC_HANDLER_INDEX + 1, BuilderInstruction10x(Opcode.NOP))
+
+        val entryIndex = genericHandlerEntryIndex(implementation)
+
+        assertEquals(GENERIC_HANDLER_INDEX, entryIndex)
+        assertEquals(Opcode.CONST_4, implementation.instructions[entryIndex].opcode)
+        assertEquals(Opcode.NOP, implementation.instructions[entryIndex + 1].opcode)
+    }
+
+    private fun genericHandlerEntryIndex(implementation: MutableMethodImplementation): Int {
+        val handlerAddress = implementation.tryBlocks
+            .flatMap { block -> block.exceptionHandlers }
+            .first { handler -> handler.exceptionType == null }
+            .handlerCodeAddress
+        var address = 0
+        implementation.instructions.forEachIndexed { index, instruction ->
+            if (address == handlerAddress) {
+                return index
+            }
+            address += instruction.codeUnits
+        }
+        error("handler address $handlerAddress not found")
+    }
+
+    /**
+     * `Lq33/e;->d` の先頭。index 0 の if-eqz が local update と chat-list Runnable を飛び越し、
+     * index 5 (addr 000c) の queue 取得で合流します。
+     */
+    private fun outboundGateInstructions(
+        skipOffset: Int = 12,
+        trailing: List<Instruction> = emptyList(),
+    ): List<Instruction> = listOf<Instruction>(
+        // addr 0000
+        ImmutableInstruction21t(Opcode.IF_EQZ, 9, skipOffset),
+        // addr 0002
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 9, 5, field("Lq33/e;", "c", "Lu13/l;")),
+        // addr 0004
+        ImmutableInstruction35c(
+            Opcode.INVOKE_INTERFACE,
+            2,
+            9,
+            8,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Lu13/l;", "Y", listOf("Ljava/lang/String;"), "V"),
+        ),
+        // addr 0007
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 9, 5, field("Lq33/e;", "h", "Lq33/b;")),
+        // addr 0009
+        ImmutableInstruction35c(
+            Opcode.INVOKE_VIRTUAL,
+            1,
+            9,
+            0,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Lq33/b;", "run", emptyList(), "V"),
+        ),
+        // addr 000c: 合流点
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 9, 5, field("Lq33/e;", "b", "Lq33/f;")),
+        // addr 000e: 注入位置
+        ImmutableInstruction11x(Opcode.MONITOR_ENTER, 9),
+        // addr 000f
+        ImmutableInstruction35c(
+            Opcode.INVOKE_VIRTUAL,
+            1,
+            9,
+            0,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Lq33/f;", "a", emptyList(), "V"),
+        ),
+        // addr 0012
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 0, 9, field("Lq33/f;", "b", "Ljava/util/HashMap;")),
+    ) + trailing
+
+    /**
+     * `Lv11/a;->a` の末尾。`<any>` handler は addr 0007 の const/4 で始まり、その直前は
+     * return-object なので fall-through がありません。
+     */
+    private fun manualCallerInstructions(): List<Instruction> = listOf(
+        // addr 0000
+        ImmutableInstruction35c(
+            Opcode.INVOKE_STATIC,
+            2,
+            4,
+            0,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Lff8/l;", "a", listOf("Lap7/b;", "Llb8/c;"), "Ljava/lang/Object;"),
+        ),
+        // addr 0003
+        ImmutableInstruction11x(Opcode.MOVE_RESULT_OBJECT, 4),
+        // addr 0004
+        ImmutableInstruction22t(Opcode.IF_NE, 4, 1, 4),
+        // addr 0006
+        ImmutableInstruction11x(Opcode.RETURN_OBJECT, 1),
+        // addr 0007: <any> handler の先頭
+        ImmutableInstruction11n(Opcode.CONST_4, 3, 0),
+        // addr 0008: 正常完了の分岐先
+        ImmutableInstruction35c(
+            Opcode.INVOKE_STATIC,
+            1,
+            3,
+            0,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Ljava/lang/Boolean;", "valueOf", listOf("Z"), "Ljava/lang/Boolean;"),
+        ),
+        // addr 000b
+        ImmutableInstruction11x(Opcode.MOVE_RESULT_OBJECT, 4),
+        // addr 000c
+        ImmutableInstruction11x(Opcode.RETURN_OBJECT, 4),
+        // addr 000d: CancellationException handler の先頭
+        ImmutableInstruction11x(Opcode.MOVE_EXCEPTION, 4),
+        // addr 000e
+        ImmutableInstruction11x(Opcode.THROW, 4),
+    )
+
+    private fun manualCallerImplementation(): MethodImplementation {
+        val tryBlocks: List<TryBlock<out ExceptionHandler>> = listOf(
+            ImmutableTryBlock(
+                0,
+                4,
+                listOf(
+                    ImmutableExceptionHandler("Ljava/util/concurrent/CancellationException;", 0x0d),
+                    ImmutableExceptionHandler(null, 0x07),
+                ),
+            ),
+        )
+        return ImmutableMethodImplementation(7, manualCallerInstructions(), tryBlocks, emptyList())
+    }
+
+    private fun field(definingClass: String, name: String, type: String) =
+        ImmutableFieldReference(definingClass, name, type)
+
+    private companion object {
+        const val GENERIC_HANDLER_INDEX = 4
+        const val CANCELLATION_HANDLER_INDEX = 8
+        val MANUAL_CALLER_HANDLER_ADDRESSES = setOf(0x07, 0x0d)
+    }
+}
