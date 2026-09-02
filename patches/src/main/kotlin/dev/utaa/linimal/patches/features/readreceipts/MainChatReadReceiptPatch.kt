@@ -29,6 +29,8 @@ import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatc
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.instructionWritesRegister
+import dev.utaa.linimal.patches.util.registerSurvivesBetween
 
 private const val VOID = "V"
 private const val BOOLEAN = "Z"
@@ -1024,33 +1026,6 @@ private fun instructionCodeAddresses(instructions: List<Instruction>): List<Int>
     return instructions.map { instruction ->
         address.also { address += instruction.codeUnits }
     }
-}
-
-/**
- * この命令が [register] へ書き込むかどうか。wide 命令は宛先 register と その次の register の
- * pair へ書き込むため、smali 上に現れない上位半分も書き込み先として数えます。`const-wide/16 v3` が
- * v4 を潰す、という暗黙の破壊を見落とさないための判定です。
- */
-internal fun instructionWritesRegister(instruction: Instruction, register: Int): Boolean {
-    if (!instruction.opcode.setsRegister() && !instruction.opcode.setsWideRegister()) {
-        return false
-    }
-    val destination = (instruction as? OneRegisterInstruction)?.registerA ?: return false
-    return destination == register ||
-        (instruction.opcode.setsWideRegister() && destination + 1 == register)
-}
-
-/**
- * [definitionIndex] で [register] に書いた値が [useIndex] まで生き残るかどうか。間の命令が
- * 上位半分としてであれ同じ register へ書けば、値は失われます。
- */
-internal fun registerSurvivesBetween(
-    instructions: List<Instruction>,
-    register: Int,
-    definitionIndex: Int,
-    useIndex: Int,
-): Boolean = (definitionIndex + 1 until useIndex).none { index ->
-    instructionWritesRegister(instructions[index], register)
 }
 
 private fun exceptionHandlerAddresses(implementation: MethodImplementation): Set<Int> =

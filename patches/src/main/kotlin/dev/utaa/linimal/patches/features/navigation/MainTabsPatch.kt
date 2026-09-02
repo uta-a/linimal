@@ -18,6 +18,7 @@ import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.instructionWritesAnyRegister
 
 private const val LIST = "Ljava/util/List;"
 private const val ENUM = "Ljava/lang/Enum;"
@@ -218,13 +219,13 @@ private fun registerWidth(type: String): Int = if (type == "J" || type == "D") 2
 private fun isObjectMove(opcode: Opcode): Boolean = opcode == Opcode.MOVE_OBJECT ||
     opcode == Opcode.MOVE_OBJECT_FROM16 || opcode == Opcode.MOVE_OBJECT_16
 
-/** copy直後からstoreまでにtracked localが再定義される可能性があれば安全側で拒否します。 */
+/**
+ * copy 直後から store までに tracked local が再定義される可能性があれば安全側で拒否します。
+ *
+ * <p>判定は wide 命令の pair 上位半分まで数える共通実装へ委ねます。`registerA` だけを見ていると、
+ * 間に挟まった `const-wide` が退避した値を潰していても検出できません。</p>
+ */
 private fun mayRedefineRegister(instruction: Instruction, trackedRegisters: Set<Int>): Boolean {
     if (trackedRegisters.isEmpty()) return true
-    return when (instruction) {
-        is ThreeRegisterInstruction -> instruction.registerA in trackedRegisters
-        is TwoRegisterInstruction -> instruction.registerA in trackedRegisters
-        is OneRegisterInstruction -> instruction.registerA in trackedRegisters
-        else -> false
-    }
+    return instructionWritesAnyRegister(instruction, trackedRegisters)
 }

@@ -22,6 +22,8 @@ import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstructio
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
+import dev.utaa.linimal.patches.util.instructionWritesRegister
+import dev.utaa.linimal.patches.util.registerSurvivesBetween
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
