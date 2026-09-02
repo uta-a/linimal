@@ -106,6 +106,9 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.WALLET, "linimal.wallet", SettingsPage.TABS,
                     "ウォレットを表示しない",
                     "下部タブからウォレットを取り除きます。"),
+            new Entry(LinimalFeature.MINI, "linimal.mini", SettingsPage.TABS,
+                    "アプリを表示しない",
+                    "下部タブからアプリを取り除きます。"),
 
             new Entry(LinimalFeature.HOME_TOP_AD, "linimal.home-top-ad", SettingsPage.HOME,
                     "ホーム内の広告を表示しない",

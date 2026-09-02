@@ -106,6 +106,7 @@ Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE �
 | Tabs | Shopping | ON | 下部タブから Shopping を取り除きます。 |
 | Tabs | NEWS | ON | 下部タブから NEWS を取り除きます。 |
 | Tabs | Wallet | OFF | 下部タブから Wallet を取り除きます。 |
+| Tabs | アプリ | OFF | 下部タブからアプリを取り除きます。 |
 | Home | Home 内の広告 | ON | GCS Home Performance Ad の middle / bottom module と Home Feed の広告カードを表示対象から除外します。広告通信と保存期限は変更しません。 |
 | Home | おすすめ | ON | Home のおすすめ枠を表示しません。 |
 | Home | 話題 | ON | Home の話題とトレンド枠を表示しません。 |

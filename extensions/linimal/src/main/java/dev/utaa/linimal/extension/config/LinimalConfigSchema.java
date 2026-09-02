@@ -23,6 +23,7 @@ final class LinimalConfigSchema {
             "linimal.agent_i.message_context_menu";
     static final String LINE_AI_GALLERY_VIEWER_ENABLED_KEY = "linimal.agent_i.gallery_viewer";
     static final String SHOPPING_ENABLED_KEY = "linimal.tab.shopping";
+    static final String MINI_ENABLED_KEY = "linimal.tab.mini";
 
     static final String PREMIUM_ENABLED_KEY = "linimal.feature.premium";
     static final String PREMIUM_SETTINGS_ROW_ENABLED_KEY = "linimal.settings.premium_row";
@@ -71,6 +72,8 @@ final class LinimalConfigSchema {
                 return LINE_AI_GALLERY_VIEWER_ENABLED_KEY;
             case SHOPPING:
                 return SHOPPING_ENABLED_KEY;
+            case MINI:
+                return MINI_ENABLED_KEY;
             case PREMIUM:
                 return PREMIUM_ENABLED_KEY;
             case PREMIUM_SETTINGS_ROW:

@@ -19,6 +19,7 @@ public final class FeatureHooksTest {
         NEWS,
         NEWS_ROW,
         WALLET,
+        MINI,
         OTHER
     }
 
@@ -46,7 +47,7 @@ public final class FeatureHooksTest {
     public void mainTabsReturnTheSameListWhenEverySuppressionIsOff() {
         List<MainTab> tabs = Arrays.asList(MainTab.HOME, MainTab.TIMELINE, MainTab.NEWS, MainTab.WALLET);
 
-        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false);
+        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false, false);
 
         assertSame(tabs, result);
     }
@@ -56,7 +57,7 @@ public final class FeatureHooksTest {
         List<MainTab> tabs = Arrays.asList(
                 MainTab.HOME, MainTab.TIMELINE, MainTab.NEWS, MainTab.NEWS_ROW, MainTab.WALLET);
 
-        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, true, true, false, false);
+        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, true, true, false, false, false);
 
         assertTrue(result.equals(Arrays.asList(MainTab.HOME, MainTab.WALLET)));
     }
@@ -75,7 +76,7 @@ public final class FeatureHooksTest {
                 MainTab.OTHER,
                 unknownItem));
 
-        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, true);
+        List<?> result = MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, true, false);
 
         assertTrue(tabs.equals(Arrays.asList(
                 MainTab.HOME,
@@ -103,13 +104,33 @@ public final class FeatureHooksTest {
     public void shoppingAndWalletSuppressionRemainIndependent() {
         List<Object> tabs = Arrays.asList(MainTab.HOME, ShoppingTab.COMMERCE, MainTab.WALLET);
 
-        assertSame(tabs, MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false));
-        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, true)
+        assertSame(tabs, MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false, false));
+        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, true, false)
                 .equals(Arrays.asList(MainTab.HOME, MainTab.WALLET)));
-        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, true, false)
+        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, true, false, false)
                 .equals(Arrays.asList(MainTab.HOME, ShoppingTab.COMMERCE)));
-        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, true, true)
+        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, true, true, false)
                 .equals(Arrays.asList(MainTab.HOME)));
+    }
+
+    @Test
+    public void miniSuppressionOnlyRemovesTheMiniTabAndKeepsEveryOtherTab() {
+        List<Object> tabs = Arrays.asList(
+                MainTab.HOME,
+                MainTab.TIMELINE,
+                MainTab.NEWS,
+                MainTab.WALLET,
+                MainTab.MINI,
+                ShoppingTab.COMMERCE);
+
+        assertSame(tabs, MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false, false));
+        assertTrue(MainTabHooks.filterTabsForEnabledStates(tabs, false, false, false, false, true)
+                .equals(Arrays.asList(
+                        MainTab.HOME,
+                        MainTab.TIMELINE,
+                        MainTab.NEWS,
+                        MainTab.WALLET,
+                        ShoppingTab.COMMERCE)));
     }
 
     @Test
@@ -148,7 +169,7 @@ public final class FeatureHooksTest {
     public void tabFilteringDoesNotMutateTheCallerList() {
         List<MainTab> mutable = new ArrayList<>(Arrays.asList(MainTab.HOME, MainTab.WALLET));
 
-        MainTabHooks.filterTabsForEnabledStates(mutable, false, false, true, false);
+        MainTabHooks.filterTabsForEnabledStates(mutable, false, false, true, false, false);
 
         assertTrue(mutable.equals(Arrays.asList(MainTab.HOME, MainTab.WALLET)));
     }

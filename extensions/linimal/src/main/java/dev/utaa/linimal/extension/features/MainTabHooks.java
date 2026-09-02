@@ -25,7 +25,8 @@ public final class MainTabHooks {
                     config.isVoomSuppressionEnabled(),
                     config.isNewsSuppressionEnabled(),
                     config.isWalletSuppressionEnabled(),
-                    config.isShoppingSuppressionEnabled());
+                    config.isShoppingSuppressionEnabled(),
+                    config.isMiniSuppressionEnabled());
         } catch (Throwable ignored) {
             return original;
         }
@@ -36,8 +37,10 @@ public final class MainTabHooks {
             boolean suppressVoom,
             boolean suppressNews,
             boolean suppressWallet,
-            boolean suppressShopping) {
-        if (original == null || (!suppressVoom && !suppressNews && !suppressWallet && !suppressShopping)) {
+            boolean suppressShopping,
+            boolean suppressMini) {
+        if (original == null
+                || (!suppressVoom && !suppressNews && !suppressWallet && !suppressShopping && !suppressMini)) {
             return original;
         }
 
@@ -47,7 +50,8 @@ public final class MainTabHooks {
             if ((suppressVoom && "TIMELINE".equals(name))
                     || (suppressNews && ("NEWS".equals(name) || "NEWS_ROW".equals(name)))
                     || (suppressWallet && "WALLET".equals(name))
-                    || (suppressShopping && ("COMMERCE".equals(name) || "COMMERCE_TW".equals(name)))) {
+                    || (suppressShopping && ("COMMERCE".equals(name) || "COMMERCE_TW".equals(name)))
+                    || (suppressMini && "MINI".equals(name))) {
                 continue;
             }
             filtered.add(tab);

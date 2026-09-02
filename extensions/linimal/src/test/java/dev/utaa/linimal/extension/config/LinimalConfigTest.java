@@ -62,6 +62,7 @@ public final class LinimalConfigTest {
         assertTrue(config.isVoomSuppressionEnabled());
         assertTrue(config.isNewsSuppressionEnabled());
         assertFalse(config.isWalletSuppressionEnabled());
+        assertFalse(config.isMiniSuppressionEnabled());
         assertTrue(config.isHomeRecommendationsSuppressionEnabled());
         assertTrue(config.isHomeTrendingSuppressionEnabled());
         assertTrue(config.isHomeFeedPostCardsSuppressionEnabled());
@@ -429,6 +430,22 @@ public final class LinimalConfigTest {
         assertEquals(true, backend.values.get(LinimalConfigSchema.WALLET_ENABLED_KEY));
         assertEquals("manual", backend.values.get(LinimalConfigSchema.READ_RECEIPT_MODE_KEY));
         assertEquals(true, backend.values.get(LinimalConfigSchema.EXTERNAL_BROWSER_ENABLED_KEY));
+    }
+
+    @Test
+    public void miniWritesUseTheirOwnKeyAndDoNotChangeTheOtherTabs() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setMiniSuppressionEnabled(true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isMiniSuppressionEnabled());
+        assertFalse(config.isWalletSuppressionEnabled());
+        assertTrue(config.isVoomSuppressionEnabled());
+        assertTrue(config.isNewsSuppressionEnabled());
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.MINI_ENABLED_KEY));
     }
 
     @Test

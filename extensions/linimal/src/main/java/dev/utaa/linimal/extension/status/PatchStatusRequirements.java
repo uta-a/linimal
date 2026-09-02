@@ -41,6 +41,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.shopping", ids("linimal.patch.main-tab-shopping"));
         requirements.put("linimal.news", ids("linimal.patch.main-tab-news"));
         requirements.put("linimal.wallet", ids("linimal.patch.main-tab-wallet"));
+        requirements.put("linimal.mini", ids("linimal.patch.main-tab-mini"));
         requirements.put("linimal.home-top-ad", ids(
                 "linimal.patch.home-top-ad-module-gate",
                 "linimal.patch.home-top-ad-catalog-gate",

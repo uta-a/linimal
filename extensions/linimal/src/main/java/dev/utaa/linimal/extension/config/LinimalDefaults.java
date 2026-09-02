@@ -37,6 +37,7 @@ public final class LinimalDefaults {
             case READ_WITHOUT_RECEIPT:
                 return true;
             case WALLET:
+            case MINI:
             case EXTERNAL_BROWSER:
             case DEBUG_LOGGING:
                 return false;

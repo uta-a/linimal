@@ -213,6 +213,14 @@ public final class LinimalConfig {
         setEnabled(LinimalFeature.WALLET, enabled);
     }
 
+    public boolean isMiniSuppressionEnabled() {
+        return isEnabled(LinimalFeature.MINI);
+    }
+
+    public void setMiniSuppressionEnabled(boolean enabled) {
+        setEnabled(LinimalFeature.MINI, enabled);
+    }
+
     public boolean isHomeRecommendationsSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_RECOMMENDATIONS);
     }

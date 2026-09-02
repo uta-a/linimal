@@ -55,6 +55,7 @@ public final class FeatureCatalogTest {
         assertEntryPage("linimal.external-browser", SettingsPage.GENERAL);
         assertEntryPage("linimal.shopping", SettingsPage.TABS);
         assertEntryPage("linimal.wallet", SettingsPage.TABS);
+        assertEntryPage("linimal.mini", SettingsPage.TABS);
         assertEntryPage("linimal.home-top-ad", SettingsPage.HOME);
         assertEntryPage("linimal.home-feed-post-cards", SettingsPage.HOME);
         assertEntryPage("linimal.home-featured-collections", SettingsPage.HOME);
@@ -110,6 +111,27 @@ public final class FeatureCatalogTest {
                 "linimal.home-featured-collections");
         assertEquals("ホームの投稿カードを表示しない", entries.get(3).getTitle());
         assertEquals("特集枠を表示しない", entries.get(4).getTitle());
+    }
+
+    @Test
+    public void tabEntriesKeepCatalogOrderAndIncludeTheMiniRow() {
+        List<FeatureCatalog.Entry> entries = FeatureCatalog.installedEntriesForPage(
+                SettingsPage.TABS,
+                Arrays.asList(
+                        "linimal.mini",
+                        "linimal.wallet",
+                        "linimal.news",
+                        "linimal.shopping",
+                        "linimal.voom"));
+
+        assertFeatureIds(entries,
+                "linimal.voom",
+                "linimal.shopping",
+                "linimal.news",
+                "linimal.wallet",
+                "linimal.mini");
+        assertEquals("アプリを表示しない", entries.get(4).getTitle());
+        assertEquals("下部タブからアプリを取り除きます。", entries.get(4).getSummary());
     }
 
     @Test

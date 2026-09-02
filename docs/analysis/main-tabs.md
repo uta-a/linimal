@@ -18,6 +18,7 @@ LINE の下部タブは descriptor enum の list から組み立てられる。L
 - Shopping
 - NEWS
 - Wallet
+- アプリ
 
 Shopping と Wallet は別の enum item である。同じ設定にまとめない。
 
@@ -31,6 +32,7 @@ Shopping と Wallet は別の enum item である。同じ設定にまとめな�
 | NEWS | `NEWS` | `0x7f0b03d3` | `bnb_news` | 通常のNEWS |
 | NEWS | `NEWS_ROW` | `0x7f0b03d4` | `bnb_news_row` | row variant |
 | Wallet | `WALLET` | `0x7f0b03db` | `bnb_wallet` | Shoppingとは独立 |
+| アプリ | `MINI` | `0x7f0b03d1` | `bnb_mini` | mini app タブ |
 
 `COMMERCE` と `COMMERCE_TW` は同時表示ではなくregionに応じた相互排他 variant とみなす。一つのShopping設定で両方を対象にする。
 
@@ -125,6 +127,7 @@ extensionはLINE側enumへcompile-time linkしない。`Enum.name` で対象を�
 | Shopping | `COMMERCE`, `COMMERCE_TW` |
 | NEWS | `NEWS`, `NEWS_ROW` |
 | Wallet | `WALLET` |
+| アプリ | `MINI` |
 
 例外時は元listを返す。
 
@@ -154,6 +157,7 @@ linimal.voom
 linimal.shopping
 linimal.news
 linimal.wallet
+linimal.mini
 ```
 
 予定するPatchIdは次のとおり。
@@ -163,6 +167,7 @@ linimal.patch.main-tab-voom
 linimal.patch.main-tab-shopping
 linimal.patch.main-tab-news
 linimal.patch.main-tab-wallet
+linimal.patch.main-tab-mini
 ```
 
 一つのconstructor targetを共有するためexpected targetは各PatchIdで1件とする。descriptor enumまたはconsumer constructorが0件なら `TARGET_NOT_FOUND` とする。複数一致またはshape不一致なら `ERROR` とする。

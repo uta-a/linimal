@@ -29,6 +29,7 @@ private val mainTabPatchIds = listOf(
     PatchId.MAIN_TAB_NEWS,
     PatchId.MAIN_TAB_WALLET,
     PatchId.MAIN_TAB_SHOPPING,
+    PatchId.MAIN_TAB_MINI,
 )
 
 /**
@@ -39,7 +40,7 @@ private val mainTabDescriptorFingerprint = Fingerprint(
     name = "<clinit>",
     accessFlags = listOf(AccessFlags.STATIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
-    strings = listOf("TIMELINE", "NEWS", "NEWS_ROW", "WALLET", "COMMERCE", "COMMERCE_TW"),
+    strings = listOf("TIMELINE", "NEWS", "NEWS_ROW", "WALLET", "MINI", "COMMERCE", "COMMERCE_TW"),
     filters = listOf(
         fieldAccess(name = "VOOM", opcode = Opcode.SGET_OBJECT),
         literal(0x7f0b03d9), // id/bnb_timeline
@@ -49,6 +50,8 @@ private val mainTabDescriptorFingerprint = Fingerprint(
         literal(0x7f0b03d4), // id/bnb_news_row
         fieldAccess(name = "WALLET", opcode = Opcode.SGET_OBJECT),
         literal(0x7f0b03db), // id/bnb_wallet
+        fieldAccess(name = "MINI", opcode = Opcode.SGET_OBJECT),
+        literal(0x7f0b03d1), // id/bnb_mini
         fieldAccess(name = "COMMERCE", opcode = Opcode.SGET_OBJECT),
         literal(0x7f0b03c7), // id/bnb_commerce
         fieldAccess(name = "COMMERCE_TW", opcode = Opcode.SGET_OBJECT),
@@ -58,7 +61,7 @@ private val mainTabDescriptorFingerprint = Fingerprint(
 )
 
 /**
- * VOOM / NEWS / Wallet / Shopping の input list を保存する constructor。enum descriptor class は上の anchor から
+ * VOOM / NEWS / Wallet / Shopping / Mini の input list を保存する constructor。enum descriptor class は上の anchor から
  * 動的に導くため、constructor 自身の難読化 class/method 名には依存しません。
  */
 val mainTabsPatch = bytecodePatch {
