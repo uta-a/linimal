@@ -190,8 +190,6 @@ public final class FeatureCatalogTest {
                 SettingsPage.HIDE, Collections.singletonList("unknown.feature")).isEmpty());
         assertTrue(FeatureCatalog.installedGroupsForPage(
                 SettingsPage.ROOT, allCatalogFeatureIds()).isEmpty());
-        assertTrue(FeatureCatalog.installedGroupsForPage(
-                SettingsPage.PATCH_STATUS, allCatalogFeatureIds()).isEmpty());
     }
 
     /** 同じ小見出しの項目が離れて並ぶと、見出しが二度描かれてしまうため禁止します。 */
@@ -259,8 +257,7 @@ public final class FeatureCatalogTest {
         for (FeatureCatalog.Entry entry : FeatureCatalog.entries()) {
             SettingsPage page = entry.getPage();
             assertNotNull(entry.getFeature().name(), page);
-            assertTrue(entry.getFeature().name(),
-                    page != SettingsPage.ROOT && page != SettingsPage.PATCH_STATUS);
+            assertTrue(entry.getFeature().name(), page != SettingsPage.ROOT);
         }
     }
 

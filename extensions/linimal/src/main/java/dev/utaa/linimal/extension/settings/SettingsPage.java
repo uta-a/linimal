@@ -9,8 +9,7 @@ public enum SettingsPage {
     AGENT_I,
     HIDE,
     READ_RECEIPT,
-    GENERAL,
-    PATCH_STATUS;
+    GENERAL;
 
     /**
      * 保存時に使用する安定したページ識別子を返します。

@@ -54,6 +54,8 @@ public final class SettingsNavigationTest {
         assertRestoresRoot(new String[]{"ROOT", "TABS"});
         assertRestoresRoot(new String[]{"ROOT", "HOME"});
         assertRestoresRoot(new String[]{"ROOT", "CHAT"});
+        // 削除した Patch Status ページも同じく解決できません。
+        assertRestoresRoot(new String[]{"ROOT", "PATCH_STATUS"});
     }
 
     @Test
@@ -62,13 +64,13 @@ public final class SettingsNavigationTest {
         assertArrayEquals(new String[]{"ROOT"}, rootNavigation.serialize());
 
         SettingsNavigation childNavigation = new SettingsNavigation();
-        childNavigation.push(SettingsPage.PATCH_STATUS);
+        childNavigation.push(SettingsPage.READ_RECEIPT);
         String[] savedPath = childNavigation.serialize();
 
         SettingsNavigation restoredNavigation = new SettingsNavigation();
         restoredNavigation.restore(savedPath);
-        assertEquals(SettingsPage.PATCH_STATUS, restoredNavigation.getCurrentPage());
-        assertArrayEquals(new String[]{"ROOT", "PATCH_STATUS"}, restoredNavigation.serialize());
+        assertEquals(SettingsPage.READ_RECEIPT, restoredNavigation.getCurrentPage());
+        assertArrayEquals(new String[]{"ROOT", "READ_RECEIPT"}, restoredNavigation.serialize());
     }
 
     @Test
