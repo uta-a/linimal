@@ -164,7 +164,7 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch {
             ),
         )
         val candidates = candidateFingerprint.matchAllOrNull().orEmpty()
-            .associateBy { match -> match.originalMethod.let { "${it.definingClass}->${it.name}" } }
+            .associateBy { match -> methodKey(match.originalMethod) }
         if (candidates.isEmpty()) {
             patchStatusCollector.record(
                 homeFeedLoadingIndicatorUnappliedRecord(0, "HomeFeedLoadingIndicatorRendererNotFound"),
@@ -263,11 +263,29 @@ internal fun isLoadingIndicatorRendererSignature(method: Method): Boolean {
     return parameters == listOf(MODIFIER, COMPOSER, INT)
 }
 
-/** メソッドが呼び出している method reference の一覧。`定義クラス->名前` の形で返します。 */
+/**
+ * 呼び出し関係の突き合わせに使うキー。
+ *
+ * <p>定義クラスと名前だけでは、同じクラスに同名の overload があると別のメソッドを同一視します。
+ * 引数の型と戻り値まで含めた descriptor を使い、対象を取り違えないようにします。</p>
+ */
+internal fun methodKey(definingClass: String, name: String, parameterTypes: List<String>, returnType: String): String =
+    "$definingClass->$name(${parameterTypes.joinToString("")})$returnType"
+
+private fun methodKey(method: Method): String = methodKey(
+    method.definingClass,
+    method.name,
+    method.parameterTypes.map { it.toString() },
+    method.returnType,
+)
+
+/** メソッドが呼び出している method reference のキー一覧。 */
 private fun calledMethodKeys(method: Method): List<String> =
     method.implementation?.instructions?.toList().orEmpty().mapNotNull { instruction ->
         val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-        reference?.let { "${it.definingClass}->${it.name}" }
+        reference?.let {
+            methodKey(it.definingClass, it.name, it.parameterTypes.map(CharSequence::toString), it.returnType)
+        }
     }
 
 internal data class HomeFeedLoadingIndicatorGate(

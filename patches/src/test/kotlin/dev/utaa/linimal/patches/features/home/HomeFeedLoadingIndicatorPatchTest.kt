@@ -14,6 +14,7 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -145,4 +146,19 @@ class HomeFeedLoadingIndicatorPatchTest {
         6, 0, 0, 0, 0,
         ImmutableMethodReference("Lh3/f1;", name, parameters, returnType),
     )
+
+    /**
+     * 呼び出し関係の突き合わせが overload を区別することを固定します。定義クラスと名前だけを
+     * キーにすると、同じクラスの別 overload を同一視して対象を取り違えます。
+     */
+    @Test
+    fun `the caller matching key distinguishes overloads`() {
+        val modifierAndComposer = methodKey("Lw72/q;", "a", listOf("Ly3/j;", "Lh3/t;", "I"), "V")
+        val composerOnly = methodKey("Lw72/q;", "a", listOf("Lh3/t;", "I"), "V")
+        val differentReturn = methodKey("Lw72/q;", "a", listOf("Ly3/j;", "Lh3/t;", "I"), "Ljava/lang/Object;")
+
+        assertNotEquals(modifierAndComposer, composerOnly)
+        assertNotEquals(modifierAndComposer, differentReturn)
+        assertEquals(modifierAndComposer, methodKey("Lw72/q;", "a", listOf("Ly3/j;", "Lh3/t;", "I"), "V"))
+    }
 }
