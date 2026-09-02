@@ -203,25 +203,7 @@ public final class PatchStatusRepositoryTest {
     }
 
     @Test
-    public void homeFeaturedCollectionsRequiresItsFeedLoadingIndicatorPatch() {
-        String featured = patchJson(
-                "linimal.patch.home-featured-collections",
-                "linimal.home-featured-collections", "OK", 1, 1);
-        String loading = patchJson(
-                "linimal.patch.home-feed-loading-indicator",
-                "linimal.home-featured-collections", "OK", 1, 1);
-
-        PatchStatusReport report = parser.parse(
-                "{\"schemaVersion\":1,\"patches\":[" + featured + "," + loading + "]}");
-
-        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
-        assertNull(report.getFeatureStatus("linimal.home-feed-post-cards"));
-        assertNull(report.getFeatureStatus("linimal.home-trending"));
-    }
-
-    /** 片方だけでは feature を有効にしません。取りこぼすと機能ごと無効になるため、境界を固定します。 */
-    @Test
-    public void homeFeaturedCollectionsStaysUnavailableWithoutTheLoadingIndicatorPatch() {
+    public void homeFeaturedCollectionsResolvesFromItsOwnRequiredPatch() {
         String featured = patchJson(
                 "linimal.patch.home-featured-collections",
                 "linimal.home-featured-collections", "OK", 1, 1);
@@ -229,7 +211,29 @@ public final class PatchStatusRepositoryTest {
         PatchStatusReport report = parser.parse(
                 "{\"schemaVersion\":1,\"patches\":[" + featured + "]}");
 
-        assertNotEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
+        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
+    }
+
+    /**
+     * 読み込み表示は特集枠と別の feature。片方の patch が当たらなくても、もう片方の設定は
+     * 使えたままでなければならない。両者を同じ feature に載せていたため、読み込み表示の
+     * patch を足した際に特集枠の設定ごと利用不可になる事故が起きた。
+     */
+    @Test
+    public void theFeedLoadingIndicatorFailureDoesNotDisableFeaturedCollections() {
+        String featured = patchJson(
+                "linimal.patch.home-featured-collections",
+                "linimal.home-featured-collections", "OK", 1, 1);
+        String loading = patchJson(
+                "linimal.patch.home-feed-loading-indicator",
+                "linimal.home-feed-loading-indicator", "TARGET_NOT_FOUND", 1, 0);
+
+        PatchStatusReport report = parser.parse(
+                "{\"schemaVersion\":1,\"patches\":[" + featured + "," + loading + "]}");
+
+        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
+        assertEquals(PatchStatus.TARGET_NOT_FOUND,
+                report.getFeatureStatus("linimal.home-feed-loading-indicator"));
     }
 
     @Test
