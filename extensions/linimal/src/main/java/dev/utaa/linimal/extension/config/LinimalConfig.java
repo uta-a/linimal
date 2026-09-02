@@ -55,258 +55,116 @@ public final class LinimalConfig {
         return health;
     }
 
-    /**
-     * @deprecated Smart Channel の hook は {@link #isSmartChannelAdsSuppressionEnabled()} を使用します。
-     * 移行中の旧 hook が v2 の設定を読めるよう、Smart Channel の値へ委譲します。
-     */
-    @Deprecated
-    public boolean isAdsSuppressionEnabled() {
-        return isSmartChannelAdsSuppressionEnabled();
-    }
-
-    /** @deprecated {@link #setSmartChannelAdsSuppressionEnabled(boolean)} を使用します。 */
-    @Deprecated
-    public void setAdsSuppressionEnabled(boolean enabled) {
-        setSmartChannelAdsSuppressionEnabled(enabled);
-    }
-
-    /**
-     * @deprecated Agent I の hook は {@link #isAgentIChatInformationSuppressionEnabled()} を使用します。
-     * 移行中の旧 hook が v2 の設定を読めるよう、Agent I の値へ委譲します。
-     */
-    @Deprecated
-    public boolean isLineAiSuppressionEnabled() {
-        return isAgentIChatInformationSuppressionEnabled();
-    }
-
-    /** @deprecated {@link #setAgentIChatInformationSuppressionEnabled(boolean)} を使用します。 */
-    @Deprecated
-    public void setLineAiSuppressionEnabled(boolean enabled) {
-        setAgentIChatInformationSuppressionEnabled(enabled);
-    }
-
     public boolean isSmartChannelAdsSuppressionEnabled() {
         return isEnabled(LinimalFeature.SMART_CHANNEL_ADS);
-    }
-
-    public void setSmartChannelAdsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.SMART_CHANNEL_ADS, enabled);
     }
 
     public boolean isHomeTopAdSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_TOP_AD);
     }
 
-    public void setHomeTopAdSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.HOME_TOP_AD, enabled);
-    }
-
     public boolean isAgentIHomeHeaderSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_HOME_HEADER);
-    }
-
-    public void setAgentIHomeHeaderSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_HOME_HEADER, enabled);
     }
 
     public boolean isAgentIChatInformationSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION);
     }
 
-    public void setAgentIChatInformationSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, enabled);
-    }
-
     public boolean isAgentIWalletHeaderSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_WALLET_HEADER);
-    }
-
-    public void setAgentIWalletHeaderSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_WALLET_HEADER, enabled);
     }
 
     public boolean isAgentISettingsSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_SETTINGS);
     }
 
-    public void setAgentISettingsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_SETTINGS, enabled);
-    }
-
     public boolean isAgentIChatComposerSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER);
-    }
-
-    public void setAgentIChatComposerSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER, enabled);
     }
 
     public boolean isAgentIChatListSearchSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH);
     }
 
-    public void setAgentIChatListSearchSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, enabled);
-    }
-
     public boolean isLineAiMessageContextMenuSuppressionEnabled() {
         return isEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU);
-    }
-
-    public void setLineAiMessageContextMenuSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, enabled);
     }
 
     public boolean isLineAiGalleryViewerSuppressionEnabled() {
         return isEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER);
     }
 
-    public void setLineAiGalleryViewerSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER, enabled);
-    }
-
     public boolean isShoppingSuppressionEnabled() {
         return isEnabled(LinimalFeature.SHOPPING);
-    }
-
-    public void setShoppingSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.SHOPPING, enabled);
     }
 
     public boolean isPremiumSuppressionEnabled() {
         return isEnabled(LinimalFeature.PREMIUM);
     }
 
-    public void setPremiumSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.PREMIUM, enabled);
-    }
-
     public boolean isPremiumSettingsRowSuppressionEnabled() {
         return isEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW);
-    }
-
-    public void setPremiumSettingsRowSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW, enabled);
     }
 
     public boolean isVoomSuppressionEnabled() {
         return isEnabled(LinimalFeature.VOOM);
     }
 
-    public void setVoomSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.VOOM, enabled);
-    }
-
     public boolean isNewsSuppressionEnabled() {
         return isEnabled(LinimalFeature.NEWS);
-    }
-
-    public void setNewsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.NEWS, enabled);
     }
 
     public boolean isWalletSuppressionEnabled() {
         return isEnabled(LinimalFeature.WALLET);
     }
 
-    public void setWalletSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.WALLET, enabled);
-    }
-
     public boolean isMiniSuppressionEnabled() {
         return isEnabled(LinimalFeature.MINI);
-    }
-
-    public void setMiniSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.MINI, enabled);
     }
 
     public boolean isHomeRecommendationsSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_RECOMMENDATIONS);
     }
 
-    public void setHomeRecommendationsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.HOME_RECOMMENDATIONS, enabled);
-    }
-
     public boolean isHomeTrendingSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_TRENDING);
-    }
-
-    public void setHomeTrendingSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.HOME_TRENDING, enabled);
     }
 
     public boolean isHomeFeedPostCardsSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_FEED_POST_CARDS);
     }
 
-    public void setHomeFeedPostCardsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.HOME_FEED_POST_CARDS, enabled);
-    }
-
     public boolean isHomeFeaturedCollectionsSuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS);
-    }
-
-    public void setHomeFeaturedCollectionsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS, enabled);
     }
 
     public boolean isChatCalendarSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_CALENDAR);
     }
 
-    public void setChatCalendarSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_CALENDAR, enabled);
-    }
-
     public boolean isChatLineGiftSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LINE_GIFT);
-    }
-
-    public void setChatLineGiftSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_LINE_GIFT, enabled);
     }
 
     public boolean isChatLinePaySuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LINE_PAY);
     }
 
-    public void setChatLinePaySuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_LINE_PAY, enabled);
-    }
-
     public boolean isReadWithoutReceiptEnabled() {
         return isEnabled(LinimalFeature.READ_WITHOUT_RECEIPT);
-    }
-
-    public void setReadWithoutReceiptEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, enabled);
     }
 
     public boolean isChatListHeaderAiFriendsSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS);
     }
 
-    public void setChatListHeaderAiFriendsSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS, enabled);
-    }
-
     public boolean isChatListHeaderCalendarSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR);
     }
 
-    public void setChatListHeaderCalendarSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, enabled);
-    }
-
     public boolean isChatListHeaderOpenChatSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT);
-    }
-
-    public void setChatListHeaderOpenChatSuppressionEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT, enabled);
     }
 
     public ReadReceiptMode getReadReceiptMode() {
@@ -328,18 +186,6 @@ public final class LinimalConfig {
 
     public boolean isExternalBrowserOverrideEnabled() {
         return isEnabled(LinimalFeature.EXTERNAL_BROWSER);
-    }
-
-    public void setExternalBrowserOverrideEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.EXTERNAL_BROWSER, enabled);
-    }
-
-    public boolean isDebugLoggingEnabled() {
-        return isEnabled(LinimalFeature.DEBUG_LOGGING);
-    }
-
-    public void setDebugLoggingEnabled(boolean enabled) {
-        setEnabled(LinimalFeature.DEBUG_LOGGING, enabled);
     }
 
     /**

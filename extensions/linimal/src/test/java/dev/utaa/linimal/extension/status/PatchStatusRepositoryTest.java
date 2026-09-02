@@ -38,7 +38,7 @@ public final class PatchStatusRepositoryTest {
             PatchStatusReadResult result = PatchStatusRepository.read(input);
 
             assertTrue(result.isAvailable());
-            assertEquals(PatchStatus.OK, result.getReport().getPremiumStatus());
+            assertEquals(PatchStatus.OK, result.getReport().getFeatureStatus("linimal.premium"));
         } finally {
             input.close();
         }

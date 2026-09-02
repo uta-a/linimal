@@ -8,9 +8,6 @@ import java.util.Set;
 
 /** 検証済みの build-time patch status report。 */
 public final class PatchStatusReport {
-    /** Premium suppression hook に対応する安定した feature ID。 */
-    public static final String PREMIUM_FEATURE_ID = "linimal.premium";
-
     private final int schemaVersion;
     private final List<PatchStatusRecord> patches;
 
@@ -52,10 +49,6 @@ public final class PatchStatusReport {
             return PatchStatus.ERROR;
         }
         return nonOkStatus == null ? PatchStatus.OK : nonOkStatus;
-    }
-
-    public PatchStatus getPremiumStatus() {
-        return getFeatureStatus(PREMIUM_FEATURE_ID);
     }
 
     /** レポートに含まれる feature ID を、記録順のまま重複なく返します。 */

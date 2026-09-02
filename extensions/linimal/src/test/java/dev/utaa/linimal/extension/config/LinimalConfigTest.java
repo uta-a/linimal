@@ -30,8 +30,8 @@ public final class LinimalConfigTest {
         assertFalse(config.isLineAiMessageContextMenuSuppressionEnabled());
         assertFalse(config.isLineAiGalleryViewerSuppressionEnabled());
         assertFalse(config.isShoppingSuppressionEnabled());
-        assertFalse(config.isAdsSuppressionEnabled());
-        assertFalse(config.isLineAiSuppressionEnabled());
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertFalse(config.isPremiumSuppressionEnabled());
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
         assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
@@ -55,8 +55,8 @@ public final class LinimalConfigTest {
         assertTrue(config.isLineAiMessageContextMenuSuppressionEnabled());
         assertTrue(config.isLineAiGalleryViewerSuppressionEnabled());
         assertTrue(config.isShoppingSuppressionEnabled());
-        assertTrue(config.isAdsSuppressionEnabled());
-        assertTrue(config.isLineAiSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertTrue(config.isPremiumSuppressionEnabled());
         assertTrue(config.isPremiumSettingsRowSuppressionEnabled());
         assertTrue(config.isVoomSuppressionEnabled());
@@ -75,7 +75,6 @@ public final class LinimalConfigTest {
         assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
         assertFalse(config.isExternalBrowserOverrideEnabled());
-        assertFalse(config.isDebugLoggingEnabled());
         assertEquals(
                 LinimalConfigSchema.CURRENT_VERSION,
                 backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
@@ -192,8 +191,8 @@ public final class LinimalConfigTest {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setHomeFeedPostCardsSuppressionEnabled(false);
-        config.setPremiumSettingsRowSuppressionEnabled(false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS, false);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW, false);
 
         assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
@@ -204,8 +203,8 @@ public final class LinimalConfigTest {
         assertNull(backend.values.get(LinimalConfigSchema.HOME_RECOMMENDATIONS_ENABLED_KEY));
         assertNull(backend.values.get(LinimalConfigSchema.PREMIUM_ENABLED_KEY));
 
-        config.setHomeRecommendationsSuppressionEnabled(false);
-        config.setPremiumSuppressionEnabled(false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_RECOMMENDATIONS, false);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, false);
         config.setSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS, true);
         config.setSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW, true);
 
@@ -225,7 +224,7 @@ public final class LinimalConfigTest {
         assertTrue(config.isHomeFeaturedCollectionsSuppressionEnabled());
         assertNull(backend.values.get(LinimalConfigSchema.HOME_FEATURED_COLLECTIONS_ENABLED_KEY));
 
-        config.setHomeFeaturedCollectionsSuppressionEnabled(false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS, false);
 
         assertFalse(config.isHomeFeaturedCollectionsSuppressionEnabled());
         assertEquals(false, backend.values.get(LinimalConfigSchema.HOME_FEATURED_COLLECTIONS_ENABLED_KEY));
@@ -365,21 +364,21 @@ public final class LinimalConfigTest {
     }
 
     @Test
-    public void semanticAndGenericWritesPersistAndRefreshTheTypedSnapshot() {
+    public void genericWritesPersistAndRefreshTheTypedSnapshot() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setSmartChannelAdsSuppressionEnabled(false);
-        config.setHomeTopAdSuppressionEnabled(false);
-        config.setAgentIHomeHeaderSuppressionEnabled(false);
-        config.setAgentIChatInformationSuppressionEnabled(false);
-        config.setAgentIWalletHeaderSuppressionEnabled(false);
-        config.setAgentISettingsSuppressionEnabled(false);
-        config.setAgentIChatComposerSuppressionEnabled(false);
-        config.setAgentIChatListSearchSuppressionEnabled(false);
-        config.setLineAiMessageContextMenuSuppressionEnabled(false);
-        config.setLineAiGalleryViewerSuppressionEnabled(false);
-        config.setShoppingSuppressionEnabled(false);
+        config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_WALLET_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_SETTINGS, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, false);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, false);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER, false);
+        config.setSuppressionEnabled(LinimalFeature.SHOPPING, false);
 
         config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, true);
         config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, true);
@@ -415,14 +414,14 @@ public final class LinimalConfigTest {
     }
 
     @Test
-    public void existingSemanticWritesPersistAndRefreshTheTypedSnapshot() {
+    public void featureAndReadReceiptModeWritesPersistAndRefreshTheTypedSnapshot() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setPremiumSuppressionEnabled(false);
-        config.setWalletSuppressionEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, false);
+        config.setSuppressionEnabled(LinimalFeature.WALLET, true);
         config.setReadReceiptMode(ReadReceiptMode.MANUAL);
-        config.setExternalBrowserOverrideEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.EXTERNAL_BROWSER, true);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
         assertFalse(config.isPremiumSuppressionEnabled());
@@ -440,7 +439,7 @@ public final class LinimalConfigTest {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setMiniSuppressionEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.MINI, true);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
         assertTrue(config.isMiniSuppressionEnabled());
@@ -456,7 +455,7 @@ public final class LinimalConfigTest {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setChatListHeaderCalendarSuppressionEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, true);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
         assertTrue(config.isChatListHeaderCalendarSuppressionEnabled());
@@ -486,27 +485,27 @@ public final class LinimalConfigTest {
     }
 
     @Test
-    public void legacySemanticAccessorsDelegateToReplacementFeatures() {
+    public void legacyFeatureAliasesResolveToTheirReplacementKeys() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setSmartChannelAdsSuppressionEnabled(false);
-        config.setHomeTopAdSuppressionEnabled(false);
-        config.setAgentIHomeHeaderSuppressionEnabled(false);
-        config.setAgentIChatInformationSuppressionEnabled(false);
+        config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, false);
 
-        assertFalse(config.isAdsSuppressionEnabled());
-        assertFalse(config.isLineAiSuppressionEnabled());
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
 
-        config.setAdsSuppressionEnabled(true);
-        config.setLineAiSuppressionEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.ADS, true);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI, true);
 
         assertTrue(config.isSmartChannelAdsSuppressionEnabled());
         assertFalse(config.isHomeTopAdSuppressionEnabled());
         assertFalse(config.isAgentIHomeHeaderSuppressionEnabled());
         assertTrue(config.isAgentIChatInformationSuppressionEnabled());
-        assertTrue(config.isAdsSuppressionEnabled());
-        assertTrue(config.isLineAiSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertNull(backend.values.get(LinimalConfigSchema.ADS_ENABLED_KEY));
         assertNull(backend.values.get(LinimalConfigSchema.LINE_AI_ENABLED_KEY));
     }
@@ -514,12 +513,12 @@ public final class LinimalConfigTest {
     @Test
     public void nullPersistedValuesAreInvalidRatherThanDefaults() {
         InMemoryBackend backend = new InMemoryBackend();
-        backend.values.put(LinimalConfigSchema.DEBUG_LOGGING_ENABLED_KEY, null);
+        backend.values.put(LinimalConfigSchema.EXTERNAL_BROWSER_ENABLED_KEY, null);
 
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isDebugLoggingEnabled());
+        assertFalse(config.isExternalBrowserOverrideEnabled());
     }
 
     @Test

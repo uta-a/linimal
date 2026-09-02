@@ -43,15 +43,11 @@ public final class ReadWithoutReceiptHooks {
 
     /** {@code atMillis} を注入できるテスト用の実体。 */
     static void markSuppressedAt(String chatId, long atMillis) {
-        try {
-            if (chatId == null) {
-                return;
-            }
-            suppressedChatId = chatId;
-            suppressedAtMillis = atMillis;
-        } catch (Throwable ignored) {
-            suppressedChatId = null;
+        if (chatId == null) {
+            return;
         }
+        suppressedChatId = chatId;
+        suppressedAtMillis = atMillis;
     }
 
     /**

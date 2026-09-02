@@ -163,11 +163,6 @@ public final class FeatureCatalog {
         return ENTRIES;
     }
 
-    /** 適用済みの feature ID だけを、カタログ定義順のまま返します。 */
-    public static List<Entry> installedEntries(List<String> installedFeatureIds) {
-        return installedEntriesForPageInternal(null, installedFeatureIds);
-    }
-
     /**
      * 指定ページに属し、かつ patch-status に記録された feature ID を持つ項目だけを返します。
      * ROOT と Patch Status は設定項目を直接持たないため空です。
@@ -177,18 +172,12 @@ public final class FeatureCatalog {
         if (page == null || page == SettingsPage.ROOT || page == SettingsPage.PATCH_STATUS) {
             return Collections.emptyList();
         }
-        return installedEntriesForPageInternal(page, installedFeatureIds);
-    }
-
-    private static List<Entry> installedEntriesForPageInternal(
-            SettingsPage page, List<String> installedFeatureIds) {
         List<Entry> installed = new ArrayList<>();
         if (installedFeatureIds == null) {
             return installed;
         }
         for (Entry entry : ENTRIES) {
-            if ((page == null || entry.getPage() == page)
-                    && installedFeatureIds.contains(entry.getFeatureId())) {
+            if (entry.getPage() == page && installedFeatureIds.contains(entry.getFeatureId())) {
                 installed.add(entry);
             }
         }

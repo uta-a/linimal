@@ -82,10 +82,6 @@ public final class SettingsNavigation {
             return SettingsPage.ROOT;
         }
 
-        if (serializedPath.length == 1) {
-            return SettingsPage.ROOT;
-        }
-
         if (serializedPath.length != 2) {
             return SettingsPage.ROOT;
         }

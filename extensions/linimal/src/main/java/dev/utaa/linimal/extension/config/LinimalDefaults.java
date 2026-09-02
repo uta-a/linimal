@@ -42,7 +42,6 @@ public final class LinimalDefaults {
             case CHAT_LIST_HEADER_CALENDAR:
             case CHAT_LIST_HEADER_OPEN_CHAT:
             case EXTERNAL_BROWSER:
-            case DEBUG_LOGGING:
                 return false;
             default:
                 throw new AssertionError("Unhandled feature: " + feature);

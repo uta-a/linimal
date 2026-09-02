@@ -31,7 +31,6 @@ public enum LinimalFeature {
     CHAT_LINE_GIFT,
     CHAT_LINE_PAY,
     EXTERNAL_BROWSER,
-    DEBUG_LOGGING,
 
     SMART_CHANNEL_ADS,
     HOME_TOP_AD,

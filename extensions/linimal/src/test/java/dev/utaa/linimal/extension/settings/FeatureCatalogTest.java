@@ -11,24 +11,25 @@ import java.util.List;
 
 public final class FeatureCatalogTest {
     @Test
-    public void installedEntriesFiltersUnknownIdsAndKeepsCatalogOrder() {
-        List<FeatureCatalog.Entry> entries = FeatureCatalog.installedEntries(Arrays.asList(
-                "linimal.wallet",
-                "unknown.feature",
-                "linimal.premium",
-                "linimal.wallet"));
+    public void installedEntriesForPageFiltersUnknownAndDuplicateIds() {
+        List<FeatureCatalog.Entry> entries = FeatureCatalog.installedEntriesForPage(
+                SettingsPage.TABS,
+                Arrays.asList(
+                        "linimal.wallet",
+                        "unknown.feature",
+                        "linimal.premium",
+                        "linimal.wallet"));
 
-        assertEquals(2, entries.size());
-        assertEquals("linimal.premium", entries.get(0).getFeatureId());
-        assertEquals(SettingsPage.GENERAL, entries.get(0).getPage());
-        assertEquals("linimal.wallet", entries.get(1).getFeatureId());
-        assertEquals(SettingsPage.TABS, entries.get(1).getPage());
+        assertEquals(1, entries.size());
+        assertEquals("linimal.wallet", entries.get(0).getFeatureId());
+        assertEquals(SettingsPage.TABS, entries.get(0).getPage());
     }
 
     @Test
-    public void installedEntriesReturnsNoSettingsForMissingFeatureIds() {
-        assertTrue(FeatureCatalog.installedEntries(null).isEmpty());
-        assertTrue(FeatureCatalog.installedEntries(Collections.singletonList("unknown.feature")).isEmpty());
+    public void installedEntriesForPageReturnsNoSettingsForMissingFeatureIds() {
+        assertTrue(FeatureCatalog.installedEntriesForPage(SettingsPage.TABS, null).isEmpty());
+        assertTrue(FeatureCatalog.installedEntriesForPage(
+                SettingsPage.TABS, Collections.singletonList("unknown.feature")).isEmpty());
     }
 
     @Test

@@ -44,7 +44,6 @@ final class LinimalConfigSchema {
     static final String CHAT_LIST_HEADER_OPEN_CHAT_ENABLED_KEY = "linimal.chat.header.open_chat";
     static final String READ_RECEIPT_MODE_KEY = "linimal.privacy.read_receipts.mode";
     static final String EXTERNAL_BROWSER_ENABLED_KEY = "linimal.browser.external";
-    static final String DEBUG_LOGGING_ENABLED_KEY = "linimal.debug.logging";
 
     private LinimalConfigSchema() {
     }
@@ -111,8 +110,6 @@ final class LinimalConfigSchema {
                 return CHAT_LIST_HEADER_OPEN_CHAT_ENABLED_KEY;
             case EXTERNAL_BROWSER:
                 return EXTERNAL_BROWSER_ENABLED_KEY;
-            case DEBUG_LOGGING:
-                return DEBUG_LOGGING_ENABLED_KEY;
             default:
                 throw new AssertionError("Unhandled feature: " + feature);
         }
