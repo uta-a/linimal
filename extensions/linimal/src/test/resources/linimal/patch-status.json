@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "patches": [
+    {
+      "patchId": "linimal.patch.premium-unsend",
+      "featureId": "linimal.premium",
+      "status": "OK",
+      "expectedTargetCount": 1,
+      "actualTargetCount": 1,
+      "reason": "Premium hook installed."
+    }
+  ]
+}

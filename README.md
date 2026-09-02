@@ -83,7 +83,53 @@ Morphe Desktop は Java 21 以上を必要とします。ビルド用の Java 17
 
 ### 適用後
 
+LINE の設定画面の一番下に `Linimal` が追加されます。ここから Linimal の設定と、各パッチの適用状況を確認できます。
+
 Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE 内の Linimal 設定で切り替えます。設定が OFF のときは公式 LINE の挙動を維持します。
+
+## 機能
+
+| 分類 | 機能 | 初期値 | 内容 |
+| --- | --- | --- | --- |
+| General | Premium 誘導の抑制 | ON | 送信取消時に表示される LINE Premium の案内を表示しません。 |
+| General | Premium 設定行の抑制 | ON | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
+| General | 外部ブラウザ | OFF | 通常チャット本文の http と https の外部リンクだけを端末のブラウザで開きます。LINE、ログイン、決済のリンクは元のままです。 |
+| Agent i | Home header | ON | Home 上部ナビゲーションの Agent i を表示しません。 |
+| Agent i | Chat information | ON | Chat information menu の Manage account を表示しません。 |
+| Agent i | Wallet header | ON | Wallet mini-tab header の Agent i を表示しません。 |
+| Agent i | Main Settings | ON | LINE 設定の Agent i または LINE AI services を表示しません。 |
+| Agent i | Chat list search | ON | トーク一覧の検索欄右にある Agent i を表示しません。検索欄がその分だけ広がります。 |
+| Agent i | Chat composer | ON | 通常チャット入力欄の Agent i in chat と AI Talk Suggestions の入口ボタン、および入力欄の下に並ぶ返信提案の chip bar を表示しません。 |
+| Agent i | Message context menu | ON | メッセージ長押しmenuの AI Edit を表示しません。 |
+| Agent i | Gallery viewer | ON | Chat gallery viewer の LINE AI image edit button を表示しません。 |
+| Tabs | VOOM | ON | 下部タブから VOOM を取り除きます。 |
+| Tabs | Shopping | ON | 下部タブから Shopping を取り除きます。 |
+| Tabs | NEWS | ON | 下部タブから NEWS を取り除きます。 |
+| Tabs | Wallet | OFF | 下部タブから Wallet を取り除きます。 |
+| Tabs | アプリ | OFF | 下部タブからアプリを取り除きます。 |
+| Home | Home 内の広告 | ON | GCS Home Performance Ad の middle / bottom module と Home Feed の広告カードを表示対象から除外します。広告通信と保存期限は変更しません。 |
+| Home | おすすめ | ON | Home のおすすめ枠を表示しません。 |
+| Home | 話題 | ON | Home の話題とトレンド枠を表示しません。 |
+| Home | 投稿カード | ON | Home 下部の VOOM 投稿カードを表示しません。アカウント名や友だち追加の見出し行を含めてカードごと消します。おすすめと話題とは別枠で、投稿カードを描く3種類の module をまとめて対象にします。 |
+| Home | 特集枠 | ON | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。Home の抑制設定がすべて ON のときは、フィード既定ページの読み込み表示も併せて消します。 |
+| Chat | Smart Channel | ON | Chat tab上部のSmart Channelを表示しません。 |
+| Chat | Calendar | ON | Chat の追加menuからCalendarを取り除きます。 |
+| Chat | LINE GIFT | ON | Chat の追加menuからLINE GIFTを取り除きます。 |
+| Chat | LINE Pay | ON | Chat の追加menuからLINE Payを取り除きます。 |
+| Chat | 自動既読の停止 | OFF | 通常チャットの自動既読送信を止めます。手動既読操作だけを一回送信します。 |
+| Chat | トーク一覧の AI Friends | OFF | トーク一覧上部にある AI Friends のアイコンを表示しません。 |
+| Chat | トーク一覧のカレンダー | OFF | トーク一覧上部にあるカレンダーのアイコンを表示しません。Chat の追加menuのCalendarとは別枠です。 |
+| Chat | トーク一覧のオープンチャット | OFF | トーク一覧上部にあるオープンチャットのアイコンを表示しません。 |
+
+設定画面は `General`、`Agent i`、`Tabs`、`Home`、`Chat`、`Patch Status` に分かれています。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
+
+対象が一意に特定できなかった機能は自動的に無効となり、設定画面でも操作できません。適用状況は Linimal 設定内の Patch Status に表示されます。
+
+Premium の抑制は案内表示と LINE 設定の行表示だけを対象とします。送信取消時の案内も設定のプレミアム行も presentation 層だけを抑制します。課金資格、購読 API、決済通信は変更しません。広告抑制も広告 request、response、database、expiration、trackerを変更しません。
+
+Agent i と LINE AI は確認できたUI入口だけを場所別に抑制します。backend、subscription、billing、conversation data、common navigator、networkを変更しません。Commerce top navigation、Search、Home AI Matomeは到達可能な入口と確認できていないため対象外です。
+
+自動既読の停止は1対1、GROUP、ROOMの通常チャットが対象です。OpenChat、Service Chat、AI Characterは対象外です。
 
 > [!NOTE]
 > 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。公式アプリのデータも引き継げません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。

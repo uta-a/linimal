@@ -5,6 +5,16 @@
 /decompiled/
 /apktool-out/
 
+# Decompiler output. JADX writes /base/ with sources/ and resources/, apktool writes smali trees.
+# Decompiled LINE sources are analysis-only artifacts and are never committed.
+/base/
+/jadx-out/
+/jadx/
+/sources/
+/smali/
+/smali_classes*/
+/unpacked/
+
 # Android packages and patched artifacts.
 *.apk
 *.apkm

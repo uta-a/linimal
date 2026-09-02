@@ -2,13 +2,17 @@ package dev.utaa.linimal.extension.config;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class LinimalConfigTest {
@@ -17,67 +21,297 @@ public final class LinimalConfigTest {
         LinimalConfig config = LinimalConfig.get();
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isAdsSuppressionEnabled());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertFalse(config.isHomeTopAdSuppressionEnabled());
+        assertFalse(config.isAgentIHomeHeaderSuppressionEnabled());
+        assertFalse(config.isAgentIChatInformationSuppressionEnabled());
+        assertFalse(config.isAgentIWalletHeaderSuppressionEnabled());
+        assertFalse(config.isAgentISettingsSuppressionEnabled());
+        assertFalse(config.isAgentIChatComposerSuppressionEnabled());
+        assertFalse(config.isLineAiMessageContextMenuSuppressionEnabled());
+        assertFalse(config.isLineAiGalleryViewerSuppressionEnabled());
+        assertFalse(config.isShoppingSuppressionEnabled());
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertFalse(config.isPremiumSuppressionEnabled());
+        assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
+        assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
+        assertFalse(config.isHomeFeaturedCollectionsSuppressionEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
     }
 
     @Test
-    public void defaultsMatchV1SpecificationAndInitializeSchema() {
+    public void defaultsMatchV2SpecificationAndInitializeSchema() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
-        assertTrue(config.isAdsSuppressionEnabled());
-        assertTrue(config.isLineAiSuppressionEnabled());
+        assertTrue(config.isSmartChannelAdsSuppressionEnabled());
+        assertTrue(config.isHomeTopAdSuppressionEnabled());
+        assertTrue(config.isAgentIHomeHeaderSuppressionEnabled());
+        assertTrue(config.isAgentIChatInformationSuppressionEnabled());
+        assertTrue(config.isAgentIWalletHeaderSuppressionEnabled());
+        assertTrue(config.isAgentISettingsSuppressionEnabled());
+        assertTrue(config.isAgentIChatComposerSuppressionEnabled());
+        assertTrue(config.isLineAiMessageContextMenuSuppressionEnabled());
+        assertTrue(config.isLineAiGalleryViewerSuppressionEnabled());
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertTrue(config.isPremiumSuppressionEnabled());
+        assertTrue(config.isPremiumSettingsRowSuppressionEnabled());
         assertTrue(config.isVoomSuppressionEnabled());
         assertTrue(config.isNewsSuppressionEnabled());
         assertFalse(config.isWalletSuppressionEnabled());
+        assertFalse(config.isMiniSuppressionEnabled());
         assertTrue(config.isHomeRecommendationsSuppressionEnabled());
         assertTrue(config.isHomeTrendingSuppressionEnabled());
+        assertTrue(config.isHomeFeedPostCardsSuppressionEnabled());
+        assertTrue(config.isHomeFeaturedCollectionsSuppressionEnabled());
         assertTrue(config.isChatCalendarSuppressionEnabled());
         assertTrue(config.isChatLineGiftSuppressionEnabled());
         assertTrue(config.isChatLinePaySuppressionEnabled());
+        assertFalse(config.isChatListHeaderAiFriendsSuppressionEnabled());
+        assertFalse(config.isChatListHeaderCalendarSuppressionEnabled());
+        assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
         assertFalse(config.isExternalBrowserOverrideEnabled());
-        assertFalse(config.isDebugLoggingEnabled());
         assertEquals(
                 LinimalConfigSchema.CURRENT_VERSION,
                 backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.SHOPPING_ENABLED_KEY));
     }
 
     @Test
-    public void v0MigrationPreservesExistingCompatibleValues() {
+    public void v1AdsEnabledMigratesToBothAdLocations() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, true);
+
+        LinimalConfig config = configFor(backend);
+
+        assertTrue(config.isSmartChannelAdsSuppressionEnabled());
+        assertTrue(config.isHomeTopAdSuppressionEnabled());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+    }
+
+    @Test
+    public void v1AdsDisabledMigratesToBothAdLocations() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, false);
+
+        LinimalConfig config = configFor(backend);
+
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertFalse(config.isHomeTopAdSuppressionEnabled());
+        assertEquals(false, backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertEquals(false, backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+    }
+
+    @Test
+    public void v1LineAiEnabledMigratesToAgentIChatInformation() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.LINE_AI_ENABLED_KEY, true);
+
+        LinimalConfig config = configFor(backend);
+
+        assertAllAgentIStates(config, true);
+        assertAllAgentIStoredValues(backend.values, true);
+    }
+
+    @Test
+    public void v1LineAiDisabledMigratesToAgentIChatInformation() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.LINE_AI_ENABLED_KEY, false);
+
+        LinimalConfig config = configFor(backend);
+
+        assertAllAgentIStates(config, false);
+        assertAllAgentIStoredValues(backend.values, false);
+    }
+
+    @Test
+    public void v0MigratesThroughV1ToV2AndPreservesExistingValues() {
         InMemoryBackend backend = new InMemoryBackend();
         backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 0);
         backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.LINE_AI_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.WALLET_ENABLED_KEY, true);
         backend.values.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, "manual");
 
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
-        assertFalse(config.isAdsSuppressionEnabled());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertFalse(config.isHomeTopAdSuppressionEnabled());
+        assertAllAgentIStates(config, false);
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertTrue(config.isWalletSuppressionEnabled());
         assertEquals(ReadReceiptMode.MANUAL, config.getReadReceiptMode());
+        assertEquals(2, backend.writes.size());
+        assertEquals(1, backend.writes.get(0).get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertV2MigrationWasAtomic(backend.writes.get(1));
         assertEquals(
                 LinimalConfigSchema.CURRENT_VERSION,
                 backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
     }
 
     @Test
-    public void invalidBooleanFailsOpenForEveryHook() {
+    public void shoppingDefaultsToEnabledWhileWalletDefaultsToDisabled() {
+        LinimalConfig config = configFor(new InMemoryBackend());
+
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertFalse(config.isWalletSuppressionEnabled());
+    }
+
+    @Test
+    public void homeFeedPostCardsAndPremiumSettingsRowDefaultToEnabledWithoutMigrationWrites() {
+        InMemoryBackend backend = v1Backend();
+
+        LinimalConfig config = configFor(backend);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isHomeFeedPostCardsSuppressionEnabled());
+        assertTrue(config.isPremiumSettingsRowSuppressionEnabled());
+        assertNull(backend.values.get(LinimalConfigSchema.HOME_FEED_POST_CARDS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.PREMIUM_SETTINGS_ROW_ENABLED_KEY));
+    }
+
+    @Test
+    public void homeFeedPostCardsAndPremiumSettingsRowAreIndependentOfTheirNeighbouringFeatures() {
         InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS, false);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW, false);
+
+        assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
+        assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
+        assertTrue(config.isHomeRecommendationsSuppressionEnabled());
+        assertTrue(config.isPremiumSuppressionEnabled());
+        assertEquals(false, backend.values.get(LinimalConfigSchema.HOME_FEED_POST_CARDS_ENABLED_KEY));
+        assertEquals(false, backend.values.get(LinimalConfigSchema.PREMIUM_SETTINGS_ROW_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.HOME_RECOMMENDATIONS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.PREMIUM_ENABLED_KEY));
+
+        config.setSuppressionEnabled(LinimalFeature.HOME_RECOMMENDATIONS, false);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS, true);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW, true);
+
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW));
+        assertFalse(config.isHomeRecommendationsSuppressionEnabled());
+        assertFalse(config.isPremiumSuppressionEnabled());
+    }
+
+    @Test
+    public void homeFeaturedCollectionsDefaultsToEnabledAndStaysIndependentOfTheOtherHomeRows() {
+        InMemoryBackend backend = v1Backend();
+
+        LinimalConfig config = configFor(backend);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isHomeFeaturedCollectionsSuppressionEnabled());
+        assertNull(backend.values.get(LinimalConfigSchema.HOME_FEATURED_COLLECTIONS_ENABLED_KEY));
+
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS, false);
+
+        assertFalse(config.isHomeFeaturedCollectionsSuppressionEnabled());
+        assertEquals(false, backend.values.get(LinimalConfigSchema.HOME_FEATURED_COLLECTIONS_ENABLED_KEY));
+        assertTrue(config.isHomeFeedPostCardsSuppressionEnabled());
+        assertTrue(config.isHomeTrendingSuppressionEnabled());
+        assertTrue(config.isHomeRecommendationsSuppressionEnabled());
+
+        config.setSuppressionEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS, true);
+
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS));
+    }
+
+    @Test
+    public void existingValidV2ValuesTakePrecedenceOverLegacyMigrationSources() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.LINE_AI_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY, true);
+        backend.values.put(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY, true);
+        backend.values.put(LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY, true);
+        backend.values.put(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.SHOPPING_ENABLED_KEY, false);
+
+        LinimalConfig config = configFor(backend);
+
+        assertTrue(config.isSmartChannelAdsSuppressionEnabled());
+        assertTrue(config.isHomeTopAdSuppressionEnabled());
+        assertFalse(config.isAgentIHomeHeaderSuppressionEnabled());
+        assertTrue(config.isAgentIChatInformationSuppressionEnabled());
+        assertFalse(config.isLineAiGalleryViewerSuppressionEnabled());
+        assertFalse(config.isShoppingSuppressionEnabled());
+    }
+
+    @Test
+    public void invalidLegacyMigrationValueFailsOpenWithoutAdvancingSchema() {
+        InMemoryBackend backend = v1Backend();
         backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, "true");
 
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isAdsSuppressionEnabled());
-        assertFalse(config.isPremiumSuppressionEnabled());
-        assertFalse(config.isHomeRecommendationsSuppressionEnabled());
-        assertFalse(config.isChatLinePaySuppressionEnabled());
-        assertFalse(config.isExternalBrowserOverrideEnabled());
-        assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals(1, backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+    }
+
+    @Test
+    public void invalidNewMigrationValueFailsOpenWithoutAdvancingSchema() {
+        InMemoryBackend backend = v1Backend();
+        backend.values.put(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY, "true");
+
+        LinimalConfig config = configFor(backend);
+
+        assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals(1, backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+    }
+
+    @Test
+    public void v2MigrationWriteFailureDoesNotAdvanceSchema() {
+        FailingWriteBackend backend = new FailingWriteBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
+        backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, true);
+
+        LinimalConfig config = configFor(backend);
+
+        assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals(1, backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+    }
+
+    @Test
+    public void migrationWithoutPersistedProgressFailsOpenInsteadOfRetryingForever() {
+        IgnoringWriteBackend backend = new IgnoringWriteBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
+
+        LinimalConfig config = configFor(backend);
+
+        assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals(1, backend.writeCount);
+        assertEquals(1, backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
     }
 
     @Test
@@ -88,20 +322,20 @@ public final class LinimalConfigTest {
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isLineAiSuppressionEnabled());
+        assertFalse(config.isAgentIChatInformationSuppressionEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
     }
 
     @Test
     public void invalidSchemaTypeFailsOpenWithoutOverwritingIt() {
         InMemoryBackend backend = new InMemoryBackend();
-        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, "1");
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, "2");
 
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isAdsSuppressionEnabled());
-        assertEquals("1", backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals("2", backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
     }
 
     @Test
@@ -131,14 +365,64 @@ public final class LinimalConfigTest {
     }
 
     @Test
-    public void semanticWritesPersistAndRefreshTheTypedSnapshot() {
+    public void genericWritesPersistAndRefreshTheTypedSnapshot() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 
-        config.setPremiumSuppressionEnabled(false);
-        config.setWalletSuppressionEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_WALLET_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_SETTINGS, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, false);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, false);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER, false);
+        config.setSuppressionEnabled(LinimalFeature.SHOPPING, false);
+
+        config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, true);
+        config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_WALLET_HEADER, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_SETTINGS, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER, true);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, true);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, true);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER, true);
+        config.setSuppressionEnabled(LinimalFeature.SHOPPING, true);
+
+        assertTrue(config.isSmartChannelAdsSuppressionEnabled());
+        assertTrue(config.isHomeTopAdSuppressionEnabled());
+        assertAllAgentIStates(config, true);
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.HOME_TOP_AD));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_WALLET_HEADER));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_SETTINGS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI_GALLERY_VIEWER));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.SHOPPING));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+        assertAllAgentIStoredValues(backend.values, true);
+        assertEquals(true, backend.values.get(LinimalConfigSchema.SHOPPING_ENABLED_KEY));
+    }
+
+    @Test
+    public void featureAndReadReceiptModeWritesPersistAndRefreshTheTypedSnapshot() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, false);
+        config.setSuppressionEnabled(LinimalFeature.WALLET, true);
         config.setReadReceiptMode(ReadReceiptMode.MANUAL);
-        config.setExternalBrowserOverrideEnabled(true);
+        config.setSuppressionEnabled(LinimalFeature.EXTERNAL_BROWSER, true);
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
         assertFalse(config.isPremiumSuppressionEnabled());
@@ -152,14 +436,90 @@ public final class LinimalConfigTest {
     }
 
     @Test
+    public void miniWritesUseTheirOwnKeyAndDoNotChangeTheOtherTabs() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.MINI, true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isMiniSuppressionEnabled());
+        assertFalse(config.isWalletSuppressionEnabled());
+        assertTrue(config.isVoomSuppressionEnabled());
+        assertTrue(config.isNewsSuppressionEnabled());
+        assertTrue(config.isShoppingSuppressionEnabled());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.MINI_ENABLED_KEY));
+    }
+
+    @Test
+    public void chatListHeaderWritesUseTheirOwnKeysAndStayIndependent() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isChatListHeaderCalendarSuppressionEnabled());
+        assertFalse(config.isChatListHeaderAiFriendsSuppressionEnabled());
+        assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
+        // チャットの + メニューのカレンダーとは別の設定です。
+        assertTrue(config.isChatCalendarSuppressionEnabled());
+        assertEquals(
+                true,
+                backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_CALENDAR_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_AI_FRIENDS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_OPEN_CHAT_ENABLED_KEY));
+    }
+
+    @Test
+    public void genericSuppressionAccessUsesTheSpecifiedExistingFeature() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, false);
+        config.setSuppressionEnabled(LinimalFeature.WALLET, true);
+
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.PREMIUM));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.WALLET));
+        assertEquals(false, backend.values.get(LinimalConfigSchema.PREMIUM_ENABLED_KEY));
+        assertEquals(true, backend.values.get(LinimalConfigSchema.WALLET_ENABLED_KEY));
+    }
+
+    @Test
+    public void legacyFeatureAliasesResolveToTheirReplacementKeys() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.SMART_CHANNEL_ADS, false);
+        config.setSuppressionEnabled(LinimalFeature.HOME_TOP_AD, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_HOME_HEADER, false);
+        config.setSuppressionEnabled(LinimalFeature.AGENT_I_CHAT_INFORMATION, false);
+
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
+
+        config.setSuppressionEnabled(LinimalFeature.ADS, true);
+        config.setSuppressionEnabled(LinimalFeature.LINE_AI, true);
+
+        assertTrue(config.isSmartChannelAdsSuppressionEnabled());
+        assertFalse(config.isHomeTopAdSuppressionEnabled());
+        assertFalse(config.isAgentIHomeHeaderSuppressionEnabled());
+        assertTrue(config.isAgentIChatInformationSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.ADS));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
+        assertNull(backend.values.get(LinimalConfigSchema.ADS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.LINE_AI_ENABLED_KEY));
+    }
+
+    @Test
     public void nullPersistedValuesAreInvalidRatherThanDefaults() {
         InMemoryBackend backend = new InMemoryBackend();
-        backend.values.put(LinimalConfigSchema.DEBUG_LOGGING_ENABLED_KEY, null);
+        backend.values.put(LinimalConfigSchema.EXTERNAL_BROWSER_ENABLED_KEY, null);
 
         LinimalConfig config = configFor(backend);
 
         assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
-        assertFalse(config.isDebugLoggingEnabled());
+        assertFalse(config.isExternalBrowserOverrideEnabled());
     }
 
     @Test
@@ -172,11 +532,160 @@ public final class LinimalConfigTest {
         }
     }
 
-    private static LinimalConfig configFor(InMemoryBackend backend) {
+    @Test
+    public void featuresWithoutAnOkPatchStatusIgnoreStoredValues() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, availableFeatures(LinimalFeature.PREMIUM));
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, true);
+        config.setSuppressionEnabled(LinimalFeature.VOOM, true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isPremiumSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.PREMIUM));
+        assertFalse(config.isVoomSuppressionEnabled());
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.VOOM));
+    }
+
+    @Test
+    public void writesArePersistedRegardlessOfPatchStatusSoTheyReturnWithAWorkingBuild() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, FeatureAvailability.NONE);
+
+        config.setSuppressionEnabled(LinimalFeature.VOOM, true);
+        config.setReadReceiptMode(ReadReceiptMode.MANUAL);
+
+        assertFalse(config.isVoomSuppressionEnabled());
+        assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.VOOM_ENABLED_KEY));
+        assertEquals("manual", backend.values.get(LinimalConfigSchema.READ_RECEIPT_MODE_KEY));
+
+        // patch が揃ったビルドへ入れ替えると、保存済みの設定がそのまま復活します。
+        LinimalConfig restored = configFor(backend);
+
+        assertTrue(restored.isVoomSuppressionEnabled());
+        assertEquals(ReadReceiptMode.MANUAL, restored.getReadReceiptMode());
+    }
+
+    @Test
+    public void unreadablePatchStatusRestoresOriginalBehaviorForEveryFeature() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, FeatureAvailability.NONE);
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            config.setSuppressionEnabled(feature, true);
+        }
+        config.setReadReceiptMode(ReadReceiptMode.MANUAL);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            assertFalse(feature.name(), config.isSuppressionEnabled(feature));
+        }
+        assertFalse(config.isExternalBrowserOverrideEnabled());
+        assertFalse(config.isReadWithoutReceiptEnabled());
+        assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
+    }
+
+    @Test
+    public void readReceiptModeFollowsItsOwnPatchStatus() {
+        InMemoryBackend backend = new InMemoryBackend();
+        backend.values.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, "manual");
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+
+        // 送信を止める側だけが適用されていない状態でも、既読は LINE の元どおり自動で送信します。
+        assertEquals(
+                ReadReceiptMode.NORMAL,
+                configFor(backend, availableFeatures(LinimalFeature.PREMIUM)).getReadReceiptMode());
+        assertEquals(
+                ReadReceiptMode.MANUAL,
+                configFor(backend, availableFeatureIds(ReadReceiptMode.FEATURE_ID))
+                        .getReadReceiptMode());
+    }
+
+    private static InMemoryBackend v1Backend() {
+        InMemoryBackend backend = new InMemoryBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
+        return backend;
+    }
+
+    private static void assertAllAgentIStates(LinimalConfig config, boolean expected) {
+        assertEquals(expected, config.isAgentIHomeHeaderSuppressionEnabled());
+        assertEquals(expected, config.isAgentIChatInformationSuppressionEnabled());
+        assertEquals(expected, config.isAgentIWalletHeaderSuppressionEnabled());
+        assertEquals(expected, config.isAgentISettingsSuppressionEnabled());
+        assertEquals(expected, config.isAgentIChatComposerSuppressionEnabled());
+        assertEquals(expected, config.isAgentIChatListSearchSuppressionEnabled());
+        assertEquals(expected, config.isLineAiMessageContextMenuSuppressionEnabled());
+        assertEquals(expected, config.isLineAiGalleryViewerSuppressionEnabled());
+    }
+
+    private static void assertAllAgentIStoredValues(Map<String, Object> values, boolean expected) {
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY));
+        assertEquals(expected, values.get(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY));
+    }
+
+    private static void assertV2MigrationWasAtomic(Map<String, Object> updates) {
+        assertEquals(12, updates.size());
+        assertTrue(updates.containsKey(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY));
+        assertTrue(updates.containsKey(LinimalConfigSchema.SHOPPING_ENABLED_KEY));
+        assertEquals(2, updates.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+    }
+
+    private static LinimalConfig configFor(LinimalConfigStore.PreferenceBackend backend) {
         return LinimalConfig.fromStoreForTesting(LinimalConfigStore.forTesting(backend));
     }
 
+    private static LinimalConfig configFor(
+            LinimalConfigStore.PreferenceBackend backend, FeatureAvailability availability) {
+        return LinimalConfig.fromStoreForTesting(
+                LinimalConfigStore.forTesting(backend), availability);
+    }
+
+    /** 指定した機能の patch だけが完全に適用されている状態を表します。 */
+    private static FeatureAvailability availableFeatures(LinimalFeature... features) {
+        List<String> featureIds = new ArrayList<>();
+        for (LinimalFeature feature : features) {
+            featureIds.add(feature.getFeatureId());
+        }
+        return featureIds::contains;
+    }
+
+    private static FeatureAvailability availableFeatureIds(String... featureIds) {
+        return Arrays.asList(featureIds)::contains;
+    }
+
     private static final class InMemoryBackend implements LinimalConfigStore.PreferenceBackend {
+        private final Map<String, Object> values = new HashMap<>();
+        private final List<Map<String, Object>> writes = new ArrayList<>();
+
+        @Override
+        public Map<String, ?> readAll() {
+            return Collections.unmodifiableMap(new HashMap<>(values));
+        }
+
+        @Override
+        public boolean write(Map<String, Object> updates) {
+            writes.add(new HashMap<>(updates));
+            values.putAll(updates);
+            return true;
+        }
+    }
+
+    private static final class FailingWriteBackend implements LinimalConfigStore.PreferenceBackend {
         private final Map<String, Object> values = new HashMap<>();
 
         @Override
@@ -186,7 +695,22 @@ public final class LinimalConfigTest {
 
         @Override
         public boolean write(Map<String, Object> updates) {
-            values.putAll(updates);
+            return false;
+        }
+    }
+
+    private static final class IgnoringWriteBackend implements LinimalConfigStore.PreferenceBackend {
+        private final Map<String, Object> values = new HashMap<>();
+        private int writeCount;
+
+        @Override
+        public Map<String, ?> readAll() {
+            return Collections.unmodifiableMap(new HashMap<>(values));
+        }
+
+        @Override
+        public boolean write(Map<String, Object> updates) {
+            writeCount++;
             return true;
         }
     }

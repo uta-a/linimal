@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "patches": [
     {
       "name": "Linimal",
-      "description": "LINE向けに、実行時設定に対応したLinimalのパッチ基盤を導入します。",
+      "description": "LINE の設定画面に Linimal を追加し、実行時設定で不要な機能を無効化できるようにします。",
       "default": true,
       "dependencies": [
         "BytecodePatch"

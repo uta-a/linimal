@@ -8,6 +8,12 @@ public enum ReadReceiptMode {
     /** Linimal の hook が利用可能な場合に、手動の read-receipt 動作を有効にします。 */
     MANUAL("manual");
 
+    /**
+     * この設定に対応する build-time の feature ID。
+     * この feature の patch がすべて適用されていない場合、設定値によらず {@link #NORMAL} を使います。
+     */
+    public static final String FEATURE_ID = "linimal.read-receipts-main-chat";
+
     private final String storedValue;
 
     ReadReceiptMode(String storedValue) {
