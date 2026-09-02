@@ -32,6 +32,8 @@ import dev.utaa.linimal.patches.util.INTEGER
 import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.STRING
 import dev.utaa.linimal.patches.util.VOID
+import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 
 private const val EXTENSION_PACKAGE = "Ldev/utaa/linimal/extension/features/readwithoutreceipt"
@@ -481,6 +483,20 @@ internal fun composeMenuShape(method: Method): ComposeMenuShape? {
     }
     val itemType = typeReference(instructions[ITEM_INSTANCE_OF_INDEX]) ?: return null
     val dismissRegister = (instructions[DISMISS_READ_INDEX] as OneRegisterInstruction).registerA
+
+    // 行の呼び出しは 35c 形式の invoke-static なので、引数の register は 4bit（v0〜v15）しか取れません。
+    // item / dismiss は 22c の iget-object 由来で構造上 4bit ですが、composer は 21c の check-cast 由来で
+    // v16 以降もあり得るため、3 つとも同じ条件で確認します。
+    if (composerRegister !in 0..15 || itemRegister !in 0..15 || dismissRegister !in 0..15) {
+        return null
+    }
+
+    // 行は composition のたびに必ず 1 回描く必要があります。dexlib2 は注入位置へ新しい location を
+    // 挿入し、既存 location は Label を保持したまま後ろへずれるため、注入位置が既存の分岐先や
+    // 例外 handler の先頭と一致すると、その経路だけが行を飛び越して slot 構造がずれます。
+    if (isDivertedInjectionIndex(instructions, ROW_INSERTION_INDEX, exceptionHandlerAddresses(implementation))) {
+        return null
+    }
 
     val rowCallIndices = instructions.indices.filter { isRowComposableCall(instructions[it], composerType) }
     if (rowCallIndices.size != ROW_COMPOSABLE_CALL_COUNT) {

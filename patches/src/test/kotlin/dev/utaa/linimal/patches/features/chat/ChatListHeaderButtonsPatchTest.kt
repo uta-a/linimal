@@ -6,10 +6,12 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21t
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableTypeReference
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -87,6 +89,37 @@ class ChatListHeaderButtonsPatchTest {
         // invoke-static は 4bit register しか取れないため、v16 以降は注入できません。
         assertNull(chatListHeaderButtonsInjection(builderBody(resultRegister = 16), hasTryBlocks = false))
     }
+
+    @Test
+    fun `a trailing return that is also a branch target is rejected`() {
+        // 末尾の return-object (addr 0008) へ直接飛ぶ経路を足します。dexlib2 は注入位置へ新しい
+        // location を挿入し、既存 location は Label を保持したまま後ろへずれるため、この経路だけが
+        // 絞り込みを飛び越して元の List をそのまま返します。
+        val diverted = guarded(returnJumpOffset = 8)
+
+        assertTrue(isDivertedInjectionIndex(diverted, diverted.lastIndex))
+        assertNull(chatListHeaderButtonsInjection(diverted, hasTryBlocks = false))
+    }
+
+    @Test
+    fun `a branch that lands before the trailing conversion keeps the injection point`() {
+        // 分岐先が new-array (addr 0002) なら末尾は分岐先ではなく、注入位置は末尾のままです。
+        val safe = guarded(returnJumpOffset = 2)
+
+        assertFalse(isDivertedInjectionIndex(safe, safe.lastIndex))
+        assertEquals(
+            ChatListHeaderButtonsInjection(index = 4, register = 0),
+            chatListHeaderButtonsInjection(safe, hasTryBlocks = false),
+        )
+    }
+
+    /**
+     * 先頭に if-eqz を置いた形。addr 0000 の if-eqz から [returnJumpOffset] だけ進んだ address が
+     * 分岐先になります。命令境界は addr 0000 / 0002 / 0004 / 0007 / 0008 です。
+     */
+    private fun guarded(returnJumpOffset: Int): List<Instruction> =
+        listOf<Instruction>(ImmutableInstruction21t(Opcode.IF_EQZ, 1, returnJumpOffset)) +
+            builderBody(resultRegister = 0)
 
     private fun builderBody(
         resultRegister: Int,

@@ -8,8 +8,11 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.patchStatusCollector
+import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val LINE_APPLICATION = "Ljp/naver/line/android/LineApplication;"
 private const val ANDROID_APPLICATION = "Landroid/app/Application;"
@@ -65,7 +68,17 @@ val linimalBootstrapPatch = bytecodePatch {
             bootstrapFailure("BootstrapInstructionShapeMismatch", 0)
         }
 
-        method.addInstructions(graphInitIndex, "invoke-static { p0 }, $BOOTSTRAP_METHOD")
+        // 注入位置そのものの安全性は、mutable 側の label 配置ではなく transform 前の
+        // instruction / exception table で判定します。
+        val originalImplementation = match.originalMethod.implementation
+            ?: bootstrapFailure("BootstrapImplementationMissing", 0)
+        val insertionIndex = bootstrapInjectionIndex(
+            originalImplementation.instructions.toList(),
+            graphInitIndex,
+            exceptionHandlerAddresses(originalImplementation),
+        ) ?: bootstrapFailure("BootstrapInjectionIndexDiverted", 0)
+
+        method.addInstructions(insertionIndex, "invoke-static { p0 }, $BOOTSTRAP_METHOD")
 
         patchStatusCollector.record(
             patchId = PatchId.BOOTSTRAP,
@@ -75,6 +88,20 @@ val linimalBootstrapPatch = bytecodePatch {
         )
     }
 }
+
+/**
+ * bootstrap の注入位置。process 判定を通ったすべての経路が初期化を通る必要があるため、
+ * 既存の分岐先や例外 handler の先頭と一致する位置は拒否します。
+ *
+ * <p>dexlib2 の `addInstructions(index, ...)` は新しい location を挿入し、既存 location は Label を
+ * 保持したまま後ろへずれます。注入位置がその Label の付いた location だった場合、その経路だけが
+ * bootstrap を飛び越し、設定が未初期化のまま機能 hook が動きます。</p>
+ */
+internal fun bootstrapInjectionIndex(
+    instructions: List<Instruction>,
+    graphInitIndex: Int,
+    handlerAddresses: Set<Int>,
+): Int? = graphInitIndex.takeUnless { isDivertedInjectionIndex(instructions, it, handlerAddresses) }
 
 /** 設定を読み込めない状態で機能 hook を入れないため、bootstrap の失敗は必須失敗として扱います。 */
 private fun bootstrapFailure(reason: String, actualTargetCount: Int): Nothing {

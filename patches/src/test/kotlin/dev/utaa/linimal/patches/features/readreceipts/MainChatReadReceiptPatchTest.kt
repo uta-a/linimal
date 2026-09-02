@@ -74,6 +74,47 @@ class MainChatReadReceiptPatchTest {
         assertTrue(registerSurvivesBetween(instructions, 4, 0, 1))
     }
 
+    @Test
+    fun `supplier preparation is injected where every path reaches it`() {
+        // 注入前の index 0 / 7 / 10 が prefix・早期 return の cleanup・正常終了の cleanup です。
+        // 注入によって index はずれますが、判定は必ず注入前の並びと index で行います。
+        val instructions = supplierWorkerInstructions()
+
+        assertEquals(listOf(0, 7, 10), SUPPLIER_PREPARATION_INJECTION_INDICES)
+        assertFalse(supplierPreparationInjectionDiverted(instructions, emptySet()))
+    }
+
+    @Test
+    fun `supplier preparation is rejected when a cleanup site is a branch target`() {
+        // read point の判定が早期 return (addr 000e) そのものへ飛ぶ形にします。cleanup はその return の
+        // 直前へ入るため、この経路だけが one-shot を解放しないまま戻ります。
+        val instructions = supplierWorkerInstructions(readPointJumpOffset = 2)
+
+        assertTrue(isDivertedInjectionIndex(instructions, 7))
+        assertTrue(supplierPreparationInjectionDiverted(instructions, emptySet()))
+    }
+
+    @Test
+    fun `supplier preparation is rejected when the prefix site is a branch target`() {
+        // 末尾に addr 0000 へ戻る goto を足すと、prefix の注入位置が分岐先と一致し、その経路だけが
+        // prepareSupplier を呼ばずに run() 本体へ入ります。
+        val instructions = supplierWorkerInstructions(
+            trailing = listOf(ImmutableInstruction10t(Opcode.GOTO, -0x14)),
+        )
+
+        assertTrue(isDivertedInjectionIndex(instructions, 0))
+        assertTrue(supplierPreparationInjectionDiverted(instructions, emptySet()))
+    }
+
+    @Test
+    fun `supplier preparation is rejected when a cleanup site is an exception handler head`() {
+        // addr 0013 は d() 正常終了後の return です。ここが handler 先頭だと例外経路が cleanup を
+        // 飛び越します。元の supplier に handler はありませんが、前提が崩れた場合に備えて拒否します。
+        val instructions = supplierWorkerInstructions()
+
+        assertTrue(supplierPreparationInjectionDiverted(instructions, handlerAddresses = setOf(0x13)))
+    }
+
     // --- outbound gate (Lq33/e;->d(JLjava/lang/String;Z)V) ---
 
     @Test
@@ -304,8 +345,15 @@ class MainChatReadReceiptPatchTest {
     /**
      * `Lq33/c;->run()V`（registers 6 / ins 1）の命令列。v5 が p0、命令 1 で chatId に潰されます。
      * v3 と v4 は命令 4 の const-wide/16 が pair として使います。
+     *
+     * <p>命令境界は addr 0000 / 0002 / 0004 / 0007 / 0008 / 000a / 000c / 000e / 000f / 0010 / 0013 です。
+     * 既定の [readPointJumpOffset] は addr 000c の if-nez から addr 000f（const/4 v3, 1）へ飛び、
+     * read point が 0 でないときだけ既読送信へ進みます。</p>
      */
-    private fun supplierWorkerInstructions(): List<Instruction> = listOf(
+    private fun supplierWorkerInstructions(
+        readPointJumpOffset: Int = 3,
+        trailing: List<Instruction> = emptyList(),
+    ): List<Instruction> = listOf<Instruction>(
         ImmutableInstruction22c(Opcode.IGET_OBJECT, 0, 5, field("Lq33/c;", "a", "Lq33/e;")),
         ImmutableInstruction22c(Opcode.IGET_OBJECT, 5, 5, field("Lq33/c;", "b", "Ljava/lang/String;")),
         ImmutableInstruction35c(
@@ -321,7 +369,7 @@ class MainChatReadReceiptPatchTest {
         ImmutableInstruction11x(Opcode.MOVE_RESULT_WIDE, 1),
         ImmutableInstruction21s(Opcode.CONST_WIDE_16, 3, 0),
         ImmutableInstruction23x(Opcode.CMP_LONG, 3, 1, 3),
-        ImmutableInstruction21t(Opcode.IF_NEZ, 3, 6),
+        ImmutableInstruction21t(Opcode.IF_NEZ, 3, readPointJumpOffset),
         ImmutableInstruction10x(Opcode.RETURN_VOID),
         ImmutableInstruction11n(Opcode.CONST_4, 3, 1),
         ImmutableInstruction35c(
@@ -335,7 +383,7 @@ class MainChatReadReceiptPatchTest {
             ImmutableMethodReference("Lq33/e;", "d", listOf("J", "Ljava/lang/String;", "Z"), "V"),
         ),
         ImmutableInstruction10x(Opcode.RETURN_VOID),
-    )
+    ) + trailing
 
     private fun field(definingClass: String, name: String, type: String) =
         ImmutableFieldReference(definingClass, name, type)

@@ -845,6 +845,20 @@ private const val THIS_REGISTER = 5
 /** prefix 内でだけ使う一時 register。元の命令 4 の `const-wide/16 v3` が pair の上位半分として潰します。 */
 private const val SCRATCH_REGISTER = 4
 
+/**
+ * supplier worker へ注入する位置。**注入前**の命令列における index です。
+ *
+ * <ul>
+ *   <li>0: prefix（`prepareSupplier`）。`run()` に入るすべての経路が通る必要があります。</li>
+ *   <li>7: read point == 0 の早期 `return-void` の直前 cleanup。</li>
+ *   <li>10: `d()` 正常終了後の `return-void` の直前 cleanup。</li>
+ * </ul>
+ *
+ * <p>[injectSupplierPreparation] は先行する注入ぶんずれた index（0 / 9 / 13）を使うため、
+ * 分岐先かどうかの判定はここに並べた注入前の index で行わなければ意味を持ちません。</p>
+ */
+internal val SUPPLIER_PREPARATION_INJECTION_INDICES = listOf(0, 7, 10)
+
 internal data class SupplierWorkerShape(val chatIdField: FieldReference)
 
 private fun supplierWorkerFingerprint(supplierType: String) = Fingerprint(
@@ -899,7 +913,31 @@ private fun supplierWorkerShape(match: Match, factory: Match): SupplierWorkerSha
     ) {
         return null
     }
+
+    // prefix と cleanup は、run() に入った全経路が必ず通らなければ one-shot が残留します。
+    // mutable 側の label 配置ではなく、transform 前 Match の instruction/exception table で判定します。
+    // try block は上で拒否済みなので handler の集合は空ですが、前提が崩れた場合に備えて渡します。
+    val originalImplementation = match.originalMethod.implementation ?: return null
+    if (
+        supplierPreparationInjectionDiverted(
+            originalImplementation.instructions.toList(),
+            exceptionHandlerAddresses(originalImplementation),
+        )
+    ) {
+        return null
+    }
     return SupplierWorkerShape(chatIdField)
+}
+
+/**
+ * [SUPPLIER_PREPARATION_INJECTION_INDICES] のいずれかが既存の分岐先や例外 handler の先頭と
+ * 一致するかどうか。一致する位置へ注入すると、その経路だけが prepare / cleanup を飛び越します。
+ */
+internal fun supplierPreparationInjectionDiverted(
+    instructions: List<Instruction>,
+    handlerAddresses: Set<Int>,
+): Boolean = SUPPLIER_PREPARATION_INJECTION_INDICES.any { index ->
+    isDivertedInjectionIndex(instructions, index, handlerAddresses)
 }
 
 /**

@@ -18,6 +18,8 @@ import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstructio
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableTypeReference
+import dev.utaa.linimal.patches.util.instructionAddress
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -31,6 +33,10 @@ private const val FUNCTION2 = "Lvb8/p;"
 private const val MODIFIER = "Ly3/j;"
 private const val COMPOSABLE_LAMBDA = "Lr3/j;"
 private const val DONOR = "Lmz0/j;"
+
+/** shouldExecute の結果を見る if-eqz の index と、行の呼び出しを差し込む index。 */
+private const val SHOULD_EXECUTE_BRANCH_INDEX = 17
+private const val ROW_INSERTION_INDEX = 22
 
 /**
  * メニュー本体の命令列を、実測した index・register・reference の並びどおりに fixture で再現して
@@ -96,6 +102,34 @@ class ReadWithoutReceiptComposeMenuPatchTest {
     @Test
     fun `a menu without a skipToGroupEnd call is rejected`() {
         assertNull(composeMenuShape(menuMethod(includeSkipToGroupEnd = false)))
+    }
+
+    @Test
+    fun `an injection point that is also a branch target is rejected`() {
+        // shouldExecute の if-eqz が注入位置そのもの (addr 001d) へ飛ぶ形にします。dexlib2 は注入位置へ
+        // 新しい location を挿入し、既存 location は Label を保持したまま後ろへずれるため、この経路
+        // だけが行を飛び越し、recomposition ごとに slot 構造がずれます。
+        val instructions = menuMethod(branchTargetIndex = ROW_INSERTION_INDEX)
+            .implementation!!
+            .instructions
+            .toList()
+
+        assertTrue(isDivertedInjectionIndex(instructions, ROW_INSERTION_INDEX))
+        assertNull(composeMenuShape(menuMethod(branchTargetIndex = ROW_INSERTION_INDEX)))
+    }
+
+    @Test
+    fun `the measured branch target leaves the injection point alone`() {
+        // 実 APK と同じく、if-eqz は本体を丸ごと飛ばして末尾の skipToGroupEnd へ向かいます。
+        val instructions = menuMethod().implementation!!.instructions.toList()
+
+        assertFalse(isDivertedInjectionIndex(instructions, ROW_INSERTION_INDEX))
+    }
+
+    @Test
+    fun `a composer register the row invocation cannot address is rejected`() {
+        // 注入する invoke-static は 35c 形式なので、引数の register は 4bit（v0〜v15）に限られます。
+        assertNull(composeMenuShape(menuMethod(composerCastRegister = 16)))
     }
 
     @Test
@@ -175,6 +209,8 @@ class ReadWithoutReceiptComposeMenuPatchTest {
         includeComposerCast: Boolean = true,
         includeSkipToGroupEnd: Boolean = true,
         instanceOfRegister: Int = 12,
+        composerCastRegister: Int = 4,
+        branchTargetIndex: Int? = null,
     ): Method = ImmutableMethod(
         "Lmz0/f;",
         "i",
@@ -191,24 +227,62 @@ class ReadWithoutReceiptComposeMenuPatchTest {
                 includeComposerCast = includeComposerCast,
                 includeSkipToGroupEnd = includeSkipToGroupEnd,
                 instanceOfRegister = instanceOfRegister,
+                composerCastRegister = composerCastRegister,
+                branchTargetIndex = branchTargetIndex,
             ),
             null,
             null,
         ),
     )
 
-    /** index 2・15・17・19・20・21 だけを実測どおりに置き、残りは内容を問わない nop で埋めます。 */
+    /**
+     * index 2・15・17・19・20・21 だけを実測どおりに置き、残りは内容を問わない nop で埋めます。
+     *
+     * <p>shouldExecute の if-eqz は、既定では実 APK と同じく本体を丸ごと飛ばして末尾の
+     * skipToGroupEnd へ向かいます。nop 埋めの fixture は実 APK と code address が一致しないため、
+     * offset は組み上げた命令列の実際の address から求め、必ず命令境界に乗せます。</p>
+     */
     private fun menuInstructions(
         rowCount: Int,
         includeItemCasts: Boolean,
         includeComposerCast: Boolean,
         includeSkipToGroupEnd: Boolean,
         instanceOfRegister: Int,
+        composerCastRegister: Int,
+        branchTargetIndex: Int?,
+    ): List<Instruction> {
+        val body = menuBody(
+            rowCount = rowCount,
+            includeItemCasts = includeItemCasts,
+            includeComposerCast = includeComposerCast,
+            includeSkipToGroupEnd = includeSkipToGroupEnd,
+            instanceOfRegister = instanceOfRegister,
+            composerCastRegister = composerCastRegister,
+        )
+        val targetIndex = branchTargetIndex ?: body.lastIndex
+        val offset = instructionAddress(body, targetIndex) - instructionAddress(body, SHOULD_EXECUTE_BRANCH_INDEX)
+        return body.mapIndexed { index, instruction ->
+            if (index == SHOULD_EXECUTE_BRANCH_INDEX) {
+                ImmutableInstruction21t(Opcode.IF_EQZ, 11, offset)
+            } else {
+                instruction
+            }
+        }
+    }
+
+    /** 分岐 offset を確定させる前の命令列。index 17 の if-eqz は暫定の offset を持ちます。 */
+    private fun menuBody(
+        rowCount: Int,
+        includeItemCasts: Boolean,
+        includeComposerCast: Boolean,
+        includeSkipToGroupEnd: Boolean,
+        instanceOfRegister: Int,
+        composerCastRegister: Int,
     ): List<Instruction> = buildList {
         add(ImmutableInstruction10x(Opcode.NOP))
         add(ImmutableInstruction10x(Opcode.NOP))
         if (includeComposerCast) {
-            add(ImmutableInstruction21c(Opcode.CHECK_CAST, 4, ImmutableTypeReference(COMPOSER)))
+            add(ImmutableInstruction21c(Opcode.CHECK_CAST, composerCastRegister, ImmutableTypeReference(COMPOSER)))
         } else {
             add(ImmutableInstruction10x(Opcode.NOP))
         }
@@ -222,7 +296,7 @@ class ReadWithoutReceiptComposeMenuPatchTest {
             ),
         )
         add(ImmutableInstruction11x(Opcode.MOVE_RESULT, 11))
-        add(ImmutableInstruction21t(Opcode.IF_EQZ, 11, 4))
+        add(ImmutableInstruction21t(Opcode.IF_EQZ, 11, 0))
         add(ImmutableInstruction10x(Opcode.NOP))
         add(
             ImmutableInstruction22c(

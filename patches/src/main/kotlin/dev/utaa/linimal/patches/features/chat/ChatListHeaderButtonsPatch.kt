@@ -14,6 +14,7 @@ import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMa
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val OBJECT = "Ljava/lang/Object;"
 private const val OBJECT_ARRAY = "[Ljava/lang/Object;"
@@ -142,6 +143,10 @@ internal data class ChatListHeaderButtonsInjection(
  * <p>suspend メソッドなので途中にも `return-object` がありますが、それらは coroutine の suspend 復帰用です。
  * 変換呼び出しから連続する末尾の 1 箇所だけを注入点とし、それ以外の shape は意図的に拒否します。
  * `invoke-static` は 4bit register しか取れないため、返り値の register が v15 を超える場合も拒否します。</p>
+ *
+ * <p>末尾の `return-object` へ他所から分岐が飛んでいる場合も拒否します。dexlib2 は注入位置へ新しい
+ * location を挿入し、既存 location は Label を保持したまま後ろへずれるため、その分岐経路だけが
+ * 絞り込みを飛び越して元の List をそのまま返してしまいます。</p>
  */
 internal fun chatListHeaderButtonsInjection(
     instructions: List<Instruction>,
@@ -166,6 +171,12 @@ internal fun chatListHeaderButtonsInjection(
         returnInstruction.registerA != resultMove.registerA ||
         resultMove.registerA !in 0..15
     ) {
+        return null
+    }
+
+    // 絞り込みは return へ至るすべての経路が通らなければ意味がありません。try block を持つメソッドは
+    // 上で拒否済みなので例外 handler の先頭は存在せず、分岐先だけを見れば足ります。
+    if (isDivertedInjectionIndex(instructions, returnIndex)) {
         return null
     }
     return ChatListHeaderButtonsInjection(index = returnIndex, register = resultMove.registerA)
