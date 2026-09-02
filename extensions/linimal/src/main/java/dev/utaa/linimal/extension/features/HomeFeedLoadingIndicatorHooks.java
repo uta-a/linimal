@@ -10,10 +10,6 @@ import dev.utaa.linimal.extension.config.LinimalConfig;
  * 残ります。新しい設定項目は増やさず、既存の 4 つの accessor がすべて true のときだけ抑制します。</p>
  */
 public final class HomeFeedLoadingIndicatorHooks {
-    interface SuppressionState {
-        boolean isSuppressionEnabled() throws Throwable;
-    }
-
     private HomeFeedLoadingIndicatorHooks() {
     }
 
@@ -23,7 +19,7 @@ public final class HomeFeedLoadingIndicatorHooks {
      * LINE の元の renderer を実行します。
      */
     public static boolean shouldSuppress() {
-        return shouldSuppressWith(new SuppressionState() {
+        return HomeSuppressionGate.shouldSuppress(new HomeSuppressionGate.SuppressionState() {
             @Override
             public boolean isSuppressionEnabled() {
                 LinimalConfig config = LinimalConfig.get();
@@ -33,16 +29,5 @@ public final class HomeFeedLoadingIndicatorHooks {
                         && config.isHomeFeaturedCollectionsSuppressionEnabled();
             }
         });
-    }
-
-    static boolean shouldSuppressWith(SuppressionState state) {
-        if (state == null) {
-            return false;
-        }
-        try {
-            return state.isSuppressionEnabled();
-        } catch (Throwable ignored) {
-            return false;
-        }
     }
 }
