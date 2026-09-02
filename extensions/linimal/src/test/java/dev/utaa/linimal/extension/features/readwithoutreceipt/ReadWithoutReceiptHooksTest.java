@@ -1,5 +1,6 @@
 package dev.utaa.linimal.extension.features.readwithoutreceipt;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -95,5 +96,71 @@ public final class ReadWithoutReceiptHooksTest {
     @Test
     public void theRealEntryPointNeverThrowsForANullChatId() {
         assertFalse(ReadWithoutReceiptHooks.shouldBlockMarkAsRead(null));
+    }
+
+    @Test
+    public void aNewSuppressionIsNotExpiredByTheAgeOfThePreviousOne() {
+        long staleAt = 10_000L;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", staleAt);
+        // 前回の登録から timeout を大きく超えた時点で、別のトークを開き直します。
+        long freshAt = staleAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS * 3;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", freshAt);
+
+        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", freshAt, true));
+        // トーク ID と時刻は 1 instance に閉じており、「新しいトーク ID + 古い時刻」は観測できません。
+        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
+        assertEquals("chat-2", observed.chatId);
+        assertEquals(freshAt, observed.atMillis);
+    }
+
+    @Test
+    public void anObservedSuppressionIsJudgedWithItsOwnTimestamp() {
+        long staleAt = 10_000L;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", staleAt);
+        ReadWithoutReceiptHooks.Suppression stale = ReadWithoutReceiptHooks.currentSuppression();
+
+        long freshAt = staleAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS * 3;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", freshAt);
+        ReadWithoutReceiptHooks.Suppression fresh = ReadWithoutReceiptHooks.currentSuppression();
+
+        // 同じトーク・同じ現在時刻でも、判定はそれぞれが観測した instance の時刻だけを見ます。
+        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", freshAt, stale));
+        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", freshAt, fresh));
+    }
+
+    @Test
+    public void expiringAnObservedSuppressionKeepsALaterSuppressionForAnotherChat() {
+        long markedAt = 10_000L;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
+        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
+
+        // 観測から期限切れの消去までの間に、別スレッドが新しい抑制を登録した状況です。
+        long expiredAt = markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", expiredAt);
+
+        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", expiredAt, observed));
+        // 消してよいのは観測した instance だけで、後から登録された抑制は残ります。
+        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", expiredAt, true));
+    }
+
+    @Test
+    public void expiringAnObservedSuppressionKeepsALaterSuppressionForTheSameChat() {
+        long markedAt = 10_000L;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
+        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
+
+        // 同じトークを開き直した場合も、古い観測に基づく消去は新しい抑制へ影響しません。
+        long expiredAt = markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1;
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", expiredAt);
+
+        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", expiredAt, observed));
+        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", expiredAt, true));
+    }
+
+    @Test
+    public void anAbsentObservationIsNeverBlocked() {
+        ReadWithoutReceiptHooks.markSuppressed("chat-1");
+
+        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", 0L, null));
     }
 }

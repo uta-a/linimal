@@ -1,6 +1,7 @@
 package dev.utaa.linimal.extension.features.readwithoutreceipt;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dev.utaa.linimal.extension.config.LinimalConfig;
 
@@ -30,8 +31,25 @@ public final class ReadWithoutReceiptHooks {
     /** LINE 自身のトーク終了検知に便乗できないため、状態を永続させない fallback の上限です。 */
     static final long SUPPRESSION_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(30);
 
-    private static volatile String suppressedChatId;
-    private static volatile long suppressedAtMillis;
+    /**
+     * 抑制対象のトークと、その登録時刻を 1 つにまとめた不変値です。
+     *
+     * <p>この hook は既読送信 RPC の worker thread と UI 操作の両方から呼ばれます。トーク ID と
+     * 時刻を別々の field に持つと「新しいトーク ID + 古い時刻」という中間状態が観測でき、
+     * 登録直後の抑制が期限切れと誤判定されます。両者を 1 instance に閉じ込め、
+     * {@link #SUPPRESSION} への 1 回の書き込みで差し替えることでその中間状態を無くします。</p>
+     */
+    static final class Suppression {
+        final String chatId;
+        final long atMillis;
+
+        Suppression(String chatId, long atMillis) {
+            this.chatId = chatId;
+            this.atMillis = atMillis;
+        }
+    }
+
+    private static final AtomicReference<Suppression> SUPPRESSION = new AtomicReference<>();
 
     private ReadWithoutReceiptHooks() {
     }
@@ -46,8 +64,8 @@ public final class ReadWithoutReceiptHooks {
         if (chatId == null) {
             return;
         }
-        suppressedChatId = chatId;
-        suppressedAtMillis = atMillis;
+        // トーク ID と時刻は必ず同時に切り替えます。
+        SUPPRESSION.set(new Suppression(chatId, atMillis));
     }
 
     /**
@@ -76,21 +94,34 @@ public final class ReadWithoutReceiptHooks {
         if (!enabled || chatId == null) {
             return false;
         }
-        String current = suppressedChatId;
-        if (current == null || !current.equals(chatId)) {
+        return shouldBlockGivenObserved(chatId, nowMillis, currentSuppression());
+    }
+
+    /**
+     * 一致判定とタイムアウトを、観測した {@code observed} 1 instance に対してだけ行います。
+     * 判定に使うトーク ID と時刻が必ず同じ instance 由来になる境界で、
+     * local JVM test から「観測後に別の抑制が登録された」状況を直接組み立てられるようにしています。
+     */
+    static boolean shouldBlockGivenObserved(String chatId, long nowMillis, Suppression observed) {
+        if (observed == null || !observed.chatId.equals(chatId)) {
             return false;
         }
-        if (nowMillis - suppressedAtMillis > SUPPRESSION_TIMEOUT_MILLIS) {
+        if (nowMillis - observed.atMillis > SUPPRESSION_TIMEOUT_MILLIS) {
             // 期限切れの抑制は残さず、以後の呼び出しを毎回タイムアウト計算しません。
-            suppressedChatId = null;
+            // 消すのは自分が観測した instance だけで、その後に登録された抑制は消しません。
+            SUPPRESSION.compareAndSet(observed, null);
             return false;
         }
         return true;
     }
 
+    /** 現在の抑制の観測点です。以後の判定はこの戻り値だけを見ます。 */
+    static Suppression currentSuppression() {
+        return SUPPRESSION.get();
+    }
+
     /** テストでだけ状態を初期化直後へ戻します。 */
     static void resetForTesting() {
-        suppressedChatId = null;
-        suppressedAtMillis = 0L;
+        SUPPRESSION.set(null);
     }
 }
