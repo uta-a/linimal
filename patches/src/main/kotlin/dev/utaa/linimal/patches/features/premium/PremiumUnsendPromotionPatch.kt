@@ -93,10 +93,16 @@ private fun recordUnappliedStatus(matchCount: Int, reason: String) {
     patchStatusCollector.record(premiumUnsendUnappliedRecord(matchCount, reason))
 }
 
-/** 一意性エラーでも実際の一致数を保持し、runtime parser と同じ count 契約に従います。 */
+/**
+ * 一意性エラーでも実際の一致数を保持し、runtime parser と同じ count 契約に従います。
+ *
+ * <p>parser は `actualTargetCount == expectedTargetCount` を OK としか認めないため、対象が
+ * 1 件見つかったうえで適用できなかった場合に TARGET_NOT_FOUND を記録すると report 全体が
+ * 拒否され、Linimal の全機能が使えなくなります。0 件のときだけ TARGET_NOT_FOUND とします。</p>
+ */
 internal fun premiumUnsendUnappliedRecord(matchCount: Int, reason: String) = PatchStatusRecord(
     patchId = PatchId.PREMIUM_UNSEND,
-    status = if (matchCount > 1) PatchStatus.ERROR else PatchStatus.TARGET_NOT_FOUND,
+    status = if (matchCount == 0) PatchStatus.TARGET_NOT_FOUND else PatchStatus.ERROR,
     expectedTargetCount = 1,
     actualTargetCount = matchCount,
     reason = reason,
