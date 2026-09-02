@@ -79,6 +79,10 @@ public final class LinimalConfigStore {
      * 次に進める version は実際に保存された marker だけから決まります。
      */
     private void ensureCurrentSchema(Map<String, ?> values) {
+        if (isFreshInstall(values)) {
+            initializeFreshInstall();
+            values = readAll();
+        }
         int version = readSchemaVersion(values);
         while (version < LinimalConfigSchema.CURRENT_VERSION) {
             int expectedNextVersion = version + 1;
@@ -88,6 +92,9 @@ public final class LinimalConfigStore {
                     break;
                 case 1:
                     migrateV1ToV2(values);
+                    break;
+                case 2:
+                    migrateV2ToV3(values);
                     break;
                 default:
                     throw new ConfigStoreException("Unsupported configuration schema version");
@@ -103,6 +110,30 @@ public final class LinimalConfigStore {
         }
     }
 
+    /**
+     * 新規インストールかどうかを判定します。
+     *
+     * <p>この preferences file は Linimal だけが所有し、書き込むキーはすべて {@code linimal.}
+     * 名前空間です。したがって「キーが一つも無い」ことは、この端末でまだ Linimal が一度も
+     * 設定を保存していないこと、つまり新規インストールであることと同値です。</p>
+     *
+     * <p>schema version キーの有無では判定できません。marker を持たない v0 世代のインストールが
+     * 存在し、それらは保護すべき既存の設定を持っているためです。</p>
+     */
+    private boolean isFreshInstall(Map<String, ?> values) {
+        return values.isEmpty();
+    }
+
+    /**
+     * 保存された値が無いので移行するものもありません。marker だけを現在の version にして、
+     * 以後は現在の {@link LinimalDefaults} がそのままフォールバックとして効くようにします。
+     */
+    private void initializeFreshInstall() {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+        write(updates);
+    }
+
     /** v0 には schema marker がありませんでした。v1 の既存値は保持したまま marker だけを追加します。 */
     private void migrateV0ToV1(Map<String, ?> values) {
         validateMigratableValues(values);
@@ -116,6 +147,9 @@ public final class LinimalConfigStore {
      *
      * <p>新しい場所別キーと version marker は同じ write で commit します。既に正しい型で
      * 保存されている v2 値は、v1 source より優先します。</p>
+     *
+     * <p>キーが無いときの値は {@link LinimalLegacyDefaults} から取ります。現在の既定値を使うと、
+     * 既定値を変えるたびに移行してくる既存インストールの挙動まで変わってしまいます。</p>
      */
     private void migrateV1ToV2(Map<String, ?> values) {
         validateMigratableValues(values);
@@ -123,11 +157,11 @@ public final class LinimalConfigStore {
         boolean legacyAds = readLegacyBoolean(
                 values,
                 LinimalConfigSchema.ADS_ENABLED_KEY,
-                LinimalDefaults.isEnabled(LinimalFeature.ADS));
+                LinimalLegacyDefaults.isEnabled(LinimalFeature.ADS));
         boolean legacyLineAi = readLegacyBoolean(
                 values,
                 LinimalConfigSchema.LINE_AI_ENABLED_KEY,
-                LinimalDefaults.isEnabled(LinimalFeature.LINE_AI));
+                LinimalLegacyDefaults.isEnabled(LinimalFeature.LINE_AI));
 
         Map<String, Object> updates = new HashMap<>();
         updates.put(
@@ -195,8 +229,39 @@ public final class LinimalConfigStore {
                 readOptionalBoolean(
                         values,
                         LinimalConfigSchema.SHOPPING_ENABLED_KEY,
-                        LinimalDefaults.isEnabled(LinimalFeature.SHOPPING)));
-        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+                        LinimalLegacyDefaults.isEnabled(LinimalFeature.SHOPPING)));
+        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 2);
+        write(updates);
+    }
+
+    /**
+     * 既定値の変更から既存インストールを守ります。
+     *
+     * <p>読み取りはキーが無いときに現在の既定値へフォールバックするため、既定値を変えると
+     * 利用者がまだ触っていない項目の挙動まで変わります。ここでキーが無いものすべてに
+     * {@link LinimalLegacyDefaults} の値を書き込み、変更前の挙動を保存済みの設定として固定します。</p>
+     *
+     * <p>新規インストールはこの migration を通りません（{@link #isFreshInstall} を参照）。</p>
+     */
+    private void migrateV2ToV3(Map<String, ?> values) {
+        validateMigratableValues(values);
+
+        Map<String, Object> updates = new HashMap<>();
+        for (Map.Entry<LinimalFeature, Boolean> frozen
+                : LinimalLegacyDefaults.featureStates().entrySet()) {
+            String key = LinimalConfigSchema.keyFor(frozen.getKey());
+            // 非推奨の alias は置き換え先とキーを共有します。凍結値は一致するため、先に入れた方を残します。
+            if (values.containsKey(key) || updates.containsKey(key)) {
+                continue;
+            }
+            updates.put(key, frozen.getValue());
+        }
+        if (!values.containsKey(LinimalConfigSchema.READ_RECEIPT_MODE_KEY)) {
+            updates.put(
+                    LinimalConfigSchema.READ_RECEIPT_MODE_KEY,
+                    LinimalLegacyDefaults.READ_RECEIPT_MODE.storedValue());
+        }
+        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 3);
         write(updates);
     }
 
@@ -208,11 +273,11 @@ public final class LinimalConfigStore {
         readLegacyBoolean(
                 values,
                 LinimalConfigSchema.ADS_ENABLED_KEY,
-                LinimalDefaults.isEnabled(LinimalFeature.ADS));
+                LinimalLegacyDefaults.isEnabled(LinimalFeature.ADS));
         readLegacyBoolean(
                 values,
                 LinimalConfigSchema.LINE_AI_ENABLED_KEY,
-                LinimalDefaults.isEnabled(LinimalFeature.LINE_AI));
+                LinimalLegacyDefaults.isEnabled(LinimalFeature.LINE_AI));
         for (LinimalFeature feature : LinimalFeature.values()) {
             readBoolean(values, feature);
         }

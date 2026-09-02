@@ -2,7 +2,7 @@ package dev.utaa.linimal.extension.config;
 
 /** 内部で保存する schema の定義。キーは意図的に config package の外へ出しません。 */
 final class LinimalConfigSchema {
-    static final int CURRENT_VERSION = 2;
+    static final int CURRENT_VERSION = 3;
 
     static final String SCHEMA_VERSION_KEY = "linimal.schema.version";
 
