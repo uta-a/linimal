@@ -24,6 +24,8 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.branchTargetAddress
+import dev.utaa.linimal.patches.util.instructionAddress
 
 private const val VOID = "V"
 private const val OBJECT = "Ljava/lang/Object;"
@@ -294,14 +296,6 @@ private fun lineAiGalleryViewerInjectionShape(match: Match): GalleryViewerInject
         insertionIndex = booleanValueIndex + 2,
         visibilityRegister = result.registerA,
     )
-}
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
 }
 
 private fun recordLineAiGalleryViewerUnapplied(actualTargetCount: Int, reason: String) {

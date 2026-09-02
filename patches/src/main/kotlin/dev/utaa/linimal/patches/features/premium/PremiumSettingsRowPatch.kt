@@ -11,7 +11,6 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
@@ -24,6 +23,7 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0570 // line_user_settings_premium_item
 private const val BOOLEAN = "Ljava/lang/Boolean;"
@@ -368,17 +368,8 @@ internal fun premiumSettingsVisibilityGateShape(
         return null
     }
 
-    val insertionAddress = instructionAddress(instructions, returnIndex)
-    if (instructions.indices.any { index -> branchTargetAddress(instructions, index) == insertionAddress }) {
+    if (isDivertedInjectionIndex(instructions, returnIndex)) {
         return null
     }
     return PremiumSettingsVisibilityGateShape(returnIndex, returnedValue.registerA)
-}
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
 }

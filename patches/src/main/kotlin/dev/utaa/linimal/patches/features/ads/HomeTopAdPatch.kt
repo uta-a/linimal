@@ -14,7 +14,6 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -29,6 +28,7 @@ import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val DEBUG_METADATA = "Llb8/e;"
 private const val PERFORMANCE_AD_MODEL = "Lyj2/c;"
@@ -509,8 +509,7 @@ internal fun homeGcsAdListGateShape(
     ) {
         return null
     }
-    val returnAddress = instructionAddress(instructions, listFactoryIndex + 2)
-    if (instructions.indices.any { branchTargetAddress(instructions, it) == returnAddress }) {
+    if (isDivertedInjectionIndex(instructions, listFactoryIndex + 2)) {
         return null
     }
     return HomeGcsAdListGateShape(listFactoryIndex + 2, listResult.registerA)
@@ -586,14 +585,6 @@ private fun singleInvokeArgumentRegister(instruction: Instruction): Int? = when 
     is FiveRegisterInstruction -> if (instruction.registerCount == 1) instruction.registerC else null
     is RegisterRangeInstruction -> if (instruction.registerCount == 1) instruction.startRegister else null
     else -> null
-}
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
 }
 
 private fun recordCatalogBlockedByFlowFailure() {

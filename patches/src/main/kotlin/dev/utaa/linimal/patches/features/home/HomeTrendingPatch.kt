@@ -7,7 +7,6 @@ import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
-import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -17,6 +16,7 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val DEBUG_METADATA = "Llb8/e;"
 private const val VOID = "V"
@@ -265,8 +265,7 @@ internal fun homeTrendingModuleGateShape(
         return null
     }
 
-    val branchAddress = instructionAddress(instructions, branchIndex)
-    if (instructions.indices.any { index -> branchTargetAddress(instructions, index) == branchAddress }) {
+    if (isDivertedInjectionIndex(instructions, branchIndex)) {
         return null
     }
     return HomeTrendingModuleGate(branchIndex, resultMove.registerA)
@@ -286,12 +285,4 @@ private fun composerCallIndices(
             reference.name == name &&
             reference.returnType == returnType
     }
-}
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
 }

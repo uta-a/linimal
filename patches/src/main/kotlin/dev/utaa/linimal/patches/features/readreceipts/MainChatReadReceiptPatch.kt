@@ -12,10 +12,8 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.BuilderInstruction
 import com.android.tools.smali.dexlib2.iface.Annotation
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.MethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
-import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -29,7 +27,12 @@ import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatc
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.branchTargetAddress
+import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
+import dev.utaa.linimal.patches.util.fallsThrough
+import dev.utaa.linimal.patches.util.instructionAddress
 import dev.utaa.linimal.patches.util.instructionWritesRegister
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 import dev.utaa.linimal.patches.util.registerSurvivesBetween
 
 private const val VOID = "V"
@@ -1026,54 +1029,6 @@ private fun instructionCodeAddresses(instructions: List<Instruction>): List<Int>
     return instructions.map { instruction ->
         address.also { address += instruction.codeUnits }
     }
-}
-
-private fun exceptionHandlerAddresses(implementation: MethodImplementation): Set<Int> =
-    implementation.tryBlocks
-        .flatMap { block -> block.exceptionHandlers }
-        .map { handler -> handler.handlerCodeAddress }
-        .toSet()
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
-}
-
-/**
- * dexlib2 の `addInstructions(index, ...)` は新しい MethodLocation を挿入し、既存 location は Label を
- * 保持したまま後ろへずれます。そのため注入位置が既存の分岐先や例外 handler の先頭と一致すると、
- * その経路だけが注入コードを飛び越します。全経路が通る必要のある注入では、この位置を拒否します。
- */
-internal fun isDivertedInjectionIndex(
-    instructions: List<Instruction>,
-    index: Int,
-    handlerAddresses: Set<Int> = emptySet(),
-): Boolean {
-    if (index !in instructions.indices) {
-        return true
-    }
-    val address = instructionAddress(instructions, index)
-    return address in handlerAddresses ||
-        instructions.indices.any { branchTargetAddress(instructions, it) == address }
-}
-
-/** 直後の命令へ制御が落ちる命令かどうか。落ちない命令の直後は注入しても実行されません。 */
-internal fun fallsThrough(instruction: Instruction): Boolean = when (instruction.opcode) {
-    Opcode.GOTO,
-    Opcode.GOTO_16,
-    Opcode.GOTO_32,
-    Opcode.RETURN,
-    Opcode.RETURN_VOID,
-    Opcode.RETURN_VOID_BARRIER,
-    Opcode.RETURN_VOID_NO_BARRIER,
-    Opcode.RETURN_WIDE,
-    Opcode.RETURN_OBJECT,
-    Opcode.THROW,
-    -> false
-    else -> true
 }
 
 /**

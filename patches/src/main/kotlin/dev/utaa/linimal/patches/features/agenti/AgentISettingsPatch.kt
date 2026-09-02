@@ -14,7 +14,6 @@ import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -25,6 +24,7 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val SETTINGS_AGENT_I_TITLE = 0x7f151e38
 private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f151e3b
@@ -338,20 +338,11 @@ internal fun settingsVisibilityGateShape(
     }
 
     // 挿入位置が分岐先だと、その分岐だけが hook を飛び越えます。
-    val insertionAddress = instructionAddress(instructions, returnIndex)
-    if (instructions.indices.any { branchTargetAddress(instructions, it) == insertionAddress }) {
+    if (isDivertedInjectionIndex(instructions, returnIndex)) {
         return null
     }
 
     return SettingsVisibilityGateShape(returnIndex, returnedValue.registerA)
-}
-
-private fun instructionAddress(instructions: List<Instruction>, index: Int): Int =
-    instructions.take(index).sumOf { it.codeUnits }
-
-private fun branchTargetAddress(instructions: List<Instruction>, index: Int): Int? {
-    val branch = instructions.getOrNull(index) as? OffsetInstruction ?: return null
-    return instructionAddress(instructions, index) + branch.codeOffset
 }
 
 private fun isMainSettingsCategoryContinuation(classDef: ClassDef): Boolean = classDef.annotations.any { annotation ->
