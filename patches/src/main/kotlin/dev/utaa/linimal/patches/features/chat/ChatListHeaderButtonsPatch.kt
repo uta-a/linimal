@@ -5,6 +5,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
@@ -50,12 +51,21 @@ private val chatListHeaderButtonPatchIds = listOf(
     PatchId.CHAT_LIST_HEADER_OPEN_CHAT,
 )
 
+/**
+ * 候補を索引で絞るための anchor。fingerprint の instruction filter に上げた文字列定数は、
+ * 全 class 走査ではなくその定数を持つ class だけを候補にするために使われます。custom は
+ * [CHAT_LIST_HEADER_BUTTON_NAMES] を 5 つとも引き続き検証するため、一致対象は変わりません。
+ */
+private const val CHAT_LIST_HEADER_BUTTON_ANCHOR_NAME = "AI_FRIEND"
+
 private val chatListHeaderButtonEnumFingerprint = Fingerprint(
+    name = CLASS_INITIALIZER,
     custom = { method, classDef ->
         classDef.superclass == ENUM &&
             method.name == CLASS_INITIALIZER &&
             declaresChatListHeaderButtonNames(method)
     },
+    filters = listOf(string(CHAT_LIST_HEADER_BUTTON_ANCHOR_NAME)),
 )
 
 /**
