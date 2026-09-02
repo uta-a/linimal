@@ -21,6 +21,21 @@ public final class SmartChannelHooks {
         boolean hide(Object frame) throws Throwable;
     }
 
+    /** production の抑制経路。test は同じ seam へ別の実装を渡すため、判定は 1 か所だけに保てます。 */
+    private static final FrameSuppression ANDROID_FRAME_SUPPRESSION = new FrameSuppression() {
+        @Override
+        public boolean hide(Object frame) {
+            return hideAndroidFrame(frame);
+        }
+    };
+
+    private static final RendererCleanup ANDROID_RENDERER_CLEANUP = new RendererCleanup() {
+        @Override
+        public boolean cleanup(Object renderer) {
+            return cleanupAndroidRenderer(renderer);
+        }
+    };
+
     private SmartChannelHooks() {
     }
 
@@ -32,10 +47,10 @@ public final class SmartChannelHooks {
      */
     public static boolean shouldSuppressPlacement(Object frame) {
         try {
-            if (!LinimalConfig.get().isSmartChannelAdsSuppressionEnabled()) {
-                return false;
-            }
-            return frame != null && hideAndroidFrame(frame);
+            return shouldSuppressPlacementWith(
+                    LinimalConfig.get().isSmartChannelAdsSuppressionEnabled(),
+                    frame,
+                    ANDROID_FRAME_SUPPRESSION);
         } catch (Throwable ignored) {
             return false;
         }
@@ -47,10 +62,10 @@ public final class SmartChannelHooks {
      */
     public static boolean shouldSuppressRenderer(Object renderer) {
         try {
-            if (!LinimalConfig.get().isSmartChannelAdsSuppressionEnabled()) {
-                return false;
-            }
-            return renderer == null || cleanupAndroidRenderer(renderer);
+            return shouldSuppressWith(
+                    LinimalConfig.get().isSmartChannelAdsSuppressionEnabled(),
+                    renderer,
+                    ANDROID_RENDERER_CLEANUP);
         } catch (Throwable ignored) {
             return false;
         }
@@ -61,7 +76,14 @@ public final class SmartChannelHooks {
      * OFFまたは失敗時は元のrenderer instanceをそのまま返します。
      */
     public static Object rendererForBinding(Object renderer) {
-        return shouldSuppressRenderer(renderer) ? null : renderer;
+        try {
+            return rendererForBindingWith(
+                    LinimalConfig.get().isSmartChannelAdsSuppressionEnabled(),
+                    renderer,
+                    ANDROID_RENDERER_CLEANUP);
+        } catch (Throwable ignored) {
+            return renderer;
+        }
     }
 
     /**
@@ -136,21 +158,24 @@ public final class SmartChannelHooks {
         }
     }
 
+    /**
+     * 取り外せることを確かめてから停止 callback を呼びます。false を返す経路では caller が元の
+     * bind/rebind を実行するため、停止済みの renderer を再利用させないための順序です。
+     */
     private static boolean cleanupAndroidRenderer(Object renderer) {
         if (!(renderer instanceof View)) {
             return false;
         }
         View view = (View) renderer;
-        stopRendererQuietly(view);
-
         ViewParent parent = view.getParent();
-        if (parent == null) {
-            return true;
-        }
-        if (!(parent instanceof ViewGroup)) {
+        if (parent != null && !(parent instanceof ViewGroup)) {
             return false;
         }
-        ((ViewGroup) parent).removeView(view);
+
+        stopRendererQuietly(view);
+        if (parent != null) {
+            ((ViewGroup) parent).removeView(view);
+        }
         return true;
     }
 

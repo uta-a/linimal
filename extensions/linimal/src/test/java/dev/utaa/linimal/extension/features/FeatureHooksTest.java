@@ -43,6 +43,28 @@ public final class FeatureHooksTest {
         }
     }
 
+    /** item の種別とは無関係な static field を持つ、難読化済みクラスにありがちな形です。 */
+    private static final class ChatItemWithStaticDefault {
+        private static final ChatItemType DEFAULT_TYPE = ChatItemType.PAY;
+
+        private final ChatItemType type;
+
+        ChatItemWithStaticDefault(ChatItemType type) {
+            this.type = type;
+        }
+    }
+
+    /** 同じ enum 型の instance field が 2 つあり、種別を一意に決められない形です。 */
+    private static final class AmbiguousChatItem {
+        private final ChatItemType first;
+        private final ChatItemType second;
+
+        AmbiguousChatItem(ChatItemType first, ChatItemType second) {
+            this.first = first;
+            this.second = second;
+        }
+    }
+
     @Test
     public void mainTabsReturnTheSameListWhenEverySuppressionIsOff() {
         List<MainTab> tabs = Arrays.asList(MainTab.HOME, MainTab.TIMELINE, MainTab.NEWS, MainTab.WALLET);
@@ -140,6 +162,21 @@ public final class FeatureHooksTest {
         assertTrue(ChatMenuHooks.shouldHideForEnabledStates("GIFT", false, true, false));
         assertTrue(ChatMenuHooks.shouldHideForEnabledStates("PAY", false, false, true));
         assertFalse(ChatMenuHooks.shouldHideForEnabledStates("OTHER", true, true, true));
+    }
+
+    @Test
+    public void chatMenuIgnoresStaticFieldsWhenResolvingTheItemType() {
+        // static field は item ごとの値ではないため、field の宣言順に関係なく instance field だけを見ます。
+        assertTrue("CALENDAR".equals(ChatMenuHooks.findMenuItemType(
+                new ChatItemWithStaticDefault(ChatItemType.CALENDAR))));
+    }
+
+    @Test
+    public void chatMenuFailsOpenWhenTheItemTypeIsAmbiguous() {
+        assertNull(ChatMenuHooks.findMenuItemType(
+                new AmbiguousChatItem(ChatItemType.CALENDAR, ChatItemType.PAY)));
+        assertTrue("GIFT".equals(ChatMenuHooks.findMenuItemType(
+                new AmbiguousChatItem(ChatItemType.GIFT, ChatItemType.GIFT))));
     }
 
     @Test

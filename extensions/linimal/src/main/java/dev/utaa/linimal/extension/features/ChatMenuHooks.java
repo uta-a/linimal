@@ -1,6 +1,7 @@
 package dev.utaa.linimal.extension.features;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 import dev.utaa.linimal.extension.config.LinimalConfig;
 
@@ -40,6 +41,11 @@ public final class ChatMenuHooks {
                 || (suppressPay && "PAY".equals(itemType));
     }
 
+    /**
+     * static field は item ごとの種別を表さないため除外します。{@code getDeclaredFields()} の順序は
+     * 保証されないので、同じ class 内では候補を全部読み、値が 1 つに定まったときだけ採用します。
+     * 定まらない場合は null を返し、元の LINE predicate をそのまま通します。
+     */
     static String findMenuItemType(Object item) {
         if (item == null) {
             return null;
@@ -51,22 +57,34 @@ public final class ChatMenuHooks {
             } catch (Throwable ignored) {
                 continue;
             }
+            String resolved = null;
             for (Field field : fields) {
                 try {
-                    Class<?> fieldType = field.getType();
-                    if (!isChatMenuEnum(fieldType)) {
+                    if (Modifier.isStatic(field.getModifiers())) {
+                        continue;
+                    }
+                    if (!isChatMenuEnum(field.getType())) {
                         continue;
                     }
                     if (!field.isAccessible()) {
                         field.setAccessible(true);
                     }
                     Object value = field.get(item);
-                    if (value instanceof Enum<?>) {
-                        return ((Enum<?>) value).name();
+                    if (!(value instanceof Enum<?>)) {
+                        continue;
+                    }
+                    String name = ((Enum<?>) value).name();
+                    if (resolved == null) {
+                        resolved = name;
+                    } else if (!resolved.equals(name)) {
+                        return null;
                     }
                 } catch (Throwable ignored) {
                     // 次の候補を調べます。reflection の失敗で元の LINE predicate を変えません。
                 }
+            }
+            if (resolved != null) {
+                return resolved;
             }
         }
         return null;

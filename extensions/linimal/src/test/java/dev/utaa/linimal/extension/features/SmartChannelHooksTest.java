@@ -2,6 +2,7 @@ package dev.utaa.linimal.extension.features;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -40,6 +41,16 @@ public final class SmartChannelHooksTest {
         assertFalse(SmartChannelHooks.shouldSuppressPlacementWith(true, new Object(), ignored -> {
             throw new IllegalStateException("not on the ui thread");
         }));
+    }
+
+    @Test
+    public void unavailableConfigurationPreservesTheOriginalHandling() {
+        // 単体テストでは LinimalConfig を初期化しないため、production 経路も seam 経由で fail-open です。
+        Object renderer = new Object();
+
+        assertFalse(SmartChannelHooks.shouldSuppressPlacement(new Object()));
+        assertFalse(SmartChannelHooks.shouldSuppressRenderer(renderer));
+        assertSame(renderer, SmartChannelHooks.rendererForBinding(renderer));
     }
 
     @Test
