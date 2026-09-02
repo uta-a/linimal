@@ -14,6 +14,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
+import dev.utaa.linimal.patches.status.recordUnappliedFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 
 private const val RESOURCES = "Landroid/content/res/Resources;"
@@ -227,23 +228,28 @@ val chatPlusMenuPatch = bytecodePatch {
     }
 }
 
+/**
+ * 3 つの item のうち 1 つでも一意でなければ shared predicate へ注入せずに終了します。
+ * このとき一致数が 1 の item を件数どおりに記録すると OK になり、注入していないのに
+ * 設定 UI がその機能を利用可能として表示してしまうため、[recordUnappliedFeatureStatus] を使います。
+ */
 private fun recordConcreteItemCounts(calendar: Int, gift: Int, pay: Int) {
-    recordFeatureStatus(
+    recordUnappliedFeatureStatus(
         listOf(PatchId.CHAT_MENU_CALENDAR),
         expectedTargetCount = 1,
-        actualTargetCount = calendar,
+        matchCount = calendar,
         reason = "ChatMenuCalendarItemNotUnique",
     )
-    recordFeatureStatus(
+    recordUnappliedFeatureStatus(
         listOf(PatchId.CHAT_MENU_LINE_GIFT),
         expectedTargetCount = 1,
-        actualTargetCount = gift,
+        matchCount = gift,
         reason = "ChatMenuGiftItemNotUnique",
     )
-    recordFeatureStatus(
+    recordUnappliedFeatureStatus(
         listOf(PatchId.CHAT_MENU_LINE_PAY),
         expectedTargetCount = 1,
-        actualTargetCount = pay,
+        matchCount = pay,
         reason = "ChatMenuPayItemNotUnique",
     )
 }
