@@ -70,6 +70,9 @@ public final class LinimalConfigTest {
         assertTrue(config.isChatCalendarSuppressionEnabled());
         assertTrue(config.isChatLineGiftSuppressionEnabled());
         assertTrue(config.isChatLinePaySuppressionEnabled());
+        assertFalse(config.isChatListHeaderAiFriendsSuppressionEnabled());
+        assertFalse(config.isChatListHeaderCalendarSuppressionEnabled());
+        assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
         assertFalse(config.isExternalBrowserOverrideEnabled());
         assertFalse(config.isDebugLoggingEnabled());
@@ -446,6 +449,26 @@ public final class LinimalConfigTest {
         assertTrue(config.isNewsSuppressionEnabled());
         assertTrue(config.isShoppingSuppressionEnabled());
         assertEquals(true, backend.values.get(LinimalConfigSchema.MINI_ENABLED_KEY));
+    }
+
+    @Test
+    public void chatListHeaderWritesUseTheirOwnKeysAndStayIndependent() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setChatListHeaderCalendarSuppressionEnabled(true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isChatListHeaderCalendarSuppressionEnabled());
+        assertFalse(config.isChatListHeaderAiFriendsSuppressionEnabled());
+        assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
+        // チャットの + メニューのカレンダーとは別の設定です。
+        assertTrue(config.isChatCalendarSuppressionEnabled());
+        assertEquals(
+                true,
+                backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_CALENDAR_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_AI_FRIENDS_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.CHAT_LIST_HEADER_OPEN_CHAT_ENABLED_KEY));
     }
 
     @Test

@@ -285,6 +285,30 @@ public final class LinimalConfig {
         setEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, enabled);
     }
 
+    public boolean isChatListHeaderAiFriendsSuppressionEnabled() {
+        return isEnabled(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS);
+    }
+
+    public void setChatListHeaderAiFriendsSuppressionEnabled(boolean enabled) {
+        setEnabled(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS, enabled);
+    }
+
+    public boolean isChatListHeaderCalendarSuppressionEnabled() {
+        return isEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR);
+    }
+
+    public void setChatListHeaderCalendarSuppressionEnabled(boolean enabled) {
+        setEnabled(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, enabled);
+    }
+
+    public boolean isChatListHeaderOpenChatSuppressionEnabled() {
+        return isEnabled(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT);
+    }
+
+    public void setChatListHeaderOpenChatSuppressionEnabled(boolean enabled) {
+        setEnabled(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT, enabled);
+    }
+
     public ReadReceiptMode getReadReceiptMode() {
         return snapshot.readReceiptMode();
     }

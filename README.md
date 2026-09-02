@@ -117,6 +117,9 @@ Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE �
 | Chat | LINE GIFT | ON | Chat の追加menuからLINE GIFTを取り除きます。 |
 | Chat | LINE Pay | ON | Chat の追加menuからLINE Payを取り除きます。 |
 | Chat | 自動既読の停止 | OFF | 通常チャットの自動既読送信を止めます。手動既読操作だけを一回送信します。 |
+| Chat | トーク一覧の AI Friends | OFF | トーク一覧上部にある AI Friends のアイコンを表示しません。 |
+| Chat | トーク一覧のカレンダー | OFF | トーク一覧上部にあるカレンダーのアイコンを表示しません。Chat の追加menuのCalendarとは別枠です。 |
+| Chat | トーク一覧のオープンチャット | OFF | トーク一覧上部にあるオープンチャットのアイコンを表示しません。 |
 
 設定画面は `General`、`Agent i`、`Tabs`、`Home`、`Chat`、`Patch Status` に分かれています。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
 

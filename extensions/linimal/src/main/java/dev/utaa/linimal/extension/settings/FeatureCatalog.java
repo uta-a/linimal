@@ -142,7 +142,19 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, "linimal.read-without-receipt", SettingsPage.CHAT,
                     "既読をつけずに読むをメニューに追加",
                     "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
-                            + "トーク一覧の未読表示もそのまま残します。")));
+                            + "トーク一覧の未読表示もそのまま残します。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS, "linimal.chat-list-header-ai-friends",
+                    SettingsPage.CHAT,
+                    "トーク一覧の AI Friends を表示しない",
+                    "トーク一覧の上部にある AI Friends のアイコンを表示しません。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, "linimal.chat-list-header-calendar",
+                    SettingsPage.CHAT,
+                    "トーク一覧のカレンダーを表示しない",
+                    "トーク一覧の上部にあるカレンダーのアイコンを表示しません。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT, "linimal.chat-list-header-open-chat",
+                    SettingsPage.CHAT,
+                    "トーク一覧のオープンチャットを表示しない",
+                    "トーク一覧の上部にあるオープンチャットのアイコンを表示しません。")));
 
     private FeatureCatalog() {
     }

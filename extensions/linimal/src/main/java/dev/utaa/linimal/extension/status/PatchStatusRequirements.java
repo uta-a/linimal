@@ -67,6 +67,12 @@ final class PatchStatusRequirements {
                 "linimal.patch.read-without-receipt-menu-label-resource",
                 "linimal.patch.read-without-receipt-compose-menu-row",
                 "linimal.patch.read-without-receipt-mark-as-read-block"));
+        requirements.put("linimal.chat-list-header-ai-friends",
+                ids("linimal.patch.chat-list-header-ai-friends"));
+        requirements.put("linimal.chat-list-header-calendar",
+                ids("linimal.patch.chat-list-header-calendar"));
+        requirements.put("linimal.chat-list-header-open-chat",
+                ids("linimal.patch.chat-list-header-open-chat"));
         return Collections.unmodifiableMap(requirements);
     }
 

@@ -60,6 +60,9 @@ public final class FeatureCatalogTest {
         assertEntryPage("linimal.home-feed-post-cards", SettingsPage.HOME);
         assertEntryPage("linimal.home-featured-collections", SettingsPage.HOME);
         assertEntryPage("linimal.smart-channel-ads", SettingsPage.CHAT);
+        assertEntryPage("linimal.chat-list-header-ai-friends", SettingsPage.CHAT);
+        assertEntryPage("linimal.chat-list-header-calendar", SettingsPage.CHAT);
+        assertEntryPage("linimal.chat-list-header-open-chat", SettingsPage.CHAT);
         assertEntryPage("linimal.agent-i-chat-list-search", SettingsPage.AGENT_I);
     }
 
@@ -132,6 +135,31 @@ public final class FeatureCatalogTest {
                 "linimal.mini");
         assertEquals("アプリを表示しない", entries.get(4).getTitle());
         assertEquals("下部タブからアプリを取り除きます。", entries.get(4).getSummary());
+    }
+
+    @Test
+    public void chatEntriesKeepCatalogOrderAndDistinguishTheChatListHeaderCalendar() {
+        List<FeatureCatalog.Entry> entries = FeatureCatalog.installedEntriesForPage(
+                SettingsPage.CHAT,
+                Arrays.asList(
+                        "linimal.chat-list-header-open-chat",
+                        "linimal.chat-list-header-calendar",
+                        "linimal.chat-list-header-ai-friends",
+                        "linimal.chat-calendar",
+                        "linimal.smart-channel-ads"));
+
+        assertFeatureIds(entries,
+                "linimal.smart-channel-ads",
+                "linimal.chat-calendar",
+                "linimal.chat-list-header-ai-friends",
+                "linimal.chat-list-header-calendar",
+                "linimal.chat-list-header-open-chat");
+        // チャットの + メニューのカレンダーと紛らわしいため、頭に「トーク一覧の」を付けて区別します。
+        assertEquals("カレンダーを表示しない", entries.get(1).getTitle());
+        assertEquals("トーク一覧の AI Friends を表示しない", entries.get(2).getTitle());
+        assertEquals("トーク一覧のカレンダーを表示しない", entries.get(3).getTitle());
+        assertEquals("トーク一覧のオープンチャットを表示しない", entries.get(4).getTitle());
+        assertEquals("トーク一覧の上部にあるオープンチャットのアイコンを表示しません。", entries.get(4).getSummary());
     }
 
     @Test

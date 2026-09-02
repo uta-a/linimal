@@ -38,6 +38,9 @@ public final class LinimalDefaults {
                 return true;
             case WALLET:
             case MINI:
+            case CHAT_LIST_HEADER_AI_FRIENDS:
+            case CHAT_LIST_HEADER_CALENDAR:
+            case CHAT_LIST_HEADER_OPEN_CHAT:
             case EXTERNAL_BROWSER:
             case DEBUG_LOGGING:
                 return false;

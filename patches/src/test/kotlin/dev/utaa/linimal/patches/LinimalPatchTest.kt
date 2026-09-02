@@ -15,6 +15,7 @@ import dev.utaa.linimal.patches.features.agenti.agentIHomeHeaderPatch
 import dev.utaa.linimal.patches.features.agenti.agentISettingsPatch
 import dev.utaa.linimal.patches.features.agenti.agentIWalletHeaderPatch
 import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatch
+import dev.utaa.linimal.patches.features.chat.chatListHeaderButtonsPatch
 import dev.utaa.linimal.patches.features.chat.chatPlusMenuPatch
 import dev.utaa.linimal.patches.features.home.homeContentsRecommendationPatch
 import dev.utaa.linimal.patches.features.home.homeFeaturedCollectionsPatch
@@ -69,7 +70,8 @@ class LinimalPatchTest {
     @Test
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertEquals(setOf(readWithoutReceiptMarkAsReadBlockPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(chatListHeaderButtonsPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptMarkAsReadBlockPatch), chatListHeaderButtonsPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptMenuLabelResourcePatch), readWithoutReceiptComposeMenuPatch.dependencies)
         assertEquals(setOf(homeFeedLoadingIndicatorPatch), readWithoutReceiptMenuLabelResourcePatch.dependencies)
