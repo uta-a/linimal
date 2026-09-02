@@ -11,10 +11,7 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
@@ -24,7 +21,9 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
-import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
+import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 
 private const val SETTINGS_AGENT_I_TITLE = 0x7f151e38
 private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f151e3b
@@ -35,8 +34,8 @@ private const val DEBUG_METADATA = "Llb8/e;"
 private const val MAIN_SETTINGS_CATEGORY_SOURCE = "LineUserMainSettingsCategory.kt"
 private const val SETTINGS_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentISettingsHooks;->adjustVisibility(Z)Z"
-private const val BOOLEAN_UNBOX = "Ljava/lang/Boolean;->booleanValue()Z"
-private const val BOOLEAN_BOX = "Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;"
+private const val BOOLEAN_UNBOX = "$BOXED_BOOLEAN->booleanValue()$BOOLEAN"
+private const val BOOLEAN_BOX = "$BOXED_BOOLEAN->valueOf($BOOLEAN)$BOXED_BOOLEAN"
 
 /**
  * Main Settings static catalog の 2 variant entry。title resource と catalog item constructor を合わせ、
@@ -213,12 +212,6 @@ private data class VisibilityGate(
     val booleanRegister: Int,
 )
 
-/** 注入位置と、そこで `Ljava/lang/Boolean;` を保持している register。 */
-internal data class SettingsVisibilityGateShape(
-    val insertionIndex: Int,
-    val booleanRegister: Int,
-)
-
 /** Associates each title-bearing px4/v construction segment with one action and one generated predicate. */
 private fun resolveSettingsVariants(
     catalogMatch: Match,
@@ -282,67 +275,13 @@ private fun resolveSettingsVariants(
 private fun visibilityGate(match: Match): VisibilityGate? {
     val method = match.method
     val implementation = method.implementation ?: return null
-    val shape = settingsVisibilityGateShape(
+    val shape = boxedBooleanReturnGateShape(
         instructions = implementation.instructions.toList(),
         parameterTypes = method.parameterTypes.map { it.toString() },
         registerCount = implementation.registerCount,
         hasTryBlocks = implementation.tryBlocks.isNotEmpty(),
     ) ?: return null
     return VisibilityGate(match, shape.insertionIndex, shape.booleanRegister)
-}
-
-/**
- * predicate は product 側の visibility 判定を実行したあと、結果を `Boolean` へ box して返します。
- * この box 命令は `if`/`goto` の合流点であり、その手前へ注入すると true 側の `goto` が hook を飛び越え、
- * 抑制が実行時にまったく効きません。そのため box 済みの値を単一の `return-object` 直前で unbox し、
- * hook を通してから box し直します。挿入位置がどの分岐先でもないことも明示的に検証します。
- */
-internal fun settingsVisibilityGateShape(
-    instructions: List<Instruction>,
-    parameterTypes: List<String>,
-    registerCount: Int,
-    hasTryBlocks: Boolean,
-): SettingsVisibilityGateShape? {
-    if (
-        parameterTypes != listOf("Ljava/lang/Object;") ||
-        registerCount < 2 ||
-        hasTryBlocks ||
-        instructions.any { it.opcode == Opcode.PACKED_SWITCH || it.opcode == Opcode.SPARSE_SWITCH }
-    ) {
-        return null
-    }
-
-    val returnIndices = instructions.mapIndexedNotNull { index, instruction ->
-        index.takeIf { instruction.opcode == Opcode.RETURN_OBJECT }
-    }
-    val returnIndex = returnIndices.singleOrNull() ?: return null
-    val returnedValue = instructions.getOrNull(returnIndex) as? OneRegisterInstruction ?: return null
-    val resultMove = instructions.getOrNull(returnIndex - 1) as? OneRegisterInstruction ?: return null
-    val boxing = instructions.getOrNull(returnIndex - 2) as? FiveRegisterInstruction ?: return null
-    val boxingReference = (instructions.getOrNull(returnIndex - 2) as? ReferenceInstruction)
-        ?.reference as? MethodReference ?: return null
-
-    if (
-        resultMove.opcode != Opcode.MOVE_RESULT_OBJECT ||
-        resultMove.registerA != returnedValue.registerA ||
-        returnedValue.registerA !in 0..15 ||
-        boxing.opcode != Opcode.INVOKE_STATIC ||
-        boxing.registerCount != 1 ||
-        boxing.registerC !in 0..15 ||
-        boxingReference.definingClass != "Ljava/lang/Boolean;" ||
-        boxingReference.name != "valueOf" ||
-        boxingReference.parameterTypes != listOf("Z") ||
-        boxingReference.returnType != "Ljava/lang/Boolean;"
-    ) {
-        return null
-    }
-
-    // 挿入位置が分岐先だと、その分岐だけが hook を飛び越えます。
-    if (isDivertedInjectionIndex(instructions, returnIndex)) {
-        return null
-    }
-
-    return SettingsVisibilityGateShape(returnIndex, returnedValue.registerA)
 }
 
 private fun isMainSettingsCategoryContinuation(classDef: ClassDef): Boolean = classDef.annotations.any { annotation ->

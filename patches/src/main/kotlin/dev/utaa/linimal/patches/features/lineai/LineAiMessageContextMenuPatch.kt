@@ -22,12 +22,12 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.VOID
 import dev.utaa.linimal.patches.util.branchTargetAddress
 import dev.utaa.linimal.patches.util.instructionAddress
 
-private const val VOID = "V"
-private const val OBJECT = "Ljava/lang/Object;"
-private const val BOOLEAN = "Z"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val CONTEXT_MENU_ITEM = "Lj51/c;"
 private const val CONTEXT_MENU_MODEL = "Lne1/x0;"

@@ -18,10 +18,10 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.VOID
 
-private const val VOID = "V"
-private const val BOOLEAN = "Z"
-private const val OBJECT = "Ljava/lang/Object;"
 private const val FUNCTION3 = "Lvb8/q;"
 
 /** 検索バー composable の引数の並び。AI ボタンの表示 boolean と、その直後の icon variant boolean。 */

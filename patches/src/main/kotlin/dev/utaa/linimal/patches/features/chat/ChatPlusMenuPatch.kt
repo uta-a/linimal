@@ -29,9 +29,12 @@ private val chatMenuPatchIds = listOf(
 )
 
 /** それぞれの concrete item class を resource literal と enum anchor から先に特定します。 */
-private val calendarItemClassFingerprint = chatMenuItemClassFingerprint(0x7f151798)
-private val giftItemClassFingerprint = chatMenuItemClassFingerprint(0x7f150cce)
-private val payItemClassFingerprint = chatMenuItemClassFingerprint(0x7f150cd8)
+private val calendarItemClassFingerprint =
+    chatMenuItemClassFingerprint(0x7f151798) // line_calendar_plusmenu_calendar
+private val giftItemClassFingerprint =
+    chatMenuItemClassFingerprint(0x7f150cce) // chathistory_attach_dialog_label_giftshop
+private val payItemClassFingerprint =
+    chatMenuItemClassFingerprint(0x7f150cd8) // chathistory_attach_dialog_label_select_linepay
 
 private fun chatMenuItemClassFingerprint(labelResource: Int) = Fingerprint(
     returnType = "Ljava/lang/String;",
@@ -42,12 +45,12 @@ private fun chatMenuItemClassFingerprint(labelResource: Int) = Fingerprint(
 private val calendarConstructorFingerprint = chatMenuItemConstructorFingerprint(
     calendarItemClassFingerprint,
     "CALENDAR",
-    0x7f080643,
+    0x7f080643, // chat_ui_context_calendar
 )
 private val giftConstructorFingerprint = chatMenuItemConstructorFingerprint(
     giftItemClassFingerprint,
     "GIFT",
-    0x7f08070c,
+    0x7f08070c, // chat_ui_plus_gift
 )
 private val payConstructorFingerprint = chatMenuItemConstructorFingerprint(
     payItemClassFingerprint,

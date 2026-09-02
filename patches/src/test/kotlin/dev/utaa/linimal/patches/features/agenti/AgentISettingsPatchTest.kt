@@ -11,6 +11,7 @@ import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstructio
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
+import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -116,7 +117,7 @@ class AgentISettingsPatchTest {
         parameterTypes: List<String> = listOf("Ljava/lang/Object;"),
         registerCount: Int = 2,
         hasTryBlocks: Boolean = false,
-    ) = settingsVisibilityGateShape(instructions, parameterTypes, registerCount, hasTryBlocks)
+    ) = boxedBooleanReturnGateShape(instructions, parameterTypes, registerCount, hasTryBlocks)
 
     /**
      * `LineUserMainSettingsCategory` の visible predicate と同じ shape。

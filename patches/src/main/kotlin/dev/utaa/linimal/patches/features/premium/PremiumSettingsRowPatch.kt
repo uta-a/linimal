@@ -8,7 +8,6 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -23,17 +22,18 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
-import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 
 private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0570 // line_user_settings_premium_item
-private const val BOOLEAN = "Ljava/lang/Boolean;"
-private const val OBJECT = "Ljava/lang/Object;"
 private const val LYP_PREMIUM_TITLE = 0x7f151df5 // line_settings_category_lyppfornonsubscriber
 private const val LINE_PREMIUM_TITLE = 0x7f151df4 // line_settings_category_linepfornonsubscriber
 private const val PREMIUM_SETTINGS_ROW_HOOK =
     "Ldev/utaa/linimal/extension/features/PremiumSettingsRowHooks;->adjustVisibility(Z)Z"
-private const val BOOLEAN_UNBOX = "$BOOLEAN->booleanValue()Z"
-private const val BOOLEAN_BOX = "$BOOLEAN->valueOf(Z)$BOOLEAN"
+private const val BOOLEAN_UNBOX = "$BOXED_BOOLEAN->booleanValue()$BOOLEAN"
+private const val BOOLEAN_BOX = "$BOXED_BOOLEAN->valueOf($BOOLEAN)$BOXED_BOOLEAN"
 
 private val premiumItemConstructorParameters = listOf(
     "Ljava/lang/String;",
@@ -89,10 +89,10 @@ private fun premiumSettingsVisibilityPredicateFingerprint(predicateType: String)
     parameters = listOf(OBJECT),
     filters = listOf(
         methodCall(
-            definingClass = BOOLEAN,
+            definingClass = BOXED_BOOLEAN,
             name = "valueOf",
-            parameters = listOf("Z"),
-            returnType = BOOLEAN,
+            parameters = listOf(BOOLEAN),
+            returnType = BOXED_BOOLEAN,
             opcode = Opcode.INVOKE_STATIC,
         ),
     ),
@@ -311,7 +311,7 @@ private fun newInstanceType(instruction: Instruction): String? {
 private fun premiumSettingsVisibilityGate(match: Match): PremiumSettingsVisibilityGate? {
     val method = match.method
     val implementation = method.implementation ?: return null
-    val shape = premiumSettingsVisibilityGateShape(
+    val shape = boxedBooleanReturnGateShape(
         instructions = implementation.instructions.toList(),
         parameterTypes = method.parameterTypes.map { it.toString() },
         registerCount = implementation.registerCount,
@@ -320,56 +320,3 @@ private fun premiumSettingsVisibilityGate(match: Match): PremiumSettingsVisibili
     return PremiumSettingsVisibilityGate(match, shape.insertionIndex, shape.booleanRegister)
 }
 
-internal data class PremiumSettingsVisibilityGateShape(
-    val insertionIndex: Int,
-    val booleanRegister: Int,
-)
-
-/**
- * Verifies `Boolean.valueOf(original)` → `move-result-object` → `return-object` and injects before the return.
- * A branch target at that return could skip the injected hook, so such a predicate is intentionally rejected.
- */
-internal fun premiumSettingsVisibilityGateShape(
-    instructions: List<Instruction>,
-    parameterTypes: List<String>,
-    registerCount: Int,
-    hasTryBlocks: Boolean,
-): PremiumSettingsVisibilityGateShape? {
-    if (
-        parameterTypes != listOf(OBJECT) ||
-        registerCount < 2 ||
-        hasTryBlocks ||
-        instructions.any { it.opcode == Opcode.PACKED_SWITCH || it.opcode == Opcode.SPARSE_SWITCH }
-    ) {
-        return null
-    }
-
-    val returnIndex = instructions.indices.singleOrNull { index ->
-        instructions[index].opcode == Opcode.RETURN_OBJECT
-    } ?: return null
-    val returnedValue = instructions[returnIndex] as? OneRegisterInstruction ?: return null
-    val resultMove = instructions.getOrNull(returnIndex - 1) as? OneRegisterInstruction ?: return null
-    val boxing = instructions.getOrNull(returnIndex - 2) as? FiveRegisterInstruction ?: return null
-    val boxingReference = (instructions.getOrNull(returnIndex - 2) as? ReferenceInstruction)
-        ?.reference as? MethodReference ?: return null
-
-    if (
-        resultMove.opcode != Opcode.MOVE_RESULT_OBJECT ||
-        resultMove.registerA != returnedValue.registerA ||
-        returnedValue.registerA !in 0..15 ||
-        boxing.opcode != Opcode.INVOKE_STATIC ||
-        boxing.registerCount != 1 ||
-        boxing.registerC !in 0..15 ||
-        boxingReference.definingClass != BOOLEAN ||
-        boxingReference.name != "valueOf" ||
-        boxingReference.parameterTypes != listOf("Z") ||
-        boxingReference.returnType != BOOLEAN
-    ) {
-        return null
-    }
-
-    if (isDivertedInjectionIndex(instructions, returnIndex)) {
-        return null
-    }
-    return PremiumSettingsVisibilityGateShape(returnIndex, returnedValue.registerA)
-}

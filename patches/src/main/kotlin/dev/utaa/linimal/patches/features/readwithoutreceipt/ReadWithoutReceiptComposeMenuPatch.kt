@@ -26,13 +26,13 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.INT
+import dev.utaa.linimal.patches.util.INTEGER
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.STRING
+import dev.utaa.linimal.patches.util.VOID
 
-private const val VOID = "V"
-private const val INT = "I"
-private const val BOOLEAN = "Z"
-private const val OBJECT = "Ljava/lang/Object;"
-private const val STRING = "Ljava/lang/String;"
-private const val INTEGER = "Ljava/lang/Integer;"
 
 private const val EXTENSION_PACKAGE = "Ldev/utaa/linimal/extension/features/readwithoutreceipt"
 private const val ACTION_TYPE = "$EXTENSION_PACKAGE/ReadWithoutReceiptAction;"

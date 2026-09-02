@@ -16,11 +16,11 @@ import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.VOID
 import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 
 private const val DEBUG_METADATA = "Llb8/e;"
-private const val VOID = "V"
-private const val BOOLEAN = "Z"
 private const val COMPOSER = "Lh3/t;"
 private const val COMPOSER_IMPL = "Lh3/f1;"
 private const val END_RESTART_GROUP_RESULT = "Lh3/p3;"

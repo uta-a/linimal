@@ -27,6 +27,12 @@ import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatc
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.HASH_MAP
+import dev.utaa.linimal.patches.util.LONG
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.STRING
+import dev.utaa.linimal.patches.util.VOID
 import dev.utaa.linimal.patches.util.branchTargetAddress
 import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
 import dev.utaa.linimal.patches.util.fallsThrough
@@ -35,13 +41,7 @@ import dev.utaa.linimal.patches.util.instructionWritesRegister
 import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 import dev.utaa.linimal.patches.util.registerSurvivesBetween
 
-private const val VOID = "V"
-private const val BOOLEAN = "Z"
-private const val LONG = "J"
-private const val STRING = "Ljava/lang/String;"
-private const val OBJECT = "Ljava/lang/Object;"
 private const val CONTINUATION = "Lkotlin/coroutines/Continuation;"
-private const val HASH_MAP = "Ljava/util/HashMap;"
 private const val SHARED_PREFERENCES = "Landroid/content/SharedPreferences;"
 private const val SHARED_PREFERENCES_EDITOR = "Landroid/content/SharedPreferences\$Editor;"
 private const val TALK_SERVICE_CLIENT = "Ljp/naver/line/android/thrift/client/TalkServiceClient;"

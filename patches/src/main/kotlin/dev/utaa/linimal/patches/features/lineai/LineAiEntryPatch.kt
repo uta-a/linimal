@@ -27,9 +27,9 @@ private val lineAiEntryFingerprint = Fingerprint(
     returnType = "V",
     parameters = listOf("Z", "Lvb8/a;"),
     filters = listOf(
-        literal(0x7f0807d0),
-        literal(0x7f151f03),
-        literal(0x7f0e0245),
+        literal(0x7f0807d0), // chatmenu_ic_list_line_ai
+        literal(0x7f151f03), // lineai_assistant_title_lineai
+        literal(0x7f0e0245), // chathistory_menu_text_with_icon_item
         methodCall(
             parameters = listOf("I", "I", "I", "Z", "Z"),
             returnType = "V",

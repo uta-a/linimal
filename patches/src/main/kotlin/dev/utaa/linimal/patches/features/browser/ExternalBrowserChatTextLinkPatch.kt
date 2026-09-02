@@ -19,15 +19,13 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import dev.utaa.linimal.patches.features.ads.smartChannelAdsPatch
 import dev.utaa.linimal.patches.status.PatchId
-import dev.utaa.linimal.patches.status.PatchStatus
-import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
+import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.OBJECT
+import dev.utaa.linimal.patches.util.STRING
+import dev.utaa.linimal.patches.util.VOID
 
-private const val STRING = "Ljava/lang/String;"
-private const val OBJECT = "Ljava/lang/Object;"
-private const val VOID = "V"
-private const val BOOLEAN = "Z"
 private const val CONTEXT = "Landroid/content/Context;"
 private const val URI = "Landroid/net/Uri;"
 private const val INTENT = "Landroid/content/Intent;"
@@ -41,7 +39,6 @@ private const val LINK_ROUTER = "Lna1/c;"
 private const val LINK_ROUTING_INTERFACE = "Lna1/b;"
 private const val CHAT_REFERRER = "Lna1/q;"
 private const val CHAT_REFERRER_VALUE = "Lna1/q\$a;"
-private const val CHAT_REFERRER_FALLBACK = "Lna1/q\$b;"
 private const val NORMALIZED_LINK = "Lna1/o;"
 private const val EXTERNAL_BROWSER_HOOK =
     "Ldev/utaa/linimal/extension/features/browser/ExternalBrowserHooks;" +
@@ -487,12 +484,3 @@ private fun hasTextLinkViewClickShape(match: Match?): Boolean {
         invoke.opcode == Opcode.INVOKE_VIRTUAL &&
         invoke.registerCount == 2
 }
-
-/** 一意 target の失敗経路でも status count 契約を維持するための helper。 */
-internal fun externalBrowserUnappliedRecord(matchCount: Int, reason: String): PatchStatusRecord = PatchStatusRecord(
-    patchId = PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK,
-    status = if (matchCount > 1) PatchStatus.ERROR else PatchStatus.TARGET_NOT_FOUND,
-    expectedTargetCount = 1,
-    actualTargetCount = matchCount,
-    reason = reason,
-)

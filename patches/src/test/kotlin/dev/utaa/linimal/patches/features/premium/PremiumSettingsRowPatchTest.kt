@@ -12,6 +12,7 @@ import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodRefere
 import dev.utaa.linimal.patches.status.FeatureId
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
+import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -109,7 +110,7 @@ class PremiumSettingsRowPatchTest {
         parameterTypes: List<String> = listOf("Ljava/lang/Object;"),
         registerCount: Int = 2,
         hasTryBlocks: Boolean = false,
-    ) = premiumSettingsVisibilityGateShape(instructions, parameterTypes, registerCount, hasTryBlocks)
+    ) = boxedBooleanReturnGateShape(instructions, parameterTypes, registerCount, hasTryBlocks)
 
     /** Original predicate branches converge at Boolean boxing before its single object return. */
     private fun predicateInstructions(gotoOffset: Int = 2): List<Instruction> = listOf(
