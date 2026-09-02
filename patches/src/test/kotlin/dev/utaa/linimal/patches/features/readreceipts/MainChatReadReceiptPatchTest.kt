@@ -11,7 +11,10 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableExceptionHandler
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableTryBlock
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction10t
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction10x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11n
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21s
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction23x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21t
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c
@@ -32,6 +35,41 @@ import kotlin.test.assertTrue
  * 注入するとその経路だけが注入コードを飛び越します。
  */
 class MainChatReadReceiptPatchTest {
+    // --- supplier worker (Lq33/c;->run()V) ---
+
+    @Test
+    fun `a wide destination also occupies the following register`() {
+        // const-wide/16 v3 は v3 と v4 の pair へ書きます。smali 上に v4 は現れません。
+        val constWide = ImmutableInstruction21s(Opcode.CONST_WIDE_16, 3, 0)
+
+        assertTrue(instructionWritesRegister(constWide, 3))
+        assertTrue(instructionWritesRegister(constWide, 4))
+        assertFalse(instructionWritesRegister(constWide, 5))
+    }
+
+    @Test
+    fun `an invoke writes no register`() {
+        // invoke の結果は move-result が受け取ります。invoke 自体は register を潰しません。
+        assertFalse(instructionWritesRegister(supplierWorkerInstructions()[2], 4))
+    }
+
+    @Test
+    fun `the scratch register does not survive across the read point comparison`() {
+        // 旧実装は命令 0 で v4 へ this を退避し、命令 9 の直前で読み出していました。間の
+        // const-wide/16 v3 が v4 を潰すため、この前提は成り立ちません（実機で VerifyError）。
+        val instructions = supplierWorkerInstructions()
+
+        assertFalse(registerSurvivesBetween(instructions, 4, 0, 9))
+    }
+
+    @Test
+    fun `the scratch register survives when its use is adjacent to its definition`() {
+        // 現行実装は v4 へ chatId を読み、次の命令で prepareSupplier へ渡すだけです。
+        val instructions = supplierWorkerInstructions()
+
+        assertTrue(registerSurvivesBetween(instructions, 4, 0, 1))
+    }
+
     // --- outbound gate (Lq33/e;->d(JLjava/lang/String;Z)V) ---
 
     @Test
@@ -258,6 +296,42 @@ class MainChatReadReceiptPatchTest {
         )
         return ImmutableMethodImplementation(7, manualCallerInstructions(), tryBlocks, emptyList())
     }
+
+    /**
+     * `Lq33/c;->run()V`（registers 6 / ins 1）の命令列。v5 が p0、命令 1 で chatId に潰されます。
+     * v3 と v4 は命令 4 の const-wide/16 が pair として使います。
+     */
+    private fun supplierWorkerInstructions(): List<Instruction> = listOf(
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 0, 5, field("Lq33/c;", "a", "Lq33/e;")),
+        ImmutableInstruction22c(Opcode.IGET_OBJECT, 5, 5, field("Lq33/c;", "b", "Ljava/lang/String;")),
+        ImmutableInstruction35c(
+            Opcode.INVOKE_VIRTUAL,
+            2,
+            0,
+            5,
+            0,
+            0,
+            0,
+            ImmutableMethodReference("Lq33/e;", "a", listOf("Ljava/lang/String;"), "J"),
+        ),
+        ImmutableInstruction11x(Opcode.MOVE_RESULT_WIDE, 1),
+        ImmutableInstruction21s(Opcode.CONST_WIDE_16, 3, 0),
+        ImmutableInstruction23x(Opcode.CMP_LONG, 3, 1, 3),
+        ImmutableInstruction21t(Opcode.IF_NEZ, 3, 6),
+        ImmutableInstruction10x(Opcode.RETURN_VOID),
+        ImmutableInstruction11n(Opcode.CONST_4, 3, 1),
+        ImmutableInstruction35c(
+            Opcode.INVOKE_VIRTUAL,
+            5,
+            0,
+            1,
+            2,
+            5,
+            3,
+            ImmutableMethodReference("Lq33/e;", "d", listOf("J", "Ljava/lang/String;", "Z"), "V"),
+        ),
+        ImmutableInstruction10x(Opcode.RETURN_VOID),
+    )
 
     private fun field(definingClass: String, name: String, type: String) =
         ImmutableFieldReference(definingClass, name, type)

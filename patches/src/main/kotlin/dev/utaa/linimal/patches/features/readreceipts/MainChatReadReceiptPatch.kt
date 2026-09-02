@@ -22,6 +22,9 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatch
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
@@ -453,7 +456,8 @@ val readReceiptSupplierPreparationPatch = bytecodePatch {
             return@execute
         }
 
-        if (!supplierWorkerShape(workerMatches.single(), factories.single())) {
+        val workerShape = supplierWorkerShape(workerMatches.single(), factories.single())
+        if (workerShape == null) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.READ_RECEIPTS_MAIN_CHAT_SUPPLIER_PREPARATION),
                 expectedTargetCount = 1,
@@ -463,7 +467,7 @@ val readReceiptSupplierPreparationPatch = bytecodePatch {
             return@execute
         }
 
-        injectSupplierPreparation(workerMatches.single().method)
+        injectSupplierPreparation(workerMatches.single().method, workerShape)
         recordFeatureStatus(
             listOf(PatchId.READ_RECEIPTS_MAIN_CHAT_SUPPLIER_PREPARATION),
             expectedTargetCount = 1,
@@ -830,6 +834,14 @@ private fun supplierFactoryShape(
     )
 }
 
+/** supplier worker（`run()V`、registers 6 / ins 1）における `this` の register。 */
+private const val THIS_REGISTER = 5
+
+/** prefix 内でだけ使う一時 register。元の命令 4 の `const-wide/16 v3` が pair の上位半分として潰します。 */
+private const val SCRATCH_REGISTER = 4
+
+internal data class SupplierWorkerShape(val chatIdField: FieldReference)
+
 private fun supplierWorkerFingerprint(supplierType: String) = Fingerprint(
     definingClass = supplierType,
     name = "run",
@@ -842,9 +854,9 @@ private fun supplierWorkerFingerprint(supplierType: String) = Fingerprint(
     custom = { _, classDef -> classDef.interfaces.contains(RX_SINGLE_ON_SUBSCRIBE) },
 )
 
-private fun supplierWorkerShape(match: Match, factory: Match): Boolean {
+private fun supplierWorkerShape(match: Match, factory: Match): SupplierWorkerShape? {
     val method = match.method
-    val implementation = method.implementation ?: return false
+    val implementation = method.implementation ?: return null
     val instructions = implementation.instructions
     val readPointCallIndex = instructions.indexOfFirst { instruction ->
         methodReference(instruction)?.let { it.definingClass == factory.originalClassDef.type && it.parameterTypes == listOf(STRING) && it.returnType == LONG } == true
@@ -855,6 +867,8 @@ private fun supplierWorkerShape(match: Match, factory: Match): Boolean {
                 it.parameterTypes == listOf(LONG, STRING, BOOLEAN) && it.returnType == VOID
         } == true
     }
+    val parameterStart = implementation.registerCount - 1 // this のみ（run()V は引数なし）
+    val chatIdField = fieldReference(instructions.elementAtOrNull(1))
     if (
         implementation.registerCount != 6 ||
         implementation.tryBlocks.isNotEmpty() ||
@@ -869,22 +883,55 @@ private fun supplierWorkerShape(match: Match, factory: Match): Boolean {
         !isOneRegister(instructions[8], Opcode.CONST_4, 3) ||
         !isInvokeRegisters(instructions[9], listOf(0, 1, 2, 5, 3)) ||
         instructions[10].opcode != Opcode.RETURN_VOID ||
-        instructions.any { instructionUsesRegister(it, 4) }
+        // 命令 0 の時点で値を持つのは parameter register だけです。scratch はその手前から選びます。
+        SCRATCH_REGISTER >= parameterStart ||
+        chatIdField == null ||
+        chatIdField.definingClass != method.definingClass ||
+        chatIdField.type != STRING ||
+        // prefix は v4 へ書いた直後に読み出します。間に wide 命令が挟まると pair の上位半分として
+        // 潰されるため、定義と使用が隣接していることを実際の並びで確認します。
+        !registerSurvivesBetween(prefixInstructions(chatIdField), SCRATCH_REGISTER, 0, 1)
     ) {
-        return false
+        return null
     }
-    return true
+    return SupplierWorkerShape(chatIdField)
 }
 
-private fun injectSupplierPreparation(method: MutableMethod) {
-    // v4 is proven unused. Preserve p0 before the original method repurposes v5 for chatId.
-    method.addInstructions(0, "move-object v4, p0")
+/**
+ * 注入する prefix 2 命令の並び。`iget-object v4, v5, <chatId>` で chatId を読み、直後に
+ * `prepareSupplier(this, chatId)` へ渡します。v5 は命令 1（元の index 1）で chatId に潰されるため、
+ * prepare はそれより前でなければ `this` を渡せません。
+ */
+private fun prefixInstructions(chatIdField: FieldReference): List<Instruction> = listOf(
+    ImmutableInstruction22c(Opcode.IGET_OBJECT, SCRATCH_REGISTER, THIS_REGISTER, chatIdField),
+    ImmutableInstruction35c(
+        Opcode.INVOKE_STATIC,
+        2,
+        THIS_REGISTER,
+        SCRATCH_REGISTER,
+        0,
+        0,
+        0,
+        ImmutableMethodReference(READ_RECEIPT_HOOKS, "prepareSupplier", listOf(OBJECT, STRING), VOID),
+    ),
+)
 
-    // Original index 7 is the readPoint == 0 exit after the one-instruction prefix was inserted.
-    method.addInstructions(8, "invoke-static { }, $CLEAR_PREPARED")
-    // Original d() invocation is now index 11. prepare must be immediately before it.
-    method.addInstructions(11, "invoke-static { v4, v5 }, $PREPARE_SUPPLIER")
-    // The d() normal completion falls through its original return; clear before that return.
+private fun injectSupplierPreparation(method: MutableMethod, shape: SupplierWorkerShape) {
+    val chatIdField = with(shape.chatIdField) { "$definingClass->$name:$type" }
+
+    // v5(p0) は元の命令 1 で chatId に潰されるため、prepare はその手前で呼びます。v4 は元の命令 4 の
+    // const-wide/16 v3 が pair の上位半分として潰すので、直後の 1 命令でしか使いません。
+    method.addInstructions(
+        0,
+        """
+            iget-object v$SCRATCH_REGISTER, v$THIS_REGISTER, $chatIdField
+            invoke-static { v$THIS_REGISTER, v$SCRATCH_REGISTER }, $PREPARE_SUPPLIER
+        """.trimIndent(),
+    )
+
+    // 元の index 7（read point == 0 の return）は prefix 2 命令ぶん後ろの index 9 です。
+    method.addInstructions(9, "invoke-static { }, $CLEAR_PREPARED")
+    // d() 正常終了後の return は、その cleanup 1 命令ぶんさらに後ろの index 13 です。
     method.addInstructions(13, "invoke-static { }, $CLEAR_PREPARED")
 
     val implementation = checkNotNull(method.implementation)
@@ -897,9 +944,9 @@ private fun injectSupplierPreparation(method: MutableMethod) {
             throw v0
         """.trimIndent(),
     )
-    // The original supplier has no handlers. Cover point calculation, zero exit, prepare, d(), and normal cleanup.
+    // 元の supplier に handler はありません。prefix の直後から末尾までを覆い、どの経路でも one-shot を残しません。
     implementation.addCatch(
-        implementation.newLabelForIndex(1),
+        implementation.newLabelForIndex(2),
         implementation.newLabelForIndex(handlerIndex),
         implementation.newLabelForIndex(handlerIndex),
     )
@@ -979,17 +1026,31 @@ private fun instructionCodeAddresses(instructions: List<Instruction>): List<Int>
     }
 }
 
-private fun instructionUsesRegister(instruction: Instruction, register: Int): Boolean = when (instruction) {
-    is FiveRegisterInstruction -> listOf(
-        instruction.registerC,
-        instruction.registerD,
-        instruction.registerE,
-        instruction.registerF,
-        instruction.registerG,
-    ).take(instruction.registerCount).contains(register)
-    is TwoRegisterInstruction -> instruction.registerA == register || instruction.registerB == register
-    is OneRegisterInstruction -> instruction.registerA == register
-    else -> false
+/**
+ * この命令が [register] へ書き込むかどうか。wide 命令は宛先 register と その次の register の
+ * pair へ書き込むため、smali 上に現れない上位半分も書き込み先として数えます。`const-wide/16 v3` が
+ * v4 を潰す、という暗黙の破壊を見落とさないための判定です。
+ */
+internal fun instructionWritesRegister(instruction: Instruction, register: Int): Boolean {
+    if (!instruction.opcode.setsRegister() && !instruction.opcode.setsWideRegister()) {
+        return false
+    }
+    val destination = (instruction as? OneRegisterInstruction)?.registerA ?: return false
+    return destination == register ||
+        (instruction.opcode.setsWideRegister() && destination + 1 == register)
+}
+
+/**
+ * [definitionIndex] で [register] に書いた値が [useIndex] まで生き残るかどうか。間の命令が
+ * 上位半分としてであれ同じ register へ書けば、値は失われます。
+ */
+internal fun registerSurvivesBetween(
+    instructions: List<Instruction>,
+    register: Int,
+    definitionIndex: Int,
+    useIndex: Int,
+): Boolean = (definitionIndex + 1 until useIndex).none { index ->
+    instructionWritesRegister(instructions[index], register)
 }
 
 private fun exceptionHandlerAddresses(implementation: MethodImplementation): Set<Int> =
