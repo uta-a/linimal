@@ -393,4 +393,47 @@ class MainChatReadReceiptPatchTest {
         const val CANCELLATION_HANDLER_INDEX = 8
         val MANUAL_CALLER_HANDLER_ADDRESSES = setOf(0x07, 0x0d)
     }
+
+    /**
+     * prefix の書き込みと読み出しの間に wide 命令が挟まると、scratch が pair の上位半分として
+     * 潰されます。区間を固定値で書いていたころ、この検証は恒真で何も守っていませんでした。
+     */
+    @Test
+    fun `a prefix that lets a wide instruction clobber the scratch register is rejected`() {
+        val prefix = prefixInstructionsForTest()
+
+        assertTrue(prefixKeepsScratchRegister(prefix))
+
+        val clobbered = listOf(prefix[0], ImmutableInstruction21s(Opcode.CONST_WIDE_16, 3, 0), prefix[1])
+        assertFalse(prefixKeepsScratchRegister(clobbered))
+    }
+
+    @Test
+    fun `a prefix that never reads the scratch register is rejected`() {
+        val prefix = prefixInstructionsForTest()
+
+        assertFalse(prefixKeepsScratchRegister(listOf(prefix[0])))
+        assertFalse(prefixKeepsScratchRegister(listOf(prefix[1])))
+    }
+
+    /** 実装が組み立てるのと同じ並び。scratch へ chatId を読み、直後に prepare へ渡します。 */
+    private fun prefixInstructionsForTest(): List<Instruction> = listOf(
+        ImmutableInstruction22c(
+            Opcode.IGET_OBJECT,
+            4,
+            5,
+            field("Lq33/c;", "b", "Ljava/lang/String;"),
+        ),
+        ImmutableInstruction35c(
+            Opcode.INVOKE_STATIC,
+            2,
+            5, 4, 0, 0, 0,
+            ImmutableMethodReference(
+                "Ldev/utaa/linimal/extension/features/readreceipts/ReadReceiptHooks;",
+                "prepareSupplier",
+                listOf("Ljava/lang/Object;", "Ljava/lang/String;"),
+                "V",
+            ),
+        ),
+    )
 }

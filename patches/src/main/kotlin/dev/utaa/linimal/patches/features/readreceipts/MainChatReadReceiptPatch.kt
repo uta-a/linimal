@@ -907,9 +907,8 @@ private fun supplierWorkerShape(match: Match, factory: Match): SupplierWorkerSha
         chatIdField == null ||
         chatIdField.definingClass != method.definingClass ||
         chatIdField.type != STRING ||
-        // prefix は v4 へ書いた直後に読み出します。間に wide 命令が挟まると pair の上位半分として
-        // 潰されるため、定義と使用が隣接していることを実際の並びで確認します。
-        !registerSurvivesBetween(prefixInstructions(chatIdField), SCRATCH_REGISTER, 0, 1)
+        // prefix が scratch へ書いてから読み出すまでに、その値が生き残ることを実際の並びで確認します。
+        !prefixKeepsScratchRegister(prefixInstructions(chatIdField))
     ) {
         return null
     }
@@ -958,6 +957,39 @@ private fun prefixInstructions(chatIdField: FieldReference): List<Instruction> =
         ImmutableMethodReference(READ_RECEIPT_HOOKS, "prepareSupplier", listOf(OBJECT, STRING), VOID),
     ),
 )
+
+/**
+ * prefix が scratch register へ書いた値を、読み出すまで保持しているかどうか。
+ *
+ * <p>書き込みと読み出しの index を並びから求め、その区間で値が潰されないことを確認します。
+ * 区間を固定値で書くと、prefix に命令を足したときに検証が素通りします。実際に
+ * `registerSurvivesBetween(prefix, SCRATCH_REGISTER, 0, 1)` は区間が空で恒真になっており、
+ * wide 命令による破壊を防ぐという意図をまったく果たしていませんでした。</p>
+ */
+internal fun prefixKeepsScratchRegister(prefix: List<Instruction>): Boolean {
+    val writeIndex = prefix.indexOfFirst { instructionWritesRegister(it, SCRATCH_REGISTER) }
+    if (writeIndex < 0) {
+        return false
+    }
+    val useIndex = prefix.indexOfFirst { index ->
+        invokeReadsRegister(index, SCRATCH_REGISTER)
+    }
+    if (useIndex <= writeIndex) {
+        return false
+    }
+    return registerSurvivesBetween(prefix, SCRATCH_REGISTER, writeIndex, useIndex)
+}
+
+/**
+ * invoke が [register] を引数として読むかどうか。35c 形式は使わない slot が 0 を返すため、
+ * `registerCount` を超えて読むと register 0 を誤検出します。
+ */
+private fun invokeReadsRegister(instruction: Instruction, register: Int): Boolean {
+    val invoke = instruction as? FiveRegisterInstruction ?: return false
+    return listOf(invoke.registerC, invoke.registerD, invoke.registerE, invoke.registerF, invoke.registerG)
+        .take(invoke.registerCount)
+        .contains(register)
+}
 
 private fun injectSupplierPreparation(method: MutableMethod, shape: SupplierWorkerShape) {
     val chatIdField = with(shape.chatIdField) { "$definingClass->$name:$type" }
