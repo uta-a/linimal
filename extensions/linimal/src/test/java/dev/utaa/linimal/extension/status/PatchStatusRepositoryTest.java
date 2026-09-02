@@ -151,6 +151,39 @@ public final class PatchStatusRepositoryTest {
                 "linimal.read-receipts-main-chat"));
     }
 
+    /**
+     * requirements に未登録の feature は、記録された patch がすべて OK でも利用可能にしません。
+     * ここが OK に倒れると、requirements への追加漏れがそのまま機能の誤有効化になります。
+     */
+    @Test
+    public void featureWithoutRegisteredRequirementIsNotAvailable() {
+        String unregistered = patchJson(
+                "linimal.patch.no-op-probe", "linimal.probe", "OK", 1, 1);
+
+        PatchStatusReport report = parser.parse(
+                "{\"schemaVersion\":1,\"patches\":[" + unregistered + "]}");
+
+        assertNull(PatchStatusRequirements.requiredPatchIds("linimal.probe"));
+        assertNotEquals(PatchStatus.OK, report.getFeatureStatus("linimal.probe"));
+        // 設定画面が「パッチが完全に適用されていない」と説明できるよう、null ではなく ERROR にします。
+        assertEquals(PatchStatus.ERROR, report.getFeatureStatus("linimal.probe"));
+    }
+
+    /** 「記録がない feature」は「必要 patch が未登録の feature」と区別し、これまでどおり null のままにします。 */
+    @Test
+    public void featureWithoutAnyRecordStaysUnknown() {
+        String premium = patchJson(
+                "linimal.patch.premium-unsend", "linimal.premium", "OK", 1, 1);
+
+        PatchStatusReport report = parser.parse(
+                "{\"schemaVersion\":1,\"patches\":[" + premium + "]}");
+
+        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.premium"));
+        assertNull(report.getFeatureStatus("linimal.probe"));
+        assertNull(report.getFeatureStatus("linimal.missing"));
+        assertNull(report.getFeatureStatus(null));
+    }
+
     @Test
     public void homeFeedPostCardsAndPremiumSettingsRowResolveFromTheirOwnRequiredPatch() {
         String postCards = patchJson(

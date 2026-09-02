@@ -12,23 +12,25 @@ import dev.utaa.linimal.extension.status.PatchStatusReadResult;
 import dev.utaa.linimal.extension.status.PatchStatusRepository;
 
 public final class PatchStatusAvailabilityTest {
+    /** 必須 patch が登録済みの feature でないと利用可能にならないため、実在の ID を使います。 */
     @Test
     public void onlyFullyAppliedFeaturesAreAvailable() {
         FeatureAvailability availability = PatchStatusAvailability.of(read(
                 "{\"schemaVersion\":1,\"patches\":["
-                        + patch("linimal.patch.applied", "linimal.applied", "OK", 1, 1) + ","
-                        + patch("linimal.patch.partial", "linimal.partial", "PARTIAL", 2, 1)
+                        + patch("linimal.patch.premium-unsend", "linimal.premium", "OK", 1, 1) + ","
+                        + patch("linimal.patch.premium-settings-row", "linimal.premium-settings-row",
+                                "PARTIAL", 2, 1)
                         + "]}"));
 
-        assertTrue(availability.isAvailable("linimal.applied"));
-        assertFalse(availability.isAvailable("linimal.partial"));
+        assertTrue(availability.isAvailable("linimal.premium"));
+        assertFalse(availability.isAvailable("linimal.premium-settings-row"));
     }
 
     @Test
     public void featuresMissingFromTheReportAreUnavailable() {
         FeatureAvailability availability = PatchStatusAvailability.of(read(
                 "{\"schemaVersion\":1,\"patches\":["
-                        + patch("linimal.patch.applied", "linimal.applied", "OK", 1, 1)
+                        + patch("linimal.patch.premium-unsend", "linimal.premium", "OK", 1, 1)
                         + "]}"));
 
         assertFalse(availability.isAvailable("linimal.unrecorded"));
