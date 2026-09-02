@@ -5,6 +5,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.Annotation
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OffsetInstruction
@@ -29,79 +30,157 @@ private const val HOME_FEED_LOADING_INDICATOR_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeFeedLoadingIndicatorHooks;->shouldSuppress()Z"
 
 /**
- * ホームフィードの既定ページのモジュール群を表す coroutine continuation を、DebugMetadata の
- * 元 class 名から特定するための anchor です。R8 後もこの文字列は残るため、難読化された
- * `Lve2/...` パッケージ名を anchor にせずに済みます。
+ * ホームのフィードを描く GCS ページの UI を表す coroutine の DebugMetadata。R8 後もこの class 名は
+ * 平文で残るため、難読化された package 名を patch へ書き込まずに済みます。
  */
+private const val GCS_PAGE_UI_CLASS_PREFIX = "com.linecorp.line.gcs.page.ui."
+
 /**
- * Material3 の CircularProgressIndicator の引数の並び。難読化名を書かずに関数を特定できます。
- * 実 APK ではこの並びを持つ `V` 戻り値のメソッドは1件だけです。
+ * LINE Design System の spinner が持つ角度の data class。`toString()` に残るこの marker から
+ * spinner の package を導きます。読み込み表示は Material3 の CircularProgressIndicator ではなく
+ * こちらで描かれています。
  */
-private val PROGRESS_INDICATOR_PARAMETERS = listOf(
-    "Lvb8/a;", "Ly3/j;", "J", "J", INT, "F", "Lvb8/l;", COMPOSER, INT,
-)
+private const val LDS_SPINNER_ANGLES_MARKER = "LdsSpinnerAngles(arcStartAngleDegrees="
 
 private const val MODIFIER = "Ly3/j;"
-private const val LOADING_HOST_PARAMETER_COUNT = 8
+
+/** spinner composable の引数の数。`(size, Modifier, Boolean, Composer, $$changed, $$default)`。 */
+private const val LDS_SPINNER_PARAMETER_COUNT = 6
 
 /** 読み込み表示の renderer は 1 件だけです。解決できなければ一切注入しません。 */
 internal const val HOME_FEED_LOADING_INDICATOR_TARGET_COUNT = 1
 
-/**
- * ホームフィードの既定ページのモジュール群を持つ package を、coroutine の DebugMetadata から
- * 導きます。source metadata は R8 後も残るため、難読化された class 名を anchor にせずに済みます。
- */
-/** CircularProgressIndicator 本体。引数の並びだけで一意に決まります。 */
-private val progressIndicatorFingerprint = Fingerprint(
-    returnType = VOID,
-    parameters = PROGRESS_INDICATOR_PARAMETERS,
+private val gcsPageUiMetadataFingerprint = Fingerprint(
+    custom = { _, classDef -> classDef.annotations.any(::isGcsPageUiMetadata) },
 )
 
-/**
- * フィードが空のときに読み込み表示を描く composable。CircularProgressIndicator を呼ぶメソッドのうち、
- * 引数の並びが `(Z, Z, ..., Modifier, Composer, I)` のものは実 APK で1件だけです。
- */
-internal fun isLoadingHostSignature(method: Method): Boolean {
-    val parameters = method.parameterTypes.map { it.toString() }
-    return parameters.size == LOADING_HOST_PARAMETER_COUNT &&
-        parameters[0] == BOOLEAN &&
-        parameters[1] == BOOLEAN &&
-        parameters[5] == MODIFIER &&
-        parameters[6] == COMPOSER &&
-        parameters[7] == INT
+private val ldsSpinnerAnglesFingerprint = Fingerprint(strings = listOf(LDS_SPINNER_ANGLES_MARKER))
+
+/** DebugMetadata の元 class 名が、GCS ページの UI のものかどうか。 */
+private fun isGcsPageUiMetadata(annotation: Annotation): Boolean {
+    if (annotation.type != DEBUG_METADATA) {
+        return false
+    }
+    val className = annotation.elements
+        .firstOrNull { it.name == "c" }
+        ?.let { (it.value as? StringEncodedValue)?.value }
+    return className?.startsWith(GCS_PAGE_UI_CLASS_PREFIX) == true
 }
 
+/**
+ * LDS spinner 本体かどうか。`(size, Modifier, Boolean, Composer, int, int)` を返り値 void で取ります。
+ * size の型は難読化されるため、位置と他の引数の型だけで判定します。
+ */
+internal fun isLdsSpinnerSignature(method: Method): Boolean {
+    val parameters = method.parameterTypes.map { it.toString() }
+    return method.returnType == VOID &&
+        parameters.size == LDS_SPINNER_PARAMETER_COUNT &&
+        parameters[1] == MODIFIER &&
+        parameters[2] == BOOLEAN &&
+        parameters[3] == COMPOSER &&
+        parameters[4] == INT &&
+        parameters[5] == INT
+}
+
+/**
+ * ホームのフィードが読み込み中のときに出る円形の読み込み表示を抑制します。
+ *
+ * <h2>対象の特定</h2>
+ * <p>実機で出ている読み込み表示は Material3 の CircularProgressIndicator ではなく、LINE 独自の
+ * design system の spinner です。まず `LdsSpinnerAngles(arcStartAngleDegrees=` という
+ * 非難読化の `toString()` marker から spinner の package を求め、その中から
+ * `(size, Modifier, Boolean, Composer, int, int)` を取る composable を 1 件だけ選びます。</p>
+ *
+ * <p>次に、ホームのフィードを描く GCS ページの UI package を DebugMetadata の元 class 名
+ * （`com.linecorp.line.gcs.page.ui.`）から求め、**その package から呼ばれていて**、かつ
+ * `(Modifier, Composer, int)` を取り spinner を呼ぶ composable を 1 件だけ選びます。
+ * spinner を呼ぶ同じ形の composable は APK 全体に 9 件ありますが、GCS ページから呼ばれるのは
+ * この 1 件だけです。</p>
+ *
+ * <h2>抑制の方法</h2>
+ * <p>LINE 自身の skip 経路（`shouldExecute` が false のときに通る `l()` + `Y()`）へ合流させる
+ * だけで、新しい制御フローを作りません。設定が OFF のときは元の値へ戻します。</p>
+ */
 val homeFeedLoadingIndicatorPatch = bytecodePatch {
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
     dependsOn(homeFeaturedCollectionsPatch)
 
     execute {
-        val indicators = progressIndicatorFingerprint.matchAllOrNull().orEmpty()
-        if (indicators.size != 1) {
+        val spinnerPackages = homeFeedLoadingIndicatorPackagePrefixes(
+            ldsSpinnerAnglesFingerprint.matchAllOrNull().orEmpty().map { it.originalClassDef.type }.toSet(),
+        )
+        if (spinnerPackages.size != 1) {
             patchStatusCollector.record(
                 homeFeedLoadingIndicatorUnappliedRecord(
-                    indicators.size,
-                    "HomeFeedLoadingIndicatorProgressIndicatorNotUnique",
+                    spinnerPackages.size,
+                    "HomeFeedLoadingIndicatorSpinnerPackageNotUnique",
                 ),
             )
             return@execute
         }
-        val indicator = indicators.single().originalMethod
+        val spinnerPackage = spinnerPackages.single()
 
-        // 読み込み表示を描く composable を、CircularProgressIndicator の呼出しと引数の並びで絞り込みます。
-        val rendererFingerprint = Fingerprint(
+        val spinnerFingerprint = Fingerprint(
             returnType = VOID,
-            custom = { method, _ -> isLoadingHostSignature(method) },
+            custom = { method, classDef ->
+                classDef.type.startsWith(spinnerPackage) && isLdsSpinnerSignature(method)
+            },
+        )
+        val spinners = spinnerFingerprint.matchAllOrNull().orEmpty()
+        if (spinners.size != 1) {
+            patchStatusCollector.record(
+                homeFeedLoadingIndicatorUnappliedRecord(
+                    spinners.size,
+                    "HomeFeedLoadingIndicatorSpinnerNotUnique",
+                ),
+            )
+            return@execute
+        }
+        val spinner = spinners.single().originalMethod
+
+        val gcsPagePackages = homeFeedLoadingIndicatorPackagePrefixes(
+            gcsPageUiMetadataFingerprint.matchAllOrNull().orEmpty()
+                .map { it.originalClassDef.type }
+                .toSet(),
+        )
+        // GCS ページの UI は subpackage へ分かれるため、1 つに絞らず全体を対象にします。
+        if (gcsPagePackages.isEmpty()) {
+            patchStatusCollector.record(
+                homeFeedLoadingIndicatorUnappliedRecord(0, "HomeFeedLoadingIndicatorGcsPagePackageNotFound"),
+            )
+            return@execute
+        }
+
+        val candidateFingerprint = Fingerprint(
+            returnType = VOID,
+            custom = { method, _ -> isLoadingIndicatorRendererSignature(method) },
             filters = listOf(
                 methodCall(
-                    definingClass = indicator.definingClass,
-                    name = indicator.name,
-                    parameters = PROGRESS_INDICATOR_PARAMETERS,
+                    definingClass = spinner.definingClass,
+                    name = spinner.name,
+                    parameters = spinner.parameterTypes.map { it.toString() },
                     returnType = VOID,
                 ),
             ),
         )
-        val renderers = rendererFingerprint.matchAllOrNull().orEmpty()
+        val candidates = candidateFingerprint.matchAllOrNull().orEmpty()
+            .associateBy { match -> match.originalMethod.let { "${it.definingClass}->${it.name}" } }
+        if (candidates.isEmpty()) {
+            patchStatusCollector.record(
+                homeFeedLoadingIndicatorUnappliedRecord(0, "HomeFeedLoadingIndicatorRendererNotFound"),
+            )
+            return@execute
+        }
+
+        // GCS ページの UI から呼ばれているものだけを残します。同じ形の composable は他画面にも
+        // ありますが、ホームのフィードから到達するのはこの 1 件だけです。
+        val gcsPageMethods = Fingerprint(
+            custom = { _, classDef -> gcsPagePackages.any { classDef.type.startsWith(it) } },
+        ).matchAllOrNull().orEmpty()
+        val calledFromGcsPage = gcsPageMethods
+            .flatMap { match -> calledMethodKeys(match.originalMethod) }
+            .toSet()
+        val renderers = candidates.filterKeys { it in calledFromGcsPage }.values.toList()
         if (renderers.size != HOME_FEED_LOADING_INDICATOR_TARGET_COUNT) {
             patchStatusCollector.record(
                 homeFeedLoadingIndicatorUnappliedRecord(
@@ -176,13 +255,20 @@ internal fun homeFeedLoadingIndicatorPackagePrefixes(sourceTypes: Set<String>): 
     .toSet()
 
 /**
- * renderer の引数の並び。読み込み表示の composable は view data を持たず、sync key の `I` と
- * `Composer` だけを取ります。
+ * renderer の引数の並び。読み込み表示の composable は view data を持たず、Modifier と Composer と
+ * `$$changed` だけを取ります。
  */
 internal fun isLoadingIndicatorRendererSignature(method: Method): Boolean {
     val parameters = method.parameterTypes.map { it.toString() }
-    return parameters == listOf(INT, COMPOSER)
+    return parameters == listOf(MODIFIER, COMPOSER, INT)
 }
+
+/** メソッドが呼び出している method reference の一覧。`定義クラス->名前` の形で返します。 */
+private fun calledMethodKeys(method: Method): List<String> =
+    method.implementation?.instructions?.toList().orEmpty().mapNotNull { instruction ->
+        val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+        reference?.let { "${it.definingClass}->${it.name}" }
+    }
 
 internal data class HomeFeedLoadingIndicatorGate(
     val branchIndex: Int,

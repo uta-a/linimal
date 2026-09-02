@@ -110,7 +110,7 @@ Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE �
 | Home | おすすめ | ON | Home のおすすめ枠を表示しません。 |
 | Home | 話題 | ON | Home の話題とトレンド枠を表示しません。 |
 | Home | 投稿カード | ON | Home 下部の VOOM 投稿カードを表示しません。アカウント名や友だち追加の見出し行を含めてカードごと消します。おすすめと話題とは別枠で、投稿カードを描く3種類の module をまとめて対象にします。 |
-| Home | 特集枠 | ON | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。 |
+| Home | 特集枠 | ON | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。Home の抑制設定がすべて ON のときは、フィード既定ページの読み込み表示も併せて消します。 |
 | Chat | Smart Channel | ON | Chat tab上部のSmart Channelを表示しません。 |
 | Chat | Calendar | ON | Chat の追加menuからCalendarを取り除きます。 |
 | Chat | LINE GIFT | ON | Chat の追加menuからLINE GIFTを取り除きます。 |

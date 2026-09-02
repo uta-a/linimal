@@ -18,33 +18,44 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 以前の実装は難読化された class 名（`Lve2/l;`）を fingerprint の主要条件にしていたため、
- * 別 package の全画面動画プレイヤーを誤って対象にしていました。この patch は
- * `GcsHomeFeedDefaultPageErrorModuleController` を指す DebugMetadata から package を裏取りして
- * から candidate を絞り込むため、これらのテストは package 導出と shape 判定の両方を検証します。
+ * 対象の取り違えを 2 度繰り返した箇所です。1 度目は難読化された class 名を主要条件にして
+ * 別 package の全画面動画プレイヤーを掴み、2 度目は Material3 の CircularProgressIndicator の
+ * うち**確定進捗版**の引数の並びを条件にしてしまい、実機のスピナー（LINE Design System の
+ * spinner）に一致しませんでした。ここでは spinner と renderer の shape 判定を固定します。
  */
 class HomeFeedLoadingIndicatorPatchTest {
 
     @Test
-    fun `only the loading host signature is accepted`() {
+    fun `only the LDS spinner signature is accepted`() {
+        // (size, Modifier, Boolean, Composer, $$changed, $$default)
         assertTrue(
-            isLoadingHostSignature(
-                renderer(listOf("Z", "Z", "Lexample/State;", "Lexample/A;", "Lexample/B;", "Ly3/j;", "Lh3/t;", "I")),
+            isLdsSpinnerSignature(
+                renderer(listOf("Lexample/Size;", "Ly3/j;", "Z", "Lh3/t;", "I", "I")),
             ),
         )
-        // Modifier / Composer / I の並びが違えば対象外です。
+        // Material3 の確定進捗版はこの並びではありません。取り違えると実機で何も起きません。
         assertFalse(
-            isLoadingHostSignature(
-                renderer(listOf("Z", "Z", "Lexample/State;", "Lexample/A;", "Lexample/B;", "Lh3/t;", "I")),
+            isLdsSpinnerSignature(
+                renderer(listOf("Lvb8/a;", "Ly3/j;", "J", "J", "I", "F", "Lvb8/l;", "Lh3/t;", "I")),
             ),
         )
-        // 先頭2つが boolean でなければ対象外です。
+        // Modifier / Boolean / Composer の位置が違えば対象外です。
         assertFalse(
-            isLoadingHostSignature(
-                renderer(listOf("Lexample/State;", "Z", "Lexample/A;", "Lexample/B;", "Lexample/C;", "Ly3/j;", "Lh3/t;", "I")),
+            isLdsSpinnerSignature(
+                renderer(listOf("Lexample/Size;", "Z", "Ly3/j;", "Lh3/t;", "I", "I")),
             ),
         )
     }
+
+    @Test
+    fun `only the loading renderer signature is accepted`() {
+        // 読み込み表示の renderer は view data を持たず、Modifier と Composer と $$changed だけを取ります。
+        assertTrue(isLoadingIndicatorRendererSignature(renderer(listOf("Ly3/j;", "Lh3/t;", "I"))))
+        assertFalse(isLoadingIndicatorRendererSignature(renderer(listOf("I", "Lh3/t;"))))
+        assertFalse(isLoadingIndicatorRendererSignature(renderer(listOf("Ly3/j;", "Lh3/t;"))))
+        assertFalse(isLoadingIndicatorRendererSignature(renderer(listOf("Ly3/j;", "Lh3/t;", "I", "I"))))
+    }
+
     @Test
     fun `the loading indicator renderer must be a single target`() {
         assertEquals(1, HOME_FEED_LOADING_INDICATOR_TARGET_COUNT)
