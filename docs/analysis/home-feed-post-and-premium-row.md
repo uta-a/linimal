@@ -14,8 +14,8 @@
 
 | Linimal設定 | featureId | 設定ページ | 既定値 |
 | --- | --- | --- | --- |
-| 投稿カード | `linimal.home-feed-post-cards` | Home | ON |
-| Premium 設定行の抑制 | `linimal.premium-settings-row` | General | ON |
+| 投稿カード | `linimal.home-feed-post-cards` | 表示を消す / ホーム | OFF |
+| Premium 設定行の抑制 | `linimal.premium-settings-row` | 一般 | OFF |
 
 どちらも presentation 層だけを対象とする。既存の Home おすすめ、Home 話題、Premium 誘導の抑制とは別 feature とする。
 

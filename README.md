@@ -4,41 +4,11 @@ Linimal は、公式 LINE Android クライアントへ runtime 設定で切り�
 
 LINE の通信、認証、通知、通話、メッセージ送受信などの主要機能は公式実装を利用し、不要な UI や機能だけをユーザーが制御できる構成を目指します。Linimal は独立したプロジェクトであり、LINE および Morphe の公式プロジェクトではありません。
 
-## Reference version
-
-```text
-Application  : LINE
-Package      : jp.naver.line.android
-LINE Version : 26.11.0
-Version Code : 261100124
-Architecture : arm64-v8a
-Input Format : APKM
-Patch System : Morphe
-```
-
-v1 開発中は上記の reference version のみを対象とします。
-
-## 必要環境
-
-- Java 17
-- Gradle Wrapper が依存関係を取得できるネットワーク環境
-- Morphe の GitHub Packages を読むための認証情報
-
-認証情報をプロジェクトへ保存しないでください。`gpr.user` と `gpr.key` は `~/.gradle/gradle.properties` に設定するか、`GITHUB_ACTOR` と `GITHUB_TOKEN` を環境変数で渡します。
-
-## ビルド
-
-```sh
-./gradlew buildAndroid
-```
-
-生成される Morphe パッチバンドルは `patches/build/libs/patches-*.mpp` に出力されます。runtime extension は `extensions/linimal.mpe` としてこのバンドルへ同梱されます。
-
 ## Morphe への追加
 
 Linimal は公式 Morphe のパッチソースには含まれないため、パッチソースとして自分で追加します。
 
-対象は reference version の APKM のみです。Morphe には APKM をそのまま渡し、base と ABI/density split を分解しないでください。
+対象は LINE 26.11.0 (versionCode 261100124) arm64-v8a の APKM のみです（詳細は [Reference version](#reference-version)）。Morphe には APKM をそのまま渡し、base と ABI/density split を分解しないでください。
 
 ### パッチソースとして追加 (Android)
 
@@ -83,9 +53,23 @@ Morphe Desktop は Java 21 以上を必要とします。ビルド用の Java 17
 
 ### 適用後
 
-LINE の設定画面の一番下に `Linimal` が追加されます。ここから Linimal の設定と、各パッチの適用状況を確認できます。
+LINE の設定画面の一番下に `Linimal` が追加されます。ここから Linimal の設定を変更できます。
 
 Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE 内の Linimal 設定で切り替えます。設定が OFF のときは公式 LINE の挙動を維持します。
+
+## Reference version
+
+```text
+Application  : LINE
+Package      : jp.naver.line.android
+LINE Version : 26.11.0
+Version Code : 261100124
+Architecture : arm64-v8a
+Input Format : APKM
+Patch System : Morphe
+```
+
+v1 開発中は上記の reference version のみを対象とします。
 
 ## 機能
 
@@ -101,30 +85,32 @@ Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE �
 | Agent i・LINE AI / トーク | Message context menu | ON | メッセージ長押しmenuの AI Edit を表示しません。 |
 | Agent i・LINE AI / トーク | Gallery viewer | ON | Chat gallery viewer の LINE AI image edit button を表示しません。 |
 | Agent i・LINE AI / 設定 | Main Settings | ON | LINE 設定の Agent i または LINE AI services を表示しません。 |
-| 表示を消す / 下部タブ | VOOM | ON | 下部タブから VOOM を取り除きます。 |
-| 表示を消す / 下部タブ | ショッピング | ON | 下部タブからショッピングを取り除きます。 |
-| 表示を消す / 下部タブ | ニュース | ON | 下部タブからニュースを取り除きます。 |
+| 表示を消す / 下部タブ | VOOM | OFF | 下部タブから VOOM を取り除きます。 |
+| 表示を消す / 下部タブ | ショッピング | OFF | 下部タブからショッピングを取り除きます。 |
+| 表示を消す / 下部タブ | ニュース | OFF | 下部タブからニュースを取り除きます。 |
 | 表示を消す / 下部タブ | ウォレット | OFF | 下部タブからウォレットを取り除きます。 |
 | 表示を消す / 下部タブ | アプリ | OFF | 下部タブからアプリを取り除きます。 |
 | 表示を消す / トーク一覧の上部 | AI Friends | OFF | トーク一覧上部にある AI Friends のアイコンを表示しません。 |
 | 表示を消す / トーク一覧の上部 | カレンダー | OFF | トーク一覧上部にあるカレンダーのアイコンを表示しません。トークの ＋ menuのカレンダーとは別枠です。 |
 | 表示を消す / トーク一覧の上部 | オープンチャット | OFF | トーク一覧上部にあるオープンチャットのアイコンを表示しません。 |
-| 表示を消す / トークの ＋ メニュー | カレンダー | ON | Chat の追加menuからCalendarを取り除きます。 |
-| 表示を消す / トークの ＋ メニュー | LINE ギフト | ON | Chat の追加menuからLINE GIFTを取り除きます。 |
-| 表示を消す / トークの ＋ メニュー | LINE Pay | ON | Chat の追加menuからLINE Payを取り除きます。 |
-| 表示を消す / ホーム | おすすめ | ON | Home のおすすめ枠を表示しません。 |
-| 表示を消す / ホーム | 話題 | ON | Home の話題とトレンド枠を表示しません。 |
-| 表示を消す / ホーム | 投稿カード | ON | Home 下部の VOOM 投稿カードを表示しません。アカウント名や友だち追加の見出し行を含めてカードごと消します。おすすめと話題とは別枠で、投稿カードを描く3種類の module をまとめて対象にします。 |
-| 表示を消す / ホーム | 特集枠 | ON | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。Home の抑制設定がすべて ON のときは、フィード既定ページの読み込み表示も併せて消します。 |
-| 既読 | 既読をつけずに読む | ON | トーク一覧の長押しmenuに項目を追加し、そこから開いたトークは開いている間だけ既読の送信を止めます。トーク一覧の未読表示も残ります。 |
+| 表示を消す / トークの ＋ メニュー | カレンダー | OFF | Chat の追加menuからCalendarを取り除きます。 |
+| 表示を消す / トークの ＋ メニュー | LINE ギフト | OFF | Chat の追加menuからLINE GIFTを取り除きます。 |
+| 表示を消す / トークの ＋ メニュー | LINE Pay | OFF | Chat の追加menuからLINE Payを取り除きます。 |
+| 表示を消す / ホーム | おすすめ | OFF | Home のおすすめ枠を表示しません。 |
+| 表示を消す / ホーム | 話題 | OFF | Home の話題とトレンド枠を表示しません。 |
+| 表示を消す / ホーム | 投稿カード | OFF | Home 下部の VOOM 投稿カードを表示しません。アカウント名や友だち追加の見出し行を含めてカードごと消します。おすすめと話題とは別枠で、投稿カードを描く3種類の module をまとめて対象にします。 |
+| 表示を消す / ホーム | 特集枠 | OFF | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。Home の抑制設定がすべて ON のときは、フィード既定ページの読み込み表示も併せて消します。 |
+| 既読 | 既読をつけずに読む | OFF | トーク一覧の長押しmenuに項目を追加し、そこから開いたトークは開いている間だけ既読の送信を止めます。トーク一覧の未読表示も残ります。 |
 | 既読 | 自動既読の停止 | OFF | 通常チャットの自動既読送信を止めます。手動既読操作だけを一回送信します。 |
-| 一般 | Premium 誘導の抑制 | ON | 送信取消時に表示される LINE Premium の案内を表示しません。 |
-| 一般 | Premium 設定行の抑制 | ON | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
+| 一般 | Premium 誘導の抑制 | OFF | 送信取消時に表示される LINE Premium の案内を表示しません。 |
+| 一般 | Premium 設定行の抑制 | OFF | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
 | 一般 | 外部ブラウザ | OFF | 通常チャット本文の http と https の外部リンクだけを端末のブラウザで開きます。LINE、ログイン、決済のリンクは元のままです。 |
 
-設定画面は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般`、`Patch Status` に分かれています。`Agent i・LINE AI` と `表示を消す` は、ページ内をさらに場所ごとの小見出しで区切ります。小見出しは、その中に表示できる項目が一つも残らない場合には描画しません。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
+設定画面は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般` の5ページに分かれています。`Agent i・LINE AI` と `表示を消す` は、ページ内をさらに場所ごとの小見出しで区切ります。小見出しは、その中に表示できる項目が一つも残らない場合には描画しません。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
 
-対象が一意に特定できなかった機能は自動的に無効となり、設定画面でも操作できません。適用状況は Linimal 設定内の Patch Status に表示されます。
+初期値は新規インストールに適用される値です。すでに Linimal を使っている端末では、更新後も既存の設定がそのまま引き継がれ、まだ触っていない項目も更新前の初期値のまま動作します。
+
+対象が一意に特定できなかった機能や、必須 patch が揃っていない機能は自動的に無効となり、設定画面でも操作できません。hook 側も LINE 本来の挙動のままになります。build に patch の記録が一件も無い機能は、設定画面に行自体が現れません。パッチの適用状況を一覧する画面はありません。パッチ情報そのものを読み取れない場合は、各ページに設定を変更できない旨を表示し、すべての機能が LINE 本来の挙動になります。
 
 Premium の抑制は案内表示と LINE 設定の行表示だけを対象とします。送信取消時の案内も設定のプレミアム行も presentation 層だけを抑制します。課金資格、購読 API、決済通信は変更しません。広告抑制も広告 request、response、database、expiration、trackerを変更しません。
 
@@ -134,6 +120,22 @@ Agent i と LINE AI は確認できたUI入口だけを場所別に抑制しま�
 
 > [!NOTE]
 > 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。公式アプリのデータも引き継げません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。
+
+## 必要環境
+
+- Java 17
+- Gradle Wrapper が依存関係を取得できるネットワーク環境
+- Morphe の GitHub Packages を読むための認証情報
+
+認証情報をプロジェクトへ保存しないでください。`gpr.user` と `gpr.key` は `~/.gradle/gradle.properties` に設定するか、`GITHUB_ACTOR` と `GITHUB_TOKEN` を環境変数で渡します。
+
+## ビルド
+
+```sh
+./gradlew buildAndroid
+```
+
+生成される Morphe パッチバンドルは `patches/build/libs/patches-*.mpp` に出力されます。runtime extension は `extensions/linimal.mpe` としてこのバンドルへ同梱されます。
 
 ## ディレクトリ
 
