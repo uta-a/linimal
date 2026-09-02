@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -531,6 +532,75 @@ public final class LinimalConfigTest {
         }
     }
 
+    @Test
+    public void featuresWithoutAnOkPatchStatusIgnoreStoredValues() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, availableFeatures(LinimalFeature.PREMIUM));
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, true);
+        config.setSuppressionEnabled(LinimalFeature.VOOM, true);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        assertTrue(config.isPremiumSuppressionEnabled());
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.PREMIUM));
+        assertFalse(config.isVoomSuppressionEnabled());
+        assertFalse(config.isSuppressionEnabled(LinimalFeature.VOOM));
+    }
+
+    @Test
+    public void writesArePersistedRegardlessOfPatchStatusSoTheyReturnWithAWorkingBuild() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, FeatureAvailability.NONE);
+
+        config.setSuppressionEnabled(LinimalFeature.VOOM, true);
+        config.setReadReceiptMode(ReadReceiptMode.MANUAL);
+
+        assertFalse(config.isVoomSuppressionEnabled());
+        assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.VOOM_ENABLED_KEY));
+        assertEquals("manual", backend.values.get(LinimalConfigSchema.READ_RECEIPT_MODE_KEY));
+
+        // patch が揃ったビルドへ入れ替えると、保存済みの設定がそのまま復活します。
+        LinimalConfig restored = configFor(backend);
+
+        assertTrue(restored.isVoomSuppressionEnabled());
+        assertEquals(ReadReceiptMode.MANUAL, restored.getReadReceiptMode());
+    }
+
+    @Test
+    public void unreadablePatchStatusRestoresOriginalBehaviorForEveryFeature() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend, FeatureAvailability.NONE);
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            config.setSuppressionEnabled(feature, true);
+        }
+        config.setReadReceiptMode(ReadReceiptMode.MANUAL);
+
+        assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            assertFalse(feature.name(), config.isSuppressionEnabled(feature));
+        }
+        assertFalse(config.isExternalBrowserOverrideEnabled());
+        assertFalse(config.isReadWithoutReceiptEnabled());
+        assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
+    }
+
+    @Test
+    public void readReceiptModeFollowsItsOwnPatchStatus() {
+        InMemoryBackend backend = new InMemoryBackend();
+        backend.values.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, "manual");
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+
+        // 送信を止める側だけが適用されていない状態でも、既読は LINE の元どおり自動で送信します。
+        assertEquals(
+                ReadReceiptMode.NORMAL,
+                configFor(backend, availableFeatures(LinimalFeature.PREMIUM)).getReadReceiptMode());
+        assertEquals(
+                ReadReceiptMode.MANUAL,
+                configFor(backend, availableFeatureIds(ReadReceiptMode.FEATURE_ID))
+                        .getReadReceiptMode());
+    }
+
     private static InMemoryBackend v1Backend() {
         InMemoryBackend backend = new InMemoryBackend();
         backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
@@ -577,6 +647,25 @@ public final class LinimalConfigTest {
 
     private static LinimalConfig configFor(LinimalConfigStore.PreferenceBackend backend) {
         return LinimalConfig.fromStoreForTesting(LinimalConfigStore.forTesting(backend));
+    }
+
+    private static LinimalConfig configFor(
+            LinimalConfigStore.PreferenceBackend backend, FeatureAvailability availability) {
+        return LinimalConfig.fromStoreForTesting(
+                LinimalConfigStore.forTesting(backend), availability);
+    }
+
+    /** 指定した機能の patch だけが完全に適用されている状態を表します。 */
+    private static FeatureAvailability availableFeatures(LinimalFeature... features) {
+        List<String> featureIds = new ArrayList<>();
+        for (LinimalFeature feature : features) {
+            featureIds.add(feature.getFeatureId());
+        }
+        return featureIds::contains;
+    }
+
+    private static FeatureAvailability availableFeatureIds(String... featureIds) {
+        return Arrays.asList(featureIds)::contains;
     }
 
     private static final class InMemoryBackend implements LinimalConfigStore.PreferenceBackend {

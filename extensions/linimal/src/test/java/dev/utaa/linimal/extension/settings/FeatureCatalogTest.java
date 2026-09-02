@@ -1,6 +1,7 @@
 package dev.utaa.linimal.extension.settings;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -8,6 +9,8 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import dev.utaa.linimal.extension.config.LinimalFeature;
 
 public final class FeatureCatalogTest {
     @Test
@@ -185,6 +188,18 @@ public final class FeatureCatalogTest {
                 SettingsPage.ROOT, Collections.singletonList("linimal.premium")).isEmpty());
         assertTrue(FeatureCatalog.installedEntriesForPage(
                 null, Collections.singletonList("linimal.premium")).isEmpty());
+    }
+
+    @Test
+    public void everyFeatureCarriesTheFeatureIdTheCatalogUses() {
+        for (LinimalFeature feature : LinimalFeature.values()) {
+            String featureId = feature.getFeatureId();
+            assertNotNull(feature.name(), featureId);
+            assertTrue(feature.name(), featureId.startsWith("linimal."));
+        }
+        for (FeatureCatalog.Entry entry : FeatureCatalog.entries()) {
+            assertEquals(entry.getFeature().getFeatureId(), entry.getFeatureId());
+        }
     }
 
     private static void assertFeatureIds(List<FeatureCatalog.Entry> entries, String... expectedIds) {

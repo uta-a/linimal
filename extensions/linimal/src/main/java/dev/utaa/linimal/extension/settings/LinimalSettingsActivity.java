@@ -40,12 +40,10 @@ import dev.utaa.linimal.extension.status.PatchStatus;
 import dev.utaa.linimal.extension.status.PatchStatusPresenter;
 import dev.utaa.linimal.extension.status.PatchStatusReadResult;
 import dev.utaa.linimal.extension.status.PatchStatusReport;
-import dev.utaa.linimal.extension.status.PatchStatusRepository;
 
 /** LINE の設定画面に合わせた見た目で、Linimal の設定と適用状況を表示します。 */
 public final class LinimalSettingsActivity extends Activity {
     private static final String STATE_PAGE_PATH = "linimal.settings.page_path";
-    private static final String READ_RECEIPTS_FEATURE_ID = "linimal.read-receipts-main-chat";
 
     /** 描画済みの Switch だけを持ち、画面再構築時に必ず破棄します。 */
     private final List<FeatureRow> featureRows = new ArrayList<>();
@@ -87,8 +85,8 @@ public final class LinimalSettingsActivity extends Activity {
         applySystemBars();
         registerSystemBackCallback();
 
-        // patch status は画面遷移ごとに読み直さず、Activity の生成時に一度だけ確定します。
-        patchStatusResult = new PatchStatusRepository(this).read();
+        // patch status は LinimalConfig が初期化時に読んだ結果を共有し、hook の判定と表示を一致させます。
+        patchStatusResult = LinimalConfig.get().getPatchStatusResult();
         if (savedInstanceState != null) {
             navigation.restore(savedInstanceState.getStringArray(STATE_PAGE_PATH));
         }
@@ -236,7 +234,7 @@ public final class LinimalSettingsActivity extends Activity {
     }
 
     private void addFeaturePage(LinearLayout parent, SettingsPage page) {
-        if (!patchStatusResult.isAvailable()) {
+        if (patchStatusResult == null || !patchStatusResult.isAvailable()) {
             // status がないときは誤操作を防ぐため、Switch 自体を表示しません。
             addUnavailableFeatureMessage(parent, "パッチ情報を読み取れないため、機能の設定を変更できません。");
             return;
@@ -292,7 +290,7 @@ public final class LinimalSettingsActivity extends Activity {
     }
 
     private boolean addReadReceiptRow(LinearLayout parent, PatchStatusReport report) {
-        readReceiptPatchStatus = report.getFeatureStatus(READ_RECEIPTS_FEATURE_ID);
+        readReceiptPatchStatus = report.getFeatureStatus(ReadReceiptMode.FEATURE_ID);
         if (readReceiptPatchStatus == null) {
             return false;
         }
