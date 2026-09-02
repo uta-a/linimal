@@ -6,6 +6,8 @@ import app.morphe.patcher.checkCast
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
@@ -18,6 +20,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatusCollector
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -156,7 +159,18 @@ private val smartChannelRebindFingerprint = Fingerprint(
     ),
 )
 
-val smartChannelAdsPatch = bytecodePatch {
+val smartChannelAdsPatch = bytecodePatch(
+    name = "Smart Channel の広告",
+    description = "トーク一覧の Smart Channel にある広告を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(homeTrendingPatch)
 
     execute {

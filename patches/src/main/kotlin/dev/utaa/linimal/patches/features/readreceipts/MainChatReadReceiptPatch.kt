@@ -6,6 +6,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
@@ -24,6 +26,7 @@ import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstructio
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
@@ -231,7 +234,18 @@ private fun hasSupplierFactoryReferences(method: Method): Boolean {
  * であり、dexlib2 の注入では Label が既存 location に残るため、第 4 引数 Z が false の経路だけが
  * gate を飛び越して送信まで到達してしまいます。</p>
  */
-val readReceiptOutboundGatePatch = bytecodePatch {
+val readReceiptOutboundGatePatch = bytecodePatch(
+    name = "通常チャットの自動既読",
+    description = "通常チャットの既読送信を、実行時設定で止められるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(externalBrowserChatTextLinkPatch)
 
     execute {
@@ -301,7 +315,18 @@ val readReceiptOutboundGatePatch = bytecodePatch {
 }
 
 /** MainChatMarkAsReadExecutor の caller thread で supplier factory 呼び出しを囲みます。 */
-val readReceiptManualCallerPatch = bytecodePatch {
+val readReceiptManualCallerPatch = bytecodePatch(
+    name = "手動既読の呼び出し元",
+    description = "LINE 自身の手動既読操作を識別できるよう、呼び出し元スレッドへ印を付けます。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readReceiptOutboundGatePatch)
 
     execute {
@@ -359,7 +384,18 @@ val readReceiptManualCallerPatch = bytecodePatch {
 }
 
 /** supplier identity へ caller thread の one-shot origin を移します。 */
-val readReceiptSupplierRegistrationPatch = bytecodePatch {
+val readReceiptSupplierRegistrationPatch = bytecodePatch(
+    name = "手動既読の受け渡し",
+    description = "手動既読の印を、非同期処理へ引き継ぐための識別子として登録します。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readReceiptManualCallerPatch)
 
     execute {
@@ -412,7 +448,18 @@ val readReceiptSupplierRegistrationPatch = bytecodePatch {
 }
 
 /** worker thread で supplier identity を allowance へ変換し、return/exception 全出口で cleanup します。 */
-val readReceiptSupplierPreparationPatch = bytecodePatch {
+val readReceiptSupplierPreparationPatch = bytecodePatch(
+    name = "手動既読の送信許可",
+    description = "非同期処理側で手動既読の識別子を送信許可へ変換し、処理の終了時に破棄します。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readReceiptSupplierRegistrationPatch)
 
     execute {

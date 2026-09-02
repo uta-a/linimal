@@ -4,6 +4,8 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -13,6 +15,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -73,7 +76,18 @@ private val walletAgentStateSupplierFingerprint = Fingerprint(
  * Wallet mini-tab header が生成済み Agent i state を host setter へ渡す直前に gate を置きます。
  * ON はその state argument だけ null にし、OFF と hook failure は同一 state instance を渡します。
  */
-val agentIWalletHeaderPatch = bytecodePatch {
+val agentIWalletHeaderPatch = bytecodePatch(
+    name = "ウォレット上部の Agent i",
+    description = "ウォレット画面上部にある Agent i の入口を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(agentIHomeHeaderPatch)
 
     execute {

@@ -7,6 +7,8 @@ import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.newInstance
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
@@ -19,6 +21,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -143,7 +146,18 @@ private val lineAiGalleryViewerRebindFingerprint = Fingerprint(
  * Alters only this header binder's input boolean. The underlying viewer, media data, click callback, telemetry,
  * and network path continue unchanged; each page rebind runs the adjusted binder value again.
  */
-val lineAiGalleryViewerPatch = bytecodePatch {
+val lineAiGalleryViewerPatch = bytecodePatch(
+    name = "写真・動画表示画面の LINE AI",
+    description = "チャットの写真・動画表示画面にある LINE AI の入口を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(lineAiMessageContextMenuPatch)
 
     execute {

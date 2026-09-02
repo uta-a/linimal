@@ -7,12 +7,14 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
@@ -22,6 +24,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -210,7 +213,18 @@ private fun performanceAdListGateFingerprint(mapperType: String, viewDataType: S
  * Home GCS Performance Ad の item list が module Flow へ渡る直前に runtime gate を置きます。
  * OFF では hook が同じ List instance を返し、ON ではこの専用 mapper の item だけを空 list にします。
  */
-val homeTopAdPatch = bytecodePatch {
+val homeTopAdPatch = bytecodePatch(
+    name = "ホーム内の広告",
+    description = "ホーム画面内の Performance Ad とフィード広告を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readReceiptSupplierPreparationPatch)
 
     execute {

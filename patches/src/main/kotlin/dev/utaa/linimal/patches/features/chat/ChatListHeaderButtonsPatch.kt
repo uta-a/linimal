@@ -2,6 +2,8 @@ package dev.utaa.linimal.patches.features.chat
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
@@ -12,6 +14,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnappliedFeatureStatus
@@ -75,7 +78,18 @@ private val chatListHeaderButtonEnumFingerprint = Fingerprint(
  * 再計算の両方が一貫して絞り込まれます。ボタンごとの分岐を新しく作らないので、設定が OFF のときは
  * 元の List instance がそのまま流れます。</p>
  */
-val chatListHeaderButtonsPatch = bytecodePatch {
+val chatListHeaderButtonsPatch = bytecodePatch(
+    name = "トーク一覧上部のアイコン",
+    description = "トーク一覧上部の AI Friends・カレンダー・オープンチャットのアイコンを、実行時設定で個別に取り除けるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
     dependsOn(readWithoutReceiptMarkAsReadBlockPatch)
 

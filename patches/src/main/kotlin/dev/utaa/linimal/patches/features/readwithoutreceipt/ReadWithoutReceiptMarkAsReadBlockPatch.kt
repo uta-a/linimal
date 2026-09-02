@@ -2,6 +2,8 @@ package dev.utaa.linimal.patches.features.readwithoutreceipt
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
@@ -11,6 +13,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
@@ -68,7 +71,18 @@ internal data class LegacyTalkServiceRpcShape(val chatIdRegister: Int)
  * の自動既読を止める、別機能）を独立した shape で識別しており、`j1` 自体の命令列は変更しません。
  * 両 patch が同じメソッドを競合して書き換えることはありません。</p>
  */
-val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch {
+val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch(
+    name = "既読をつけずに読むの既読停止",
+    description = "「既読をつけずに読む」で開いたトークだけ、既読送信の RPC を実行しないようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readWithoutReceiptComposeMenuPatch)
 
     execute {

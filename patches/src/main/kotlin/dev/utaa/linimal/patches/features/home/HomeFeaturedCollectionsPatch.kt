@@ -3,6 +3,8 @@ package dev.utaa.linimal.patches.features.home
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
@@ -13,6 +15,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -78,7 +81,18 @@ private val featuredGridSourceMetadataFingerprint = Fingerprint(
  * 抑制時に通るのは、LINE が再 composition で本体を省くときと同じ `skipToGroupEnd` と
  * `endRestartGroup` の経路です。設定 OFF・未初期化・例外時は元の結果をそのまま使います。</p>
  */
-val homeFeaturedCollectionsPatch = bytecodePatch {
+val homeFeaturedCollectionsPatch = bytecodePatch(
+    name = "ホームの特集枠",
+    description = "ホームの特集枠にある動画のグリッドを、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
     dependsOn(premiumSettingsRowPatch)
 

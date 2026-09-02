@@ -4,6 +4,8 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -15,6 +17,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import dev.utaa.linimal.patches.features.ads.homeTopAdPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -100,7 +103,18 @@ private fun homeAgentHeaderSupplierFingerprint(homeOwner: String) = Fingerprint(
  * Home 上部ナビゲーションが再 composition ごとに受け取る Agent i 専用 boolean を制御します。
  * icon row や他の 3 button callback、deeplink dispatcher、analytics は変更しません。
  */
-val agentIHomeHeaderPatch = bytecodePatch {
+val agentIHomeHeaderPatch = bytecodePatch(
+    name = "ホーム上部の Agent i",
+    description = "ホーム画面上部にある Agent i の入口を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(homeTopAdPatch)
 
     execute {

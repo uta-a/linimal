@@ -3,10 +3,13 @@ package dev.utaa.linimal.patches.features.premium
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import dev.utaa.linimal.patches.settings.settingsEntryPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -47,7 +50,18 @@ internal val unsendPromotionShowFingerprint = Fingerprint(
  * 送信取消の Premium 案内表示だけを、実行時設定で抑制します。
  * 呼び出し元の資格判定と通信経路は変更しません。
  */
-val premiumUnsendPromotionPatch = bytecodePatch {
+val premiumUnsendPromotionPatch = bytecodePatch(
+    name = "送信取消の Premium 案内",
+    description = "送信取消時に出る LINE Premium の案内を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(settingsEntryPatch)
 
     execute {

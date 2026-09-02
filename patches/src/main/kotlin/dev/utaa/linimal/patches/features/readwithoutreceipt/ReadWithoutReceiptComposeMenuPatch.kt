@@ -2,6 +2,8 @@ package dev.utaa.linimal.patches.features.readwithoutreceipt
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableClass
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -23,6 +25,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
@@ -147,7 +150,18 @@ internal data class LabelDonorShape(
  *
  * <p>どの段でも導出に失敗した場合は何も注入せず、Patch Status を記録して終了します。</p>
  */
-val readWithoutReceiptComposeMenuPatch = bytecodePatch {
+val readWithoutReceiptComposeMenuPatch = bytecodePatch(
+    name = "既読をつけずに読む",
+    description = "トーク一覧の長押しメニューへ「既読をつけずに読む」の行を追加します。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(readWithoutReceiptMenuLabelResourcePatch)
 
     execute {

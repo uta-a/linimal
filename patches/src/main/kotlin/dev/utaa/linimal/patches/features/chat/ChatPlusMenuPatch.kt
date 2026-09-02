@@ -5,6 +5,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -12,6 +14,7 @@ import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnappliedFeatureStatus
@@ -94,7 +97,18 @@ private val payFallbackDeepLinkFingerprint = Fingerprint(
  * CALENDAR / GIFT / PAY item の共通 availability predicate。concrete class 名や predicate 名は使用せず、
  * item class anchors から導いた共通 superclass、signature、enum access と call sequence を組み合わせます。
  */
-val chatPlusMenuPatch = bytecodePatch {
+val chatPlusMenuPatch = bytecodePatch(
+    name = "トークの ＋ メニュー",
+    description = "トークの ＋ メニューからカレンダー・LINE ギフト・LINE Pay を、実行時設定で個別に取り除けるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(mainTabsPatch)
 
     execute {

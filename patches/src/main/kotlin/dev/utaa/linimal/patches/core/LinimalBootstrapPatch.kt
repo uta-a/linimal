@@ -3,12 +3,15 @@ package dev.utaa.linimal.patches.core
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
@@ -40,7 +43,18 @@ internal val lineApplicationInitializeFingerprint = Fingerprint(
 )
 
 /** LINE の process 判定を通過した後に、Linimal の設定を初期化します。 */
-val linimalBootstrapPatch = bytecodePatch {
+val linimalBootstrapPatch = bytecodePatch(
+    name = "Linimal の初期化",
+    description = "LINE の起動処理へ Linimal の初期化を差し込みます。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(linimalExtensionMergePatch)
 
     execute {

@@ -7,6 +7,8 @@ import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.newInstance
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
@@ -17,6 +19,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import dev.utaa.linimal.patches.features.agenti.agentIChatComposerPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
@@ -143,7 +146,18 @@ private val lineAiMessageContextSupplierFingerprint = Fingerprint(
  * Suppresses only the LINE AI element while it is being supplied to a freshly constructed long-press menu.
  * It does not alter the general context menu renderer, callback implementation, telemetry, or LINE AI backend.
  */
-val lineAiMessageContextMenuPatch = bytecodePatch {
+val lineAiMessageContextMenuPatch = bytecodePatch(
+    name = "メッセージ長押しメニューの LINE AI",
+    description = "メッセージの長押しメニューにある LINE AI の項目を、実行時設定で非表示にできるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(agentIChatComposerPatch)
 
     execute {
