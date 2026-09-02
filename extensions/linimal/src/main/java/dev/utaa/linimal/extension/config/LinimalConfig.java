@@ -269,6 +269,14 @@ public final class LinimalConfig {
         setEnabled(LinimalFeature.CHAT_LINE_PAY, enabled);
     }
 
+    public boolean isReadWithoutReceiptEnabled() {
+        return isEnabled(LinimalFeature.READ_WITHOUT_RECEIPT);
+    }
+
+    public void setReadWithoutReceiptEnabled(boolean enabled) {
+        setEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, enabled);
+    }
+
     public ReadReceiptMode getReadReceiptMode() {
         return snapshot.readReceiptMode();
     }

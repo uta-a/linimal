@@ -61,6 +61,10 @@ final class PatchStatusRequirements {
                 "linimal.patch.read-receipts-main-chat-manual-caller",
                 "linimal.patch.read-receipts-main-chat-supplier-registration",
                 "linimal.patch.read-receipts-main-chat-supplier-preparation"));
+        requirements.put("linimal.read-without-receipt", ids(
+                "linimal.patch.read-without-receipt-menu-label-resource",
+                "linimal.patch.read-without-receipt-compose-menu-row",
+                "linimal.patch.read-without-receipt-mark-as-read-block"));
         return Collections.unmodifiableMap(requirements);
     }
 

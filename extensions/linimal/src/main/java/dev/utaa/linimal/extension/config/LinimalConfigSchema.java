@@ -37,6 +37,7 @@ final class LinimalConfigSchema {
     static final String CHAT_CALENDAR_ENABLED_KEY = "linimal.chat.tools.calendar";
     static final String CHAT_LINE_GIFT_ENABLED_KEY = "linimal.chat.tools.line_gift";
     static final String CHAT_LINE_PAY_ENABLED_KEY = "linimal.chat.tools.line_pay";
+    static final String READ_WITHOUT_RECEIPT_ENABLED_KEY = "linimal.chat.read_without_receipt";
     static final String READ_RECEIPT_MODE_KEY = "linimal.privacy.read_receipts.mode";
     static final String EXTERNAL_BROWSER_ENABLED_KEY = "linimal.browser.external";
     static final String DEBUG_LOGGING_ENABLED_KEY = "linimal.debug.logging";
@@ -94,6 +95,8 @@ final class LinimalConfigSchema {
                 return CHAT_LINE_GIFT_ENABLED_KEY;
             case CHAT_LINE_PAY:
                 return CHAT_LINE_PAY_ENABLED_KEY;
+            case READ_WITHOUT_RECEIPT:
+                return READ_WITHOUT_RECEIPT_ENABLED_KEY;
             case EXTERNAL_BROWSER:
                 return EXTERNAL_BROWSER_ENABLED_KEY;
             case DEBUG_LOGGING:

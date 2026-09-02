@@ -32,6 +32,7 @@ enum class FeatureId(val value: String) {
     CHAT_LINE_PAY("linimal.chat-line-pay"),
     EXTERNAL_BROWSER("linimal.external-browser"),
     READ_RECEIPTS_MAIN_CHAT("linimal.read-receipts-main-chat"),
+    READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
     PROBE("linimal.probe"),
     LINIMAL("linimal.core"),
 }
@@ -131,6 +132,18 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     READ_RECEIPTS_MAIN_CHAT_SUPPLIER_PREPARATION(
         "linimal.patch.read-receipts-main-chat-supplier-preparation",
         FeatureId.READ_RECEIPTS_MAIN_CHAT,
+    ),
+    READ_WITHOUT_RECEIPT_MENU_LABEL_RESOURCE(
+        "linimal.patch.read-without-receipt-menu-label-resource",
+        FeatureId.READ_WITHOUT_RECEIPT,
+    ),
+    READ_WITHOUT_RECEIPT_COMPOSE_MENU_ROW(
+        "linimal.patch.read-without-receipt-compose-menu-row",
+        FeatureId.READ_WITHOUT_RECEIPT,
+    ),
+    READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK(
+        "linimal.patch.read-without-receipt-mark-as-read-block",
+        FeatureId.READ_WITHOUT_RECEIPT,
     ),
     NO_OP_PROBE("linimal.patch.no-op-probe", FeatureId.PROBE),
     LINIMAL("linimal.patch.linimal", FeatureId.LINIMAL),

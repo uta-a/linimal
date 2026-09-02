@@ -34,6 +34,7 @@ public final class LinimalDefaults {
             case CHAT_CALENDAR:
             case CHAT_LINE_GIFT:
             case CHAT_LINE_PAY:
+            case READ_WITHOUT_RECEIPT:
                 return true;
             case WALLET:
             case EXTERNAL_BROWSER:

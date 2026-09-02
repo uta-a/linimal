@@ -135,7 +135,11 @@ public final class FeatureCatalog {
                     "チャットの + メニューから LINE ギフトを取り除きます。"),
             new Entry(LinimalFeature.CHAT_LINE_PAY, "linimal.chat-line-pay", SettingsPage.CHAT,
                     "LINE Pay を表示しない",
-                    "チャットの + メニューから LINE Pay を取り除きます。")));
+                    "チャットの + メニューから LINE Pay を取り除きます。"),
+            new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, "linimal.read-without-receipt", SettingsPage.CHAT,
+                    "既読をつけずに読むをメニューに追加",
+                    "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
+                            + "トーク一覧の未読表示もそのまま残します。")));
 
     private FeatureCatalog() {
     }

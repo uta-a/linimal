@@ -18,6 +18,7 @@ import dev.utaa.linimal.patches.features.browser.externalBrowserChatTextLinkPatc
 import dev.utaa.linimal.patches.features.chat.chatPlusMenuPatch
 import dev.utaa.linimal.patches.features.home.homeContentsRecommendationPatch
 import dev.utaa.linimal.patches.features.home.homeFeaturedCollectionsPatch
+import dev.utaa.linimal.patches.features.home.homeFeedLoadingIndicatorPatch
 import dev.utaa.linimal.patches.features.home.homeFeedPostCardsPatch
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiEntryPatch
@@ -30,6 +31,9 @@ import dev.utaa.linimal.patches.features.readreceipts.readReceiptManualCallerPat
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierRegistrationPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptComposeMenuPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMenuLabelResourcePatch
 import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
 import dev.utaa.linimal.patches.settings.settingsEntryPatch
 import dev.utaa.linimal.patches.status.patchStatusResourcePatch
@@ -65,7 +69,11 @@ class LinimalPatchTest {
     @Test
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertEquals(setOf(homeFeaturedCollectionsPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptMarkAsReadBlockPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptMenuLabelResourcePatch), readWithoutReceiptComposeMenuPatch.dependencies)
+        assertEquals(setOf(homeFeedLoadingIndicatorPatch), readWithoutReceiptMenuLabelResourcePatch.dependencies)
+        assertEquals(setOf(homeFeaturedCollectionsPatch), homeFeedLoadingIndicatorPatch.dependencies)
         assertEquals(setOf(premiumSettingsRowPatch), homeFeaturedCollectionsPatch.dependencies)
         assertEquals(setOf(homeFeedPostCardsPatch), premiumSettingsRowPatch.dependencies)
         assertEquals(setOf(agentIChatListSearchPatch), homeFeedPostCardsPatch.dependencies)
