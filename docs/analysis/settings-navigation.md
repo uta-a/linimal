@@ -9,7 +9,9 @@
 
 ## 目的
 
-現在の設定画面は全機能とPatch Statusを一枚に並べる。機能追加により項目が増えたため、場所別の子ページへ分ける。
+初期の設定画面は全機能とPatch Statusを一枚に並べていた。機能追加により項目が増えたため、子ページへ分ける。
+
+分け方は目的別とする。最初の分割では `Tabs` / `Home` / `Chat` という場所別のページと `Agent i` という種類別のページが混在し、ある項目をどちらの手掛かりで探せばよいかが一貫していなかった。そこで「広告を消す」「AIの入口を消す」「表示を消す」「既読を制御する」というユーザーの目的でページを分け、場所はページ内の小見出しへ落とした。これにより、ページの選択は目的だけで決まり、場所はページを開いた後の絞り込みになる。
 
 一つのActivity内でページスタックを管理する。新しいActivity、Fragment、Service、Providerは追加しない。
 
@@ -17,38 +19,61 @@
 
 ```text
 Linimal
-├─ General
-├─ Agent i
-├─ Tabs
-├─ Home
-├─ Chat
+├─ 広告
+├─ Agent i・LINE AI
+│   ├─ 各画面の上部
+│   ├─ トーク
+│   └─ 設定
+├─ 表示を消す
+│   ├─ 下部タブ
+│   ├─ トーク一覧の上部
+│   ├─ トークの ＋ メニュー
+│   └─ ホーム
+├─ 既読
+├─ 一般
 └─ Patch Status
 ```
+
+階層は Root と子ページの二段のままとする。小見出しは子ページの中の見出しであり、page IDを持たない。
 
 内部のpage IDは次のとおり。
 
 ```text
 ROOT
-GENERAL
+ADS
 AGENT_I
-TABS
-HOME
-CHAT
+HIDE
+READ_RECEIPT
+GENERAL
 PATCH_STATUS
+```
+
+小見出しのIDは `SettingsSection` が持つ。
+
+```text
+AGENT_I_SCREEN_HEADERS
+AGENT_I_CHAT
+AGENT_I_SETTINGS
+HIDE_BOTTOM_TABS
+HIDE_CHAT_LIST_HEADER
+HIDE_CHAT_PLUS_MENU
+HIDE_HOME
 ```
 
 ## Root page
 
 RootにはSwitchを直接置かない。各categoryのsummaryと右向きchevronを持つrowを置く。
 
-| Category | 内容 |
-| --- | --- |
-| General | Premium、外部ブラウザ |
-| Agent i | 確認済みのAgent i入口を場所別に表示 |
-| Tabs | VOOM、Shopping、NEWS、Wallet |
-| Home | Home内の広告、おすすめ、話題 |
-| Chat | Smart Channel、Calendar、LINE GIFT、LINE Pay、通常チャット既読 |
-| Patch Status | 全patchの適用結果 |
+| Category | summary | 内容 |
+| --- | --- | --- |
+| 広告 | 広告の表示を止めます。 | Smart Channel の広告、ホーム内の広告 |
+| Agent i・LINE AI | Agent i と LINE AI の入口を場所ごとに設定します。 | 確認済みのAgent i・LINE AI入口を場所別の小見出しで表示 |
+| 表示を消す | 画面ごとに表示する項目を選びます。 | 下部タブ、トーク一覧の上部、トークの ＋ メニュー、ホーム |
+| 既読 | 既読の送信と、既読をつけずに読む機能を設定します。 | 既読をつけずに読む、通常チャットの自動既読停止 |
+| 一般 | Premium の案内とリンクの開き方を設定します。 | Premium の案内、設定のプレミアム行、外部ブラウザ |
+| Patch Status | パッチの適用状況を確認します。 | 全patchの適用結果 |
+
+順序は目的の近さで並べる。広告とAgent i・LINE AIを先に置き、次に表示の取捨選択、次に挙動を変える既読、最後にその他をまとめた一般とPatch Statusを置く。
 
 Category rowの高さは最低56dpとする。左側にtitleとsummaryを置く。右側にchevronを置く。
 
@@ -67,51 +92,91 @@ Headerは左に48dpのBack領域を持つ。titleは現在のpage名を表示す
 
 contentはLINE風のsection headerとrowを使う。既存palette、dark mode、LINE green、ripple、16sp title、13sp summaryを再利用する。
 
+小見出しを持つページでは、rowの並びを小見出し単位のGroupへまとめて描く。小見出しは13spのtextとして、上に余白を取って描く。
+
+小見出しは、その中に表示できる項目が一つも残らなかった場合は描画しない。対応patchが適用できず項目がすべて消えたときに、見出しだけが残ることを防ぐ。ページ内に表示できる項目が一つもない場合は、代わりに利用できる機能がない旨を表示する。
+
 ## 機能の所属
 
-### General
+各ページ内のrow順は `FeatureCatalog` のentry定義順とする。
 
-- Premiumの案内を表示しない
-- 通常リンクを外部ブラウザで開く
+### 広告
 
-### Agent i
+小見出しなし。
 
-- Home上部ナビゲーション
-- Chat information menu
-- Wallet mini-tab header
-- Main Settings list
-- Chat composer
-- Message context menuのAI Edit
-- Chat gallery viewerのLINE AI image edit
+- Smart Channel の広告を表示しない
+- ホーム内の広告を表示しない
+
+Smart Channelの広告とホーム内の広告は別rowにする。広告は場所ではなく「広告を消す」という目的で引くため、Smart Channelがトーク一覧上部にあってもこのページへ置く。
+
+### Agent i・LINE AI
+
+各画面の上部
+
+- ホーム上部の Agent i を表示しない
+- ウォレット上部の Agent i を表示しない
+- トーク一覧の検索欄の Agent i を表示しない
+
+トーク
+
+- チャット情報の Agent i を表示しない
+- チャット入力欄の Agent i を表示しない
+- メッセージ長押しメニューの LINE AI を表示しない
+- 写真・動画表示画面の LINE AI を表示しない
+
+設定
+
+- 設定画面の Agent i を表示しない
 
 候補だけのbackend codeや表示不能surfaceは置かない。確認済み入口一件につき独立Switchを置く。Commerce、Search、Home AI Matomeは候補のため表示しない。
 
-### Tabs
+### 表示を消す
 
-- VOOM
-- Shopping
-- NEWS
-- Wallet
+下部タブ
 
-ShoppingとWalletは別rowにする。
+- VOOM を表示しない
+- ショッピングを表示しない
+- ニュースを表示しない
+- ウォレットを表示しない
+- アプリを表示しない
 
-### Home
+トーク一覧の上部
 
-- Home内の広告
-- おすすめ
-- 話題
+- AI Friends を表示しない
+- カレンダーを表示しない
+- オープンチャットを表示しない
 
-Home内の広告とSmart Channelは別rowにする。
+トークの ＋ メニュー
 
-### Chat
+- カレンダーを表示しない
+- LINE ギフトを表示しない
+- LINE Pay を表示しない
 
-- Smart Channel
-- Calendar
-- LINE GIFT
-- LINE Pay
-- 通常チャットの自動既読停止
+ホーム
 
-既読設定はboolean featureではなく `ReadReceiptMode` を使う。UI上は現在どおりSwitchとして表示する。
+- おすすめを表示しない
+- 話題を表示しない
+- ホームの投稿カードを表示しない
+- 特集枠を表示しない
+
+ShoppingとWalletは別rowにする。トーク一覧の上部のカレンダーとトークの ＋ メニューのカレンダーは別featureのため、別の小見出しの別rowにする。同名のrowが並んでも所属する小見出しで区別できる。
+
+### 既読
+
+小見出しなし。
+
+- 既読をつけずに読むをメニューに追加
+- 通常チャットの自動既読を停止
+
+自動既読の停止はboolean featureではなく `ReadReceiptMode` を使う。UI上は他と同じSwitch rowとして、`FeatureCatalog` のentryの後に描く。
+
+### 一般
+
+小見出しなし。
+
+- Premium の案内を表示しない
+- 設定のプレミアムを表示しない
+- リンクを外部ブラウザで開く
 
 ### Patch Status
 
@@ -126,21 +191,25 @@ Status reportを読めない場合もこのpage自体は開ける。読取失敗
 
 ## FeatureCatalog
 
-各entryに所属pageを追加する。
+各entryに所属pageと、ページ内の小見出しを持たせる。小見出しを持たないページのentryはsectionをnullにする。
 
 ```text
 LinimalFeature
 featureId
 SettingsPage
+SettingsSection
 title
 summary
 ```
 
-`installedEntries` はPatch Statusのfeature IDに存在するentryだけを返す。さらにpageで絞り込むAPIを追加する。
+`installedEntriesForPage` はPatch Statusのfeature IDに存在し、かつそのpageに属するentryだけをcatalogの定義順で返す。`installedGroupsForPage` はその結果を連続する同一sectionごとのGroupへまとめる。
 
 ```text
 installedEntriesForPage
+installedGroupsForPage
 ```
+
+Groupは表示できるentryが1件以上あるときだけ作る。そのため、パッチが適用できずsection内のentryがすべて消えた場合は、小見出しがGroupごと現れない。同じsectionのentryはcatalog上で連続して並べる。
 
 Root categoryはそのpageに表示可能なentryがなくても固定で表示する案を基本とする。対象patchが未適用の場合もPatch Statusへ到達できるようにする。
 
@@ -308,6 +377,9 @@ Patch Status JSONのstrict parserとsize上限を維持する。Statusのreason�
 - installed featureだけを返す
 - page filterが他pageを混ぜない
 - entry順序を維持する
+- 各pageのGroupがsectionと順序どおり
+- 同一sectionのentryがcatalog上で連続
+- 表示できるentryがないsectionはGroupを作らない
 
 ### Activity
 

@@ -5,11 +5,11 @@ package dev.utaa.linimal.extension.settings;
  */
 public enum SettingsPage {
     ROOT,
-    GENERAL,
+    ADS,
     AGENT_I,
-    TABS,
-    HOME,
-    CHAT,
+    HIDE,
+    READ_RECEIPT,
+    GENERAL,
     PATCH_STATUS;
 
     /**

@@ -219,16 +219,16 @@ public final class LinimalSettingsActivity extends Activity {
     }
 
     private void addRootPage(LinearLayout parent) {
-        addCategoryRow(parent, SettingsPage.GENERAL,
-                "General", "基本機能とリンクの開き方を設定します。");
+        addCategoryRow(parent, SettingsPage.ADS,
+                "広告", "広告の表示を止めます。");
         addCategoryRow(parent, SettingsPage.AGENT_I,
-                "Agent i", "Agent i と LINE AI の入口を場所ごとに設定します。");
-        addCategoryRow(parent, SettingsPage.TABS,
-                "Tabs", "下部タブに表示する項目を設定します。");
-        addCategoryRow(parent, SettingsPage.HOME,
-                "Home", "ホーム画面に表示する項目を設定します。");
-        addCategoryRow(parent, SettingsPage.CHAT,
-                "Chat", "チャットに表示する項目と既読動作を設定します。");
+                "Agent i・LINE AI", "Agent i と LINE AI の入口を場所ごとに設定します。");
+        addCategoryRow(parent, SettingsPage.HIDE,
+                "表示を消す", "画面ごとに表示する項目を選びます。");
+        addCategoryRow(parent, SettingsPage.READ_RECEIPT,
+                "既読", "既読の送信と、既読をつけずに読む機能を設定します。");
+        addCategoryRow(parent, SettingsPage.GENERAL,
+                "一般", "Premium の案内とリンクの開き方を設定します。");
         addCategoryRow(parent, SettingsPage.PATCH_STATUS,
                 "Patch Status", "パッチの適用状況を確認します。");
     }
@@ -241,15 +241,21 @@ public final class LinimalSettingsActivity extends Activity {
         }
 
         PatchStatusReport report = patchStatusResult.getReport();
-        List<FeatureCatalog.Entry> entries = FeatureCatalog.installedEntriesForPage(
+        List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
                 page, report.getFeatureIds());
         boolean hasEntry = false;
-        for (FeatureCatalog.Entry entry : entries) {
-            addFeatureRow(parent, entry, report.getFeatureStatus(entry.getFeatureId()));
-            hasEntry = true;
+        for (FeatureCatalog.Group group : groups) {
+            // 表示できる項目が残った小見出しだけ Group になるため、見出しだけが残ることはありません。
+            if (group.getSection() != null) {
+                addSectionHeader(parent, group.getSection().getTitle());
+            }
+            for (FeatureCatalog.Entry entry : group.getEntries()) {
+                addFeatureRow(parent, entry, report.getFeatureStatus(entry.getFeatureId()));
+                hasEntry = true;
+            }
         }
 
-        if (page == SettingsPage.CHAT) {
+        if (page == SettingsPage.READ_RECEIPT) {
             hasEntry |= addReadReceiptRow(parent, report);
         }
 
@@ -319,6 +325,13 @@ public final class LinimalSettingsActivity extends Activity {
             }
         });
         return true;
+    }
+
+    /** 行と区別できるよう、小見出しは小さめの文字と控えめな色で上に余白を取って描画します。 */
+    private void addSectionHeader(LinearLayout parent, String titleText) {
+        TextView header = createText(titleText, 13, palette.secondaryText);
+        header.setPadding(dp(20), dp(20), dp(20), dp(4));
+        parent.addView(header, matchWidth());
     }
 
     private void addFeatureRow(LinearLayout parent, FeatureCatalog.Entry entry, PatchStatus patchStatus) {
@@ -499,16 +512,16 @@ public final class LinimalSettingsActivity extends Activity {
 
     private String titleFor(SettingsPage page) {
         switch (page) {
-            case GENERAL:
-                return "General";
+            case ADS:
+                return "広告";
             case AGENT_I:
-                return "Agent i";
-            case TABS:
-                return "Tabs";
-            case HOME:
-                return "Home";
-            case CHAT:
-                return "Chat";
+                return "Agent i・LINE AI";
+            case HIDE:
+                return "表示を消す";
+            case READ_RECEIPT:
+                return "既読";
+            case GENERAL:
+                return "一般";
             case PATCH_STATUS:
                 return "Patch Status";
             case ROOT:

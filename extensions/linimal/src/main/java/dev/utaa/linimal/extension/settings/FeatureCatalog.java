@@ -18,6 +18,7 @@ public final class FeatureCatalog {
     public static final class Entry {
         private final LinimalFeature feature;
         private final SettingsPage page;
+        private final SettingsSection section;
         private final String title;
         private final String summary;
 
@@ -26,8 +27,18 @@ public final class FeatureCatalog {
                 SettingsPage page,
                 String title,
                 String summary) {
+            this(feature, page, null, title, summary);
+        }
+
+        Entry(
+                LinimalFeature feature,
+                SettingsPage page,
+                SettingsSection section,
+                String title,
+                String summary) {
             this.feature = feature;
             this.page = page;
+            this.section = section;
             this.title = title;
             this.summary = summary;
         }
@@ -46,6 +57,11 @@ public final class FeatureCatalog {
             return page;
         }
 
+        /** ページ内の小見出しです。小見出しを持たないページでは null です。 */
+        public SettingsSection getSection() {
+            return section;
+        }
+
         public String getTitle() {
             return title;
         }
@@ -55,7 +71,137 @@ public final class FeatureCatalog {
         }
     }
 
+    /**
+     * 一つの小見出しと、その下に並べる項目です。
+     *
+     * <p>表示できる項目がない小見出しは Group 自体が作られないため、見出しだけが残りません。</p>
+     */
+    public static final class Group {
+        private final SettingsSection section;
+        private final List<Entry> entries;
+
+        Group(SettingsSection section, List<Entry> entries) {
+            this.section = section;
+            this.entries = Collections.unmodifiableList(new ArrayList<>(entries));
+        }
+
+        /** 小見出し。見出しを描画しない場合は null です。 */
+        public SettingsSection getSection() {
+            return section;
+        }
+
+        public List<Entry> getEntries() {
+            return entries;
+        }
+    }
+
     private static final List<Entry> ENTRIES = Collections.unmodifiableList(Arrays.asList(
+            new Entry(LinimalFeature.SMART_CHANNEL_ADS, SettingsPage.ADS,
+                    "Smart Channel の広告を表示しない",
+                    "チャット一覧の Smart Channel にある広告を表示しません。"),
+            new Entry(LinimalFeature.HOME_TOP_AD, SettingsPage.ADS,
+                    "ホーム内の広告を表示しない",
+                    "ホーム画面内にある Performance Ad とフィード広告を表示しません。"),
+
+            new Entry(LinimalFeature.AGENT_I_HOME_HEADER, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_SCREEN_HEADERS,
+                    "ホーム上部の Agent i を表示しない",
+                    "ホーム画面上部にある Agent i の入口を表示しません。"),
+            new Entry(LinimalFeature.AGENT_I_WALLET_HEADER, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_SCREEN_HEADERS,
+                    "ウォレット上部の Agent i を表示しない",
+                    "ウォレット画面上部にある Agent i の入口を表示しません。"),
+            new Entry(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_SCREEN_HEADERS,
+                    "トーク一覧の検索欄の Agent i を表示しない",
+                    "トーク一覧上部の検索欄にある Agent i の入口を表示しません。"),
+            new Entry(LinimalFeature.AGENT_I_CHAT_INFORMATION, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_CHAT,
+                    "チャット情報の Agent i を表示しない",
+                    "チャット情報画面にある Agent i の入口を表示しません。"),
+            new Entry(LinimalFeature.AGENT_I_CHAT_COMPOSER, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_CHAT,
+                    "チャット入力欄の Agent i を表示しない",
+                    "チャット入力欄にある Agent i の入口を表示しません。"),
+            new Entry(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_CHAT,
+                    "メッセージ長押しメニューの LINE AI を表示しない",
+                    "メッセージの長押しメニューにある画像編集用の LINE AI を表示しません。"),
+            new Entry(LinimalFeature.LINE_AI_GALLERY_VIEWER, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_CHAT,
+                    "写真・動画表示画面の LINE AI を表示しない",
+                    "チャットの写真・動画表示画面にある LINE AI の入口を表示しません。"),
+            new Entry(LinimalFeature.AGENT_I_SETTINGS, SettingsPage.AGENT_I,
+                    SettingsSection.AGENT_I_SETTINGS,
+                    "設定画面の Agent i を表示しない",
+                    "LINE の設定画面にある Agent i の入口を表示しません。"),
+
+            new Entry(LinimalFeature.VOOM, SettingsPage.HIDE,
+                    SettingsSection.HIDE_BOTTOM_TABS,
+                    "VOOM を表示しない",
+                    "下部タブから VOOM を取り除きます。"),
+            new Entry(LinimalFeature.SHOPPING, SettingsPage.HIDE,
+                    SettingsSection.HIDE_BOTTOM_TABS,
+                    "ショッピングを表示しない",
+                    "下部タブからショッピングを取り除きます。"),
+            new Entry(LinimalFeature.NEWS, SettingsPage.HIDE,
+                    SettingsSection.HIDE_BOTTOM_TABS,
+                    "ニュースを表示しない",
+                    "下部タブからニュースを取り除きます。"),
+            new Entry(LinimalFeature.WALLET, SettingsPage.HIDE,
+                    SettingsSection.HIDE_BOTTOM_TABS,
+                    "ウォレットを表示しない",
+                    "下部タブからウォレットを取り除きます。"),
+            new Entry(LinimalFeature.MINI, SettingsPage.HIDE,
+                    SettingsSection.HIDE_BOTTOM_TABS,
+                    "アプリを表示しない",
+                    "下部タブからアプリを取り除きます。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_LIST_HEADER,
+                    "AI Friends を表示しない",
+                    "トーク一覧の上部にある AI Friends のアイコンを表示しません。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_LIST_HEADER,
+                    "カレンダーを表示しない",
+                    "トーク一覧の上部にあるカレンダーのアイコンを表示しません。"),
+            new Entry(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_LIST_HEADER,
+                    "オープンチャットを表示しない",
+                    "トーク一覧の上部にあるオープンチャットのアイコンを表示しません。"),
+            new Entry(LinimalFeature.CHAT_CALENDAR, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_PLUS_MENU,
+                    "カレンダーを表示しない",
+                    "チャットの + メニューからカレンダーを取り除きます。"),
+            new Entry(LinimalFeature.CHAT_LINE_GIFT, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_PLUS_MENU,
+                    "LINE ギフトを表示しない",
+                    "チャットの + メニューから LINE ギフトを取り除きます。"),
+            new Entry(LinimalFeature.CHAT_LINE_PAY, SettingsPage.HIDE,
+                    SettingsSection.HIDE_CHAT_PLUS_MENU,
+                    "LINE Pay を表示しない",
+                    "チャットの + メニューから LINE Pay を取り除きます。"),
+            new Entry(LinimalFeature.HOME_RECOMMENDATIONS, SettingsPage.HIDE,
+                    SettingsSection.HIDE_HOME,
+                    "おすすめを表示しない",
+                    "ホームのおすすめ枠を表示しません。"),
+            new Entry(LinimalFeature.HOME_TRENDING, SettingsPage.HIDE,
+                    SettingsSection.HIDE_HOME,
+                    "話題を表示しない",
+                    "ホームの話題・トレンド枠を表示しません。"),
+            new Entry(LinimalFeature.HOME_FEED_POST_CARDS, SettingsPage.HIDE,
+                    SettingsSection.HIDE_HOME,
+                    "ホームの投稿カードを表示しない",
+                    "ホーム下部にある投稿カードを表示しません。"),
+            new Entry(LinimalFeature.HOME_FEATURED_COLLECTIONS, SettingsPage.HIDE,
+                    SettingsSection.HIDE_HOME,
+                    "特集枠を表示しない",
+                    "ホームの特集枠にある動画のグリッドを表示しません。"),
+
+            new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
+                    "既読をつけずに読むをメニューに追加",
+                    "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
+                            + "トーク一覧の未読表示もそのまま残します。"),
+
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",
                     "送信取消時に出る LINE Premium の案内を表示しません。"),
@@ -64,90 +210,7 @@ public final class FeatureCatalog {
                     "LINE の設定画面にある LINE Premium の行を表示しません。"),
             new Entry(LinimalFeature.EXTERNAL_BROWSER, SettingsPage.GENERAL,
                     "リンクを外部ブラウザで開く",
-                    "通常の http/https のみ外部ブラウザへ渡します。ログインや決済は元のまま開きます。"),
-
-            new Entry(LinimalFeature.AGENT_I_HOME_HEADER, SettingsPage.AGENT_I,
-                    "ホーム上部の Agent i を表示しない",
-                    "ホーム画面上部にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH, SettingsPage.AGENT_I,
-                    "トーク一覧の検索欄の Agent i を表示しない",
-                    "トーク一覧上部の検索欄にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.AGENT_I_CHAT_INFORMATION, SettingsPage.AGENT_I,
-                    "チャット情報の Agent i を表示しない",
-                    "チャット情報画面にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.AGENT_I_WALLET_HEADER, SettingsPage.AGENT_I,
-                    "ウォレット上部の Agent i を表示しない",
-                    "ウォレット画面上部にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.AGENT_I_SETTINGS, SettingsPage.AGENT_I,
-                    "設定画面の Agent i を表示しない",
-                    "LINE の設定画面にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.AGENT_I_CHAT_COMPOSER, SettingsPage.AGENT_I,
-                    "チャット入力欄の Agent i を表示しない",
-                    "チャット入力欄にある Agent i の入口を表示しません。"),
-            new Entry(LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU, SettingsPage.AGENT_I,
-                    "メッセージ長押しメニューの LINE AI を表示しない",
-                    "メッセージの長押しメニューにある画像編集用の LINE AI を表示しません。"),
-            new Entry(LinimalFeature.LINE_AI_GALLERY_VIEWER, SettingsPage.AGENT_I,
-                    "写真・動画表示画面の LINE AI を表示しない",
-                    "チャットの写真・動画表示画面にある LINE AI の入口を表示しません。"),
-
-            new Entry(LinimalFeature.VOOM, SettingsPage.TABS,
-                    "VOOM を表示しない",
-                    "下部タブから VOOM を取り除きます。"),
-            new Entry(LinimalFeature.SHOPPING, SettingsPage.TABS,
-                    "ショッピングを表示しない",
-                    "下部タブからショッピングを取り除きます。"),
-            new Entry(LinimalFeature.NEWS, SettingsPage.TABS,
-                    "ニュースを表示しない",
-                    "下部タブからニュースを取り除きます。"),
-            new Entry(LinimalFeature.WALLET, SettingsPage.TABS,
-                    "ウォレットを表示しない",
-                    "下部タブからウォレットを取り除きます。"),
-            new Entry(LinimalFeature.MINI, SettingsPage.TABS,
-                    "アプリを表示しない",
-                    "下部タブからアプリを取り除きます。"),
-
-            new Entry(LinimalFeature.HOME_TOP_AD, SettingsPage.HOME,
-                    "ホーム内の広告を表示しない",
-                    "ホーム画面内にある Performance Ad とフィード広告を表示しません。"),
-            new Entry(LinimalFeature.HOME_RECOMMENDATIONS, SettingsPage.HOME,
-                    "おすすめを表示しない",
-                    "ホームのおすすめ枠を表示しません。"),
-            new Entry(LinimalFeature.HOME_TRENDING, SettingsPage.HOME,
-                    "話題を表示しない",
-                    "ホームの話題・トレンド枠を表示しません。"),
-            new Entry(LinimalFeature.HOME_FEED_POST_CARDS, SettingsPage.HOME,
-                    "ホームの投稿カードを表示しない",
-                    "ホーム下部にある投稿カードを表示しません。"),
-            new Entry(LinimalFeature.HOME_FEATURED_COLLECTIONS, SettingsPage.HOME,
-                    "特集枠を表示しない",
-                    "ホームの特集枠にある動画のグリッドを表示しません。"),
-
-            new Entry(LinimalFeature.SMART_CHANNEL_ADS, SettingsPage.CHAT,
-                    "Smart Channel の広告を表示しない",
-                    "チャット一覧の Smart Channel にある広告を表示しません。"),
-            new Entry(LinimalFeature.CHAT_CALENDAR, SettingsPage.CHAT,
-                    "カレンダーを表示しない",
-                    "チャットの + メニューからカレンダーを取り除きます。"),
-            new Entry(LinimalFeature.CHAT_LINE_GIFT, SettingsPage.CHAT,
-                    "LINE ギフトを表示しない",
-                    "チャットの + メニューから LINE ギフトを取り除きます。"),
-            new Entry(LinimalFeature.CHAT_LINE_PAY, SettingsPage.CHAT,
-                    "LINE Pay を表示しない",
-                    "チャットの + メニューから LINE Pay を取り除きます。"),
-            new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, SettingsPage.CHAT,
-                    "既読をつけずに読むをメニューに追加",
-                    "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
-                            + "トーク一覧の未読表示もそのまま残します。"),
-            new Entry(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS, SettingsPage.CHAT,
-                    "トーク一覧の AI Friends を表示しない",
-                    "トーク一覧の上部にある AI Friends のアイコンを表示しません。"),
-            new Entry(LinimalFeature.CHAT_LIST_HEADER_CALENDAR, SettingsPage.CHAT,
-                    "トーク一覧のカレンダーを表示しない",
-                    "トーク一覧の上部にあるカレンダーのアイコンを表示しません。"),
-            new Entry(LinimalFeature.CHAT_LIST_HEADER_OPEN_CHAT, SettingsPage.CHAT,
-                    "トーク一覧のオープンチャットを表示しない",
-                    "トーク一覧の上部にあるオープンチャットのアイコンを表示しません。")));
+                    "通常の http/https のみ外部ブラウザへ渡します。ログインや決済は元のまま開きます。")));
 
     private FeatureCatalog() {
     }
@@ -175,5 +238,30 @@ public final class FeatureCatalog {
             }
         }
         return installed;
+    }
+
+    /**
+     * 指定ページの表示可能な項目を、小見出し単位にまとめて返します。
+     *
+     * <p>項目が一つも残らなかった小見出しは Group を作らないため、見出しだけが残りません。
+     * 小見出しを持たないページは、section が null の Group を一つだけ返します。</p>
+     */
+    public static List<Group> installedGroupsForPage(
+            SettingsPage page, List<String> installedFeatureIds) {
+        List<Group> groups = new ArrayList<>();
+        List<Entry> pending = new ArrayList<>();
+        SettingsSection pendingSection = null;
+        for (Entry entry : installedEntriesForPage(page, installedFeatureIds)) {
+            if (!pending.isEmpty() && entry.getSection() != pendingSection) {
+                groups.add(new Group(pendingSection, pending));
+                pending = new ArrayList<>();
+            }
+            pendingSection = entry.getSection();
+            pending.add(entry);
+        }
+        if (!pending.isEmpty()) {
+            groups.add(new Group(pendingSection, pending));
+        }
+        return groups;
     }
 }

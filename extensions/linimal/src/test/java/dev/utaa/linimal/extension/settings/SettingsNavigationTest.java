@@ -23,16 +23,16 @@ public final class SettingsNavigationTest {
 
         assertFalse(navigation.push(null));
         assertFalse(navigation.push(SettingsPage.ROOT));
-        assertTrue(navigation.push(SettingsPage.HOME));
-        assertFalse(navigation.push(SettingsPage.HOME));
-        assertFalse(navigation.push(SettingsPage.CHAT));
-        assertEquals(SettingsPage.HOME, navigation.getCurrentPage());
+        assertTrue(navigation.push(SettingsPage.HIDE));
+        assertFalse(navigation.push(SettingsPage.HIDE));
+        assertFalse(navigation.push(SettingsPage.ADS));
+        assertEquals(SettingsPage.HIDE, navigation.getCurrentPage());
     }
 
     @Test
     public void popDistinguishesReturningToRootFromFinishingActivity() {
         SettingsNavigation navigation = new SettingsNavigation();
-        navigation.push(SettingsPage.TABS);
+        navigation.push(SettingsPage.ADS);
 
         assertEquals(SettingsNavigation.PopResult.RETURNED_TO_ROOT, navigation.pop());
         assertEquals(SettingsPage.ROOT, navigation.getCurrentPage());
@@ -49,7 +49,11 @@ public final class SettingsNavigationTest {
         assertRestoresRoot(new String[]{"ROOT", "UNKNOWN"});
         assertRestoresRoot(new String[]{"ROOT", null});
         assertRestoresRoot(new String[]{"ROOT", "ROOT"});
-        assertRestoresRoot(new String[]{"ROOT", "GENERAL", "HOME"});
+        assertRestoresRoot(new String[]{"ROOT", "GENERAL", "HIDE"});
+        // 旧構成で保存されたページ ID は解決できないため、ROOT へ倒します。
+        assertRestoresRoot(new String[]{"ROOT", "TABS"});
+        assertRestoresRoot(new String[]{"ROOT", "HOME"});
+        assertRestoresRoot(new String[]{"ROOT", "CHAT"});
     }
 
     @Test
@@ -73,7 +77,7 @@ public final class SettingsNavigationTest {
         navigation.push(SettingsPage.AGENT_I);
 
         String[] serializedPath = navigation.serialize();
-        serializedPath[1] = SettingsPage.CHAT.getId();
+        serializedPath[1] = SettingsPage.HIDE.getId();
 
         assertEquals(SettingsPage.AGENT_I, navigation.getCurrentPage());
         assertArrayEquals(new String[]{"ROOT", "AGENT_I"}, navigation.serialize());
@@ -81,7 +85,7 @@ public final class SettingsNavigationTest {
 
     private static void assertRestoresRoot(String[] serializedPath) {
         SettingsNavigation navigation = new SettingsNavigation();
-        navigation.push(SettingsPage.CHAT);
+        navigation.push(SettingsPage.READ_RECEIPT);
 
         navigation.restore(serializedPath);
 
