@@ -91,6 +91,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.home-featured-collections",
         FeatureId.HOME_FEATURED_COLLECTIONS,
     ),
+    HOME_FEED_LOADING_INDICATOR(
+        "linimal.patch.home-feed-loading-indicator",
+        FeatureId.HOME_FEATURED_COLLECTIONS,
+    ),
     SMART_CHANNEL_ADS("linimal.patch.smart-channel-ads", FeatureId.SMART_CHANNEL_ADS),
     HOME_TOP_AD_MODULE_GATE(
         "linimal.patch.home-top-ad-module-gate",
