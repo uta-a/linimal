@@ -49,8 +49,9 @@ final class PatchStatusRequirements {
                 ids("linimal.patch.home-contents-recommendation"));
         requirements.put("linimal.home-trending", ids("linimal.patch.home-matome-single-module"));
         requirements.put("linimal.home-feed-post-cards", ids("linimal.patch.home-feed-post-cards"));
-        requirements.put("linimal.home-featured-collections",
-                ids("linimal.patch.home-featured-collections"));
+        requirements.put("linimal.home-featured-collections", ids(
+                "linimal.patch.home-featured-collections",
+                "linimal.patch.home-feed-loading-indicator"));
         requirements.put("linimal.smart-channel-ads", ids("linimal.patch.smart-channel-ads"));
         requirements.put("linimal.chat-calendar", ids("linimal.patch.chat-menu-calendar"));
         requirements.put("linimal.chat-line-gift", ids("linimal.patch.chat-menu-line-gift"));

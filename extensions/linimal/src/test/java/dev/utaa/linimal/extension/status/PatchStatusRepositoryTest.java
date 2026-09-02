@@ -3,6 +3,7 @@ package dev.utaa.linimal.extension.status;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -169,7 +170,25 @@ public final class PatchStatusRepositoryTest {
     }
 
     @Test
-    public void homeFeaturedCollectionsResolvesFromItsOwnRequiredPatch() {
+    public void homeFeaturedCollectionsRequiresItsFeedLoadingIndicatorPatch() {
+        String featured = patchJson(
+                "linimal.patch.home-featured-collections",
+                "linimal.home-featured-collections", "OK", 1, 1);
+        String loading = patchJson(
+                "linimal.patch.home-feed-loading-indicator",
+                "linimal.home-featured-collections", "OK", 1, 1);
+
+        PatchStatusReport report = parser.parse(
+                "{\"schemaVersion\":1,\"patches\":[" + featured + "," + loading + "]}");
+
+        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
+        assertNull(report.getFeatureStatus("linimal.home-feed-post-cards"));
+        assertNull(report.getFeatureStatus("linimal.home-trending"));
+    }
+
+    /** 片方だけでは feature を有効にしません。取りこぼすと機能ごと無効になるため、境界を固定します。 */
+    @Test
+    public void homeFeaturedCollectionsStaysUnavailableWithoutTheLoadingIndicatorPatch() {
         String featured = patchJson(
                 "linimal.patch.home-featured-collections",
                 "linimal.home-featured-collections", "OK", 1, 1);
@@ -177,9 +196,7 @@ public final class PatchStatusRepositoryTest {
         PatchStatusReport report = parser.parse(
                 "{\"schemaVersion\":1,\"patches\":[" + featured + "]}");
 
-        assertEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
-        assertNull(report.getFeatureStatus("linimal.home-feed-post-cards"));
-        assertNull(report.getFeatureStatus("linimal.home-trending"));
+        assertNotEquals(PatchStatus.OK, report.getFeatureStatus("linimal.home-featured-collections"));
     }
 
     @Test
