@@ -35,6 +35,7 @@ final class LinimalConfigSchema {
     static final String HOME_FEED_POST_CARDS_ENABLED_KEY = "linimal.ui.home.feed_post_cards";
     static final String HOME_FEATURED_COLLECTIONS_ENABLED_KEY =
             "linimal.ui.home.featured_collections";
+    static final String HOME_RECENT_HISTORY_ENABLED_KEY = "linimal.ui.home.recent_history";
     static final String CHAT_CALENDAR_ENABLED_KEY = "linimal.chat.tools.calendar";
     static final String CHAT_LINE_GIFT_ENABLED_KEY = "linimal.chat.tools.line_gift";
     static final String CHAT_LINE_PAY_ENABLED_KEY = "linimal.chat.tools.line_pay";
@@ -94,6 +95,8 @@ final class LinimalConfigSchema {
                 return HOME_FEED_POST_CARDS_ENABLED_KEY;
             case HOME_FEATURED_COLLECTIONS:
                 return HOME_FEATURED_COLLECTIONS_ENABLED_KEY;
+            case HOME_RECENT_HISTORY:
+                return HOME_RECENT_HISTORY_ENABLED_KEY;
             case CHAT_CALENDAR:
                 return CHAT_CALENDAR_ENABLED_KEY;
             case CHAT_LINE_GIFT:

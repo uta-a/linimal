@@ -196,6 +196,10 @@ public final class FeatureCatalog {
                     SettingsSection.HIDE_HOME,
                     "特集枠を表示しない",
                     "ホームの特集枠にある動画のグリッドを表示しません。"),
+            new Entry(LinimalFeature.HOME_RECENT_HISTORY, SettingsPage.HIDE,
+                    SettingsSection.HIDE_HOME,
+                    "最近の履歴を表示しない",
+                    "ホーム上部にある最近使用したサービスの枠を表示しません。"),
 
             new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
                     "既読をつけずに読むをメニューに追加",
