@@ -64,6 +64,13 @@ public final class LinimalConfigTest {
             LinimalFeature.HOME_FEATURED_COLLECTIONS,
             LinimalFeature.PREMIUM_SETTINGS_ROW);
 
+    /**
+     * 凍結テーブルを作ったあとに追加した機能です。既存インストールにとっても新機能で保護すべき
+     * 挙動が無いため、migration は書き込まず、その時点の既定値をそのまま使わせます。
+     */
+    private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
+            LinimalFeature.HOME_RECENT_HISTORY);
+
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {
         LinimalConfig config = LinimalConfig.get();
@@ -169,6 +176,15 @@ public final class LinimalConfigTest {
 
         assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
         for (LinimalFeature feature : LinimalFeature.values()) {
+            if (POST_FREEZE_FEATURES.contains(feature)) {
+                // 凍結後に追加した機能は書き戻さず、現在の既定値をそのまま適用します。
+                assertNull(feature.name(), backend.values.get(LinimalConfigSchema.keyFor(feature)));
+                assertEquals(
+                        feature.name(),
+                        DEFAULT_ON_FEATURES.contains(feature),
+                        config.isSuppressionEnabled(feature));
+                continue;
+            }
             boolean legacyDefault = LEGACY_DEFAULT_ON_FEATURES.contains(feature);
             assertEquals(feature.name(), legacyDefault, config.isSuppressionEnabled(feature));
             assertEquals(

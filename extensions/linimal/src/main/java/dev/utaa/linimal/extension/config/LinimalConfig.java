@@ -177,6 +177,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS);
     }
 
+    public boolean isHomeRecentHistorySuppressionEnabled() {
+        return isEnabled(LinimalFeature.HOME_RECENT_HISTORY);
+    }
+
     public boolean isChatCalendarSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_CALENDAR);
     }

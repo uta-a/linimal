@@ -21,6 +21,7 @@ import dev.utaa.linimal.patches.features.home.homeContentsRecommendationPatch
 import dev.utaa.linimal.patches.features.home.homeFeaturedCollectionsPatch
 import dev.utaa.linimal.patches.features.home.homeFeedLoadingIndicatorPatch
 import dev.utaa.linimal.patches.features.home.homeFeedPostCardsPatch
+import dev.utaa.linimal.patches.features.home.homeRecentHistoryPatch
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiEntryPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiGalleryViewerPatch
@@ -75,7 +76,8 @@ class LinimalPatchTest {
         assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptMenuLabelResourcePatch), readWithoutReceiptComposeMenuPatch.dependencies)
         assertEquals(setOf(homeFeedLoadingIndicatorPatch), readWithoutReceiptMenuLabelResourcePatch.dependencies)
-        assertEquals(setOf(homeFeaturedCollectionsPatch), homeFeedLoadingIndicatorPatch.dependencies)
+        assertEquals(setOf(homeRecentHistoryPatch), homeFeedLoadingIndicatorPatch.dependencies)
+        assertEquals(setOf(homeFeaturedCollectionsPatch), homeRecentHistoryPatch.dependencies)
         assertEquals(setOf(premiumSettingsRowPatch), homeFeaturedCollectionsPatch.dependencies)
         assertEquals(setOf(homeFeedPostCardsPatch), premiumSettingsRowPatch.dependencies)
         assertEquals(setOf(agentIChatListSearchPatch), homeFeedPostCardsPatch.dependencies)

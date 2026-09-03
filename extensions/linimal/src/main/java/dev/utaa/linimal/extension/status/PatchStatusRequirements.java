@@ -52,6 +52,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.home-feed-post-cards", ids("linimal.patch.home-feed-post-cards"));
         requirements.put("linimal.home-featured-collections",
                 ids("linimal.patch.home-featured-collections"));
+        requirements.put("linimal.home-recent-history", ids("linimal.patch.home-recent-history"));
         // 読み込み表示は独立した patch。特集枠と feature を共有すると、片方の失敗で
         // もう片方の設定まで利用不可になる。
         requirements.put("linimal.home-feed-loading-indicator",

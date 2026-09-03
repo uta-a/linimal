@@ -48,6 +48,7 @@ public enum LinimalFeature {
     SHOPPING("linimal.shopping"),
     HOME_FEED_POST_CARDS("linimal.home-feed-post-cards"),
     HOME_FEATURED_COLLECTIONS("linimal.home-featured-collections"),
+    HOME_RECENT_HISTORY("linimal.home-recent-history"),
     PREMIUM_SETTINGS_ROW("linimal.premium-settings-row"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
     MINI("linimal.mini"),

@@ -117,7 +117,7 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
         }
     }
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
-    dependsOn(homeFeaturedCollectionsPatch)
+    dependsOn(homeRecentHistoryPatch)
 
     execute {
         val spinnerPackages = homeFeedLoadingIndicatorPackagePrefixes(
