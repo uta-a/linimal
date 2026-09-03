@@ -14,14 +14,18 @@ import java.net.URLClassLoader
 import java.util.jar.Manifest
 
 fun main() {
-    val patchFiles = setOf(
-        File("build/libs/").listFiles { file ->
-            val fileName = file.name
-            !fileName.contains("javadoc") &&
-                    !fileName.contains("sources") &&
-                    fileName.endsWith(".mpp")
-        }!!.first()
-    )
+    // build/libs には過去のバージョンの .mpp が残るため、列挙順の先頭を選ぶと古い
+    // バンドルからバージョンとパッチ一覧を生成してしまいます。更新時刻が最も新しい
+    // ものを選び、いま build したバンドルを必ず対象にします。
+    val candidates = File("build/libs/").listFiles { file ->
+        val fileName = file.name
+        !fileName.contains("javadoc") &&
+                !fileName.contains("sources") &&
+                fileName.endsWith(".mpp")
+    }.orEmpty()
+    check(candidates.isNotEmpty()) { "build/libs に .mpp がありません。先に build を実行してください。" }
+
+    val patchFiles = setOf(candidates.maxBy { it.lastModified() })
     val loadedPatches = loadPatchesFromJar(patchFiles)
     val patchClassLoader = URLClassLoader(patchFiles.map { it.toURI().toURL() }.toTypedArray())
     val manifest = patchClassLoader.getResources("META-INF/MANIFEST.MF")
