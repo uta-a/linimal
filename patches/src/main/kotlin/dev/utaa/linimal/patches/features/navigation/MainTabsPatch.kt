@@ -5,6 +5,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
@@ -15,6 +17,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ThreeRegisterInstructio
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
@@ -65,7 +68,18 @@ private val mainTabDescriptorFingerprint = Fingerprint(
  * VOOM / NEWS / Wallet / Shopping / Mini の input list を保存する constructor。enum descriptor class は上の anchor から
  * 動的に導くため、constructor 自身の難読化 class/method 名には依存しません。
  */
-val mainTabsPatch = bytecodePatch {
+val mainTabsPatch = bytecodePatch(
+    name = "下部タブ",
+    description = "下部タブの VOOM・ショッピング・ニュース・ウォレット・アプリを、実行時設定で個別に取り除けるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(premiumUnsendPromotionPatch)
 
     execute {

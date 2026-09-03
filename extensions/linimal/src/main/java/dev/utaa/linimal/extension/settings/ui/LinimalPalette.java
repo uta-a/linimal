@@ -18,8 +18,6 @@ public final class LinimalPalette {
     public final int divider;
     public final int accent;
     public final int switchTrackOff;
-    public final int statusOk;
-    public final int statusWarning;
     public final int statusError;
     public final boolean dark;
 
@@ -41,8 +39,6 @@ public final class LinimalPalette {
             switchTrackOff = 0xFFD5D5D5;
         }
         accent = BRAND;
-        statusOk = BRAND;
-        statusWarning = 0xFFE8912D;
         statusError = 0xFFE5484D;
     }
 

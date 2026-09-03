@@ -11,6 +11,8 @@
 
 初期の設定画面は全機能とPatch Statusを一枚に並べていた。機能追加により項目が増えたため、子ページへ分ける。
 
+Patch Statusページはその後削除した。適用状況の確認は開発時の診断用であり、通常の利用では参照しない情報だからである。patch statusの仕組み自体は残し、必須patchが揃わない機能を無効へ倒す判定と、statusを読めない場合の案内に引き続き使う。
+
 分け方は目的別とする。最初の分割では `Tabs` / `Home` / `Chat` という場所別のページと `Agent i` という種類別のページが混在し、ある項目をどちらの手掛かりで探せばよいかが一貫していなかった。そこで「広告を消す」「AIの入口を消す」「表示を消す」「既読を制御する」というユーザーの目的でページを分け、場所はページ内の小見出しへ落とした。これにより、ページの選択は目的だけで決まり、場所はページを開いた後の絞り込みになる。
 
 一つのActivity内でページスタックを管理する。新しいActivity、Fragment、Service、Providerは追加しない。
@@ -30,8 +32,7 @@ Linimal
 │   ├─ トークの ＋ メニュー
 │   └─ ホーム
 ├─ 既読
-├─ 一般
-└─ Patch Status
+└─ 一般
 ```
 
 階層は Root と子ページの二段のままとする。小見出しは子ページの中の見出しであり、page IDを持たない。
@@ -45,7 +46,6 @@ AGENT_I
 HIDE
 READ_RECEIPT
 GENERAL
-PATCH_STATUS
 ```
 
 小見出しのIDは `SettingsSection` が持つ。
@@ -71,9 +71,8 @@ RootにはSwitchを直接置かない。各categoryのsummaryと右向きchevron
 | 表示を消す | 画面ごとに表示する項目を選びます。 | 下部タブ、トーク一覧の上部、トークの ＋ メニュー、ホーム |
 | 既読 | 既読の送信と、既読をつけずに読む機能を設定します。 | 既読をつけずに読む、通常チャットの自動既読停止 |
 | 一般 | Premium の案内とリンクの開き方を設定します。 | Premium の案内、設定のプレミアム行、外部ブラウザ |
-| Patch Status | パッチの適用状況を確認します。 | 全patchの適用結果 |
 
-順序は目的の近さで並べる。広告とAgent i・LINE AIを先に置き、次に表示の取捨選択、次に挙動を変える既読、最後にその他をまとめた一般とPatch Statusを置く。
+順序は目的の近さで並べる。広告とAgent i・LINE AIを先に置き、次に表示の取捨選択、次に挙動を変える既読、最後にその他をまとめた一般を置く。
 
 Category rowの高さは最低56dpとする。左側にtitleとsummaryを置く。右側にchevronを置く。
 
@@ -95,6 +94,8 @@ contentはLINE風のsection headerとrowを使う。既存palette、dark mode、
 小見出しを持つページでは、rowの並びを小見出し単位のGroupへまとめて描く。小見出しは13spのtextとして、上に余白を取って描く。
 
 小見出しは、その中に表示できる項目が一つも残らなかった場合は描画しない。対応patchが適用できず項目がすべて消えたときに、見出しだけが残ることを防ぐ。ページ内に表示できる項目が一つもない場合は、代わりに利用できる機能がない旨を表示する。
+
+Status reportを読めない場合は、子ページのcontentへ機能設定を変更できない旨のメッセージだけを描く。Switch rowは一件も描かない。
 
 ## 機能の所属
 
@@ -178,17 +179,6 @@ ShoppingとWalletは別rowにする。トーク一覧の上部のカレンダー
 - 設定のプレミアムを表示しない
 - リンクを外部ブラウザで開く
 
-### Patch Status
-
-- report metadata
-- feature status
-- patch record
-- expected target count
-- actual target count
-- reason
-
-Status reportを読めない場合もこのpage自体は開ける。読取失敗の説明を表示する。
-
 ## FeatureCatalog
 
 各entryに所属pageと、ページ内の小見出しを持たせる。小見出しを持たないページのentryはsectionをnullにする。
@@ -202,7 +192,7 @@ title
 summary
 ```
 
-`installedEntriesForPage` はPatch Statusのfeature IDに存在し、かつそのpageに属するentryだけをcatalogの定義順で返す。`installedGroupsForPage` はその結果を連続する同一sectionごとのGroupへまとめる。
+`installedEntriesForPage` はpatch status reportのfeature IDに存在し、かつそのpageに属するentryだけをcatalogの定義順で返す。`installedGroupsForPage` はその結果を連続する同一sectionごとのGroupへまとめる。
 
 ```text
 installedEntriesForPage
@@ -211,7 +201,7 @@ installedGroupsForPage
 
 Groupは表示できるentryが1件以上あるときだけ作る。そのため、パッチが適用できずsection内のentryがすべて消えた場合は、小見出しがGroupごと現れない。同じsectionのentryはcatalog上で連続して並べる。
 
-Root categoryはそのpageに表示可能なentryがなくても固定で表示する案を基本とする。対象patchが未適用の場合もPatch Statusへ到達できるようにする。
+Root categoryはそのpageに表示可能なentryがなくても固定で表示する案を基本とする。対象patchが未適用でもページ自体は開き、利用できる機能がない旨を表示する。
 
 機能rowは対応featureの必須PatchId集合が完全に存在し、全件 `OK` の場合だけ操作可能にする。runtime側の `PatchStatusRequirements` がFeatureIdごとの必須集合を保持する。1件でも欠落または余分なrecordがあればFeature Statusを `ERROR` とする。feature IDがreportにない場合はrowを表示しない。
 
@@ -393,7 +383,7 @@ pure Javaで分けられないView動作は実機で確認する。
 - lightとdark
 - 大きな文字
 - unavailable featureが操作不能
-- Status読取失敗時もPatch Statusが開く
+- Status読取失敗時も各pageが開き、変更できない旨を表示する
 
 ## 不採用
 
@@ -404,6 +394,7 @@ pure Javaで分けられないView動作は実機で確認する。
 - SharedPreferencesへpage stateを永続化する方式
 - exported Activityへ変更する方式
 - Patch Statusを読めないとActivity全体を閉じる方式
+- 適用状況の一覧pageを利用者向けに残す方式
 
 ## 未検証事項
 

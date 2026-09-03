@@ -221,11 +221,11 @@ public final class FeatureCatalog {
 
     /**
      * 指定ページに属し、かつ patch-status に記録された feature ID を持つ項目だけを返します。
-     * ROOT と Patch Status は設定項目を直接持たないため空です。
+     * ROOT は設定項目を直接持たないため空です。
      */
     public static List<Entry> installedEntriesForPage(
             SettingsPage page, List<String> installedFeatureIds) {
-        if (page == null || page == SettingsPage.ROOT || page == SettingsPage.PATCH_STATUS) {
+        if (page == null || page == SettingsPage.ROOT) {
             return Collections.emptyList();
         }
         List<Entry> installed = new ArrayList<>();

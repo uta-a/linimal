@@ -6,6 +6,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLa
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.newInstance
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
@@ -18,6 +20,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import dev.utaa.linimal.patches.features.ads.smartChannelAdsPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
@@ -194,7 +197,18 @@ private data class TargetInjectionShape(
  * 外部ブラウザ routing は通常チャット本文だけに限定します。OAuth、Channel permission、Pay、LIFF、
  * Settings WebView、Timeline、rich message は、検証済みの h preset 経路へ入りません。
  */
-val externalBrowserChatTextLinkPatch = bytecodePatch {
+val externalBrowserChatTextLinkPatch = bytecodePatch(
+    name = "リンクを外部ブラウザで開く",
+    description = "トーク本文の通常の http/https リンクを、実行時設定で外部ブラウザへ渡せるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(smartChannelAdsPatch)
 
     execute {

@@ -2,7 +2,10 @@ package dev.utaa.linimal.patches.features.chat
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.string
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
@@ -12,6 +15,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnappliedFeatureStatus
@@ -47,12 +51,21 @@ private val chatListHeaderButtonPatchIds = listOf(
     PatchId.CHAT_LIST_HEADER_OPEN_CHAT,
 )
 
+/**
+ * 候補を索引で絞るための anchor。fingerprint の instruction filter に上げた文字列定数は、
+ * 全 class 走査ではなくその定数を持つ class だけを候補にするために使われます。custom は
+ * [CHAT_LIST_HEADER_BUTTON_NAMES] を 5 つとも引き続き検証するため、一致対象は変わりません。
+ */
+private const val CHAT_LIST_HEADER_BUTTON_ANCHOR_NAME = "AI_FRIEND"
+
 private val chatListHeaderButtonEnumFingerprint = Fingerprint(
+    name = CLASS_INITIALIZER,
     custom = { method, classDef ->
         classDef.superclass == ENUM &&
             method.name == CLASS_INITIALIZER &&
             declaresChatListHeaderButtonNames(method)
     },
+    filters = listOf(string(CHAT_LIST_HEADER_BUTTON_ANCHOR_NAME)),
 )
 
 /**
@@ -75,7 +88,18 @@ private val chatListHeaderButtonEnumFingerprint = Fingerprint(
  * 再計算の両方が一貫して絞り込まれます。ボタンごとの分岐を新しく作らないので、設定が OFF のときは
  * 元の List instance がそのまま流れます。</p>
  */
-val chatListHeaderButtonsPatch = bytecodePatch {
+val chatListHeaderButtonsPatch = bytecodePatch(
+    name = "トーク一覧上部のアイコン",
+    description = "トーク一覧上部の AI Friends・カレンダー・オープンチャットのアイコンを、実行時設定で個別に取り除けるようにします。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
     dependsOn(readWithoutReceiptMarkAsReadBlockPatch)
 

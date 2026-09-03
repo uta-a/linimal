@@ -1,8 +1,11 @@
 package dev.utaa.linimal.patches.settings
 
+import app.morphe.patcher.patch.ApkArchitecture
+import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.resourcePatch
 import dev.utaa.linimal.patches.core.linimalBootstrapPatch
+import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.patchStatusCollector
 
@@ -13,7 +16,18 @@ internal object LinimalSettingsResource {
 }
 
 /** 設定項目が参照する文字列を、既存の値を書き換えずに 1 件だけ追加します。 */
-val linimalSettingsResourcePatch = resourcePatch {
+val linimalSettingsResourcePatch = resourcePatch(
+    name = "Linimal 設定の文字列",
+    description = "Linimal の設定項目が参照する文字列 resource を追加します。",
+) {
+    compatibleWith(Constants.LINE_COMPATIBILITY)
+    availability { _, architecture ->
+        if (architecture == ApkArchitecture.ARM64_V8A) {
+            PatchAvailability.REQUIRED
+        } else {
+            PatchAvailability.UNAVAILABLE
+        }
+    }
     dependsOn(linimalBootstrapPatch)
 
     execute {

@@ -37,7 +37,6 @@ import dev.utaa.linimal.extension.settings.ui.BackArrowDrawable;
 import dev.utaa.linimal.extension.settings.ui.ChevronDrawable;
 import dev.utaa.linimal.extension.settings.ui.LinimalPalette;
 import dev.utaa.linimal.extension.status.PatchStatus;
-import dev.utaa.linimal.extension.status.PatchStatusPresenter;
 import dev.utaa.linimal.extension.status.PatchStatusReadResult;
 import dev.utaa.linimal.extension.status.PatchStatusReport;
 
@@ -191,8 +190,6 @@ public final class LinimalSettingsActivity extends Activity {
         SettingsPage page = navigation.getCurrentPage();
         if (page == SettingsPage.ROOT) {
             addRootPage(content);
-        } else if (page == SettingsPage.PATCH_STATUS) {
-            addPatchStatusPage(content);
         } else {
             addFeaturePage(content, page);
         }
@@ -229,8 +226,6 @@ public final class LinimalSettingsActivity extends Activity {
                 "既読", "既読の送信と、既読をつけずに読む機能を設定します。");
         addCategoryRow(parent, SettingsPage.GENERAL,
                 "一般", "Premium の案内とリンクの開き方を設定します。");
-        addCategoryRow(parent, SettingsPage.PATCH_STATUS,
-                "Patch Status", "パッチの適用状況を確認します。");
     }
 
     private void addFeaturePage(LinearLayout parent, SettingsPage page) {
@@ -261,14 +256,6 @@ public final class LinimalSettingsActivity extends Activity {
 
         if (!hasEntry) {
             addUnavailableFeatureMessage(parent, "このページで利用できる機能はありません。");
-        }
-    }
-
-    /** status presenter の行をそのまま用い、report 内の全 record を表示します。 */
-    private void addPatchStatusPage(LinearLayout parent) {
-        List<PatchStatusPresenter.Row> rows = PatchStatusPresenter.rows(patchStatusResult);
-        for (PatchStatusPresenter.Row row : rows) {
-            addStatusRow(parent, row);
         }
     }
 
@@ -354,22 +341,6 @@ public final class LinimalSettingsActivity extends Activity {
                 toggle.toggle();
             }
         });
-    }
-
-    private void addStatusRow(LinearLayout parent, PatchStatusPresenter.Row row) {
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER_VERTICAL);
-        container.setMinimumHeight(dp(56));
-        container.setPadding(dp(20), dp(8), dp(20), dp(8));
-        parent.addView(container, matchWidth());
-
-        TextView title = createText(row.getTitle(), 16, palette.primaryText);
-        container.addView(title, wrap());
-
-        TextView detail = createText(row.getDetail(), 13, toneColor(row.getTone()));
-        detail.setPadding(0, dp(2), 0, 0);
-        container.addView(detail, wrap());
     }
 
     private LinearLayout createLabels(String titleText, String summaryText) {
@@ -522,8 +493,6 @@ public final class LinimalSettingsActivity extends Activity {
                 return "既読";
             case GENERAL:
                 return "一般";
-            case PATCH_STATUS:
-                return "Patch Status";
             case ROOT:
             default:
                 return "Linimal";
@@ -574,20 +543,6 @@ public final class LinimalSettingsActivity extends Activity {
             flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         decorView.setSystemUiVisibility(flags);
-    }
-
-    private int toneColor(PatchStatusPresenter.Tone tone) {
-        switch (tone) {
-            case OK:
-                return palette.statusOk;
-            case WARNING:
-                return palette.statusWarning;
-            case ERROR:
-                return palette.statusError;
-            case NEUTRAL:
-            default:
-                return palette.secondaryText;
-        }
     }
 
     private void applySwitchColors(Switch toggle, boolean enabled) {
