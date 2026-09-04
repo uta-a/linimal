@@ -76,8 +76,13 @@ private const val OUTBOUND_GATE_MERGE_INDEX = 5
  * 通常チャットの outbound read-receipt sender を、FAILED_CHAT_CHECKED 専用 queue・成功時の
  * SharedPreferences remove・RPC の全てを組み合わせて識別します。OpenChat/Square、Service Chat、
  * AI Character の経路はこの fingerprint に含めません。
+ *
+ * <p>このメソッドは「既読にする」処理そのもので、ローカル未読のクリア（`Y`）と既読位置の前進
+ * （`Q0`）を実行してから RPC（`j1`）を呼びます。`readWithoutReceiptLocalReadBlockPatch` が
+ * 同じメソッドの先頭へ別の gate を注入するため、fingerprint は複製せずここを共有します。
+ * 両者が同じメソッドへ当たることを定義として保証するためです。</p>
  */
-private val outboundGateFingerprint = Fingerprint(
+internal val outboundGateFingerprint = Fingerprint(
     returnType = VOID,
     parameters = listOf(LONG, STRING, BOOLEAN),
     // MethodCallFilter は interface bridge の declaration variation を過度に狭めるため、ここでは
