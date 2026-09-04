@@ -1,6 +1,6 @@
 {
-  "created_at": "2026-09-03T18:43:57",
-  "description": "Linimal v0.3.1。\n\n追加:\n- ホーム上部の「最近の履歴」を非表示にできるようにしました。隣の「サービス」枠は残り、全幅に広がります。設定は「表示を消す」→ ホームにあります。既定は OFF です。\n\n対象: LINE 26.11.0 (versionCode 261100124) arm64-v8a の APKM のみ。\n\n注意: パッチ適用後の APK は公式版と署名が異なるため、公式アプリへ上書きインストールできず、既存のアプリデータも引き継げません。",
-  "download_url": "https://github.com/uta-a/linimal/releases/download/v0.3.1/patches-0.3.1.mpp",
-  "version": "0.3.1"
+  "created_at": "2026-09-05T01:30:00",
+  "description": "Linimal v0.3.2。\n\n修正:\n- 「既読をつけずに読む」で開いたトークの未読バッジが消えてしまう不具合を直しました。トーク一覧の行と下部タブ「トーク」のバッジが残ります。止めていたのが既読送信 RPC だけで、その手前で先に走るローカルの未読クリアが素通りしていたのが原因です。\n- 抑制の解除条件を見直しました。トークを閉じた時点で解除されるため、その後に通常の操作で開けば LINE 本来どおり既読になります。\n\n対象: LINE 26.11.0 (versionCode 261100124) arm64-v8a の APKM のみ。\n\n注意: パッチ適用後の APK は公式版と署名が異なるため、公式アプリへ上書きインストールできず、既存のアプリデータも引き継げません。",
+  "download_url": "https://github.com/uta-a/linimal/releases/download/v0.3.2/patches-0.3.2.mpp",
+  "version": "0.3.2"
 }
