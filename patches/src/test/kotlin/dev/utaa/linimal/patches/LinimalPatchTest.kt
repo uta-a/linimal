@@ -34,6 +34,7 @@ import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePat
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierRegistrationPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptComposeMenuPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptLocalReadBlockPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMenuLabelResourcePatch
 import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
@@ -72,7 +73,11 @@ class LinimalPatchTest {
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
         assertEquals(setOf(chatListHeaderButtonsPatch), noOpProbePatch.dependencies)
-        assertEquals(setOf(readWithoutReceiptMarkAsReadBlockPatch), chatListHeaderButtonsPatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptLocalReadBlockPatch), chatListHeaderButtonsPatch.dependencies)
+        assertEquals(
+            setOf(readWithoutReceiptMarkAsReadBlockPatch),
+            readWithoutReceiptLocalReadBlockPatch.dependencies,
+        )
         assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptMenuLabelResourcePatch), readWithoutReceiptComposeMenuPatch.dependencies)
         assertEquals(setOf(homeFeedLoadingIndicatorPatch), readWithoutReceiptMenuLabelResourcePatch.dependencies)

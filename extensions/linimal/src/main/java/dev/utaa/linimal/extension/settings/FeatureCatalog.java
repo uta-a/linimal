@@ -204,7 +204,7 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
                     "既読をつけずに読むをメニューに追加",
                     "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
-                            + "トーク一覧の未読表示もそのまま残します。"),
+                            + "トーク一覧と下部タブの未読バッジも消しません。閉じたあと通常の操作で開くと既読になります。"),
 
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",
