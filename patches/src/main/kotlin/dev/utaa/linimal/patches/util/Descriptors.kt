@@ -50,3 +50,6 @@ internal const val LIST = "Ljava/util/List;"
 
 /** `java.util.HashMap` */
 internal const val HASH_MAP = "Ljava/util/HashMap;"
+
+/** `int[]` */
+internal const val INT_ARRAY = "[I"

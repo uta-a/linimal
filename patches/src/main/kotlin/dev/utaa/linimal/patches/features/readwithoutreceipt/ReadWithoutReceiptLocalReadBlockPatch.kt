@@ -28,12 +28,14 @@ internal data class MainChatMarkAsReadShape(val chatIdRegister: Int)
  * 「既読をつけずに読む」で開いたトークについて、ローカルの未読クリアごと既読処理を止めます。
  *
  * <p>メイン 1:1 / グループの「既読にする」は 1 つのメソッド
- * （`q33.e.d(J, String, Z)V` 相当）に集約されており、その中で次の順に実行されます。</p>
+ * （26.14.0 では `na3.e.d(J, String, Z)V`。26.11.0 では `q33.e.d`）に集約されており、その中で
+ * 次の順に実行されます。難読化名は版ごとに変わるため、[outboundGateFingerprint] は名前ではなく
+ * 引数・戻り値の形と参照の出現順で識別します。</p>
  *
  * <pre>
- *   Lu13/l;->Y(chatId)V           ローカル未読のクリア（トーク一覧と下部タブのバッジを消す）
- *   Lu13/l;->Q0(msgId, chatId)V   既読位置 read_up の前進
- *   TalkServiceClient->j1(...)V   sendChatChecked（相手へ既読を伝える RPC）
+ *   Ls83/j;->e0(chatId)V          ローカル未読のクリア（トーク一覧と下部タブのバッジを消す）
+ *   Ls83/j;->U0(msgId, chatId)V   既読位置 read_up の前進
+ *   TalkServiceClient->c1(...)V   sendChatChecked（相手へ既読を伝える RPC）
  * </pre>
  *
  * <p>[readWithoutReceiptMarkAsReadBlockPatch] が止めているのは最後の RPC だけで、その手前で

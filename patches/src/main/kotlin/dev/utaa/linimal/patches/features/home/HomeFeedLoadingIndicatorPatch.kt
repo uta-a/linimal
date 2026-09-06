@@ -6,14 +6,9 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.Annotation
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -23,12 +18,12 @@ import dev.utaa.linimal.patches.status.unsafeFeatureStatus
 import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.INT
 import dev.utaa.linimal.patches.util.VOID
-import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.composeShouldExecuteGate
+import dev.utaa.linimal.patches.util.composeShouldExecuteSuppression
+import dev.utaa.linimal.patches.util.debugMetadataSource
+import dev.utaa.linimal.patches.util.resolveComposeRuntime
+import dev.utaa.linimal.patches.util.resolveDebugMetadataType
 
-private const val DEBUG_METADATA = "Llb8/e;"
-private const val COMPOSER = "Lh3/t;"
-private const val COMPOSER_IMPL = "Lh3/f1;"
-private const val END_RESTART_GROUP_RESULT = "Lh3/p3;"
 private const val HOME_FEED_LOADING_INDICATOR_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeFeedLoadingIndicatorHooks;->shouldSuppress()Z"
 
@@ -45,42 +40,38 @@ private const val GCS_PAGE_UI_CLASS_PREFIX = "com.linecorp.line.gcs.page.ui."
  */
 private const val LDS_SPINNER_ANGLES_MARKER = "LdsSpinnerAngles(arcStartAngleDegrees="
 
-private const val MODIFIER = "Ly3/j;"
-
 /** spinner composable の引数の数。`(size, Modifier, Boolean, Composer, $$changed, $$default)`。 */
 private const val LDS_SPINNER_PARAMETER_COUNT = 6
+
+/** spinner composable の引数のうち、Modifier が入る位置。 */
+private const val LDS_SPINNER_MODIFIER_INDEX = 1
 
 /** 読み込み表示の renderer は 1 件だけです。解決できなければ一切注入しません。 */
 internal const val HOME_FEED_LOADING_INDICATOR_TARGET_COUNT = 1
 
-private val gcsPageUiMetadataFingerprint = Fingerprint(
-    custom = { _, classDef -> classDef.annotations.any(::isGcsPageUiMetadata) },
+private fun gcsPageUiMetadataFingerprint(debugMetadataType: String) = Fingerprint(
+    custom = { _, classDef ->
+        debugMetadataSource(classDef, debugMetadataType)?.className?.startsWith(GCS_PAGE_UI_CLASS_PREFIX) == true
+    },
 )
 
 private val ldsSpinnerAnglesFingerprint = Fingerprint(strings = listOf(LDS_SPINNER_ANGLES_MARKER))
 
-/** DebugMetadata の元 class 名が、GCS ページの UI のものかどうか。 */
-private fun isGcsPageUiMetadata(annotation: Annotation): Boolean {
-    if (annotation.type != DEBUG_METADATA) {
-        return false
-    }
-    val className = annotation.elements
-        .firstOrNull { it.name == "c" }
-        ?.let { (it.value as? StringEncodedValue)?.value }
-    return className?.startsWith(GCS_PAGE_UI_CLASS_PREFIX) == true
-}
-
 /**
  * LDS spinner 本体かどうか。`(size, Modifier, Boolean, Composer, int, int)` を返り値 void で取ります。
- * size の型は難読化されるため、位置と他の引数の型だけで判定します。
+ *
+ * <p>26.11.0 では Modifier の難読化型（`Ly3/j;`）を patch に持っていましたが、この型名は版ごとに
+ * 変わります。位置と他の引数の型だけで spinner を 1 件に絞り、Modifier の型は絞り込めた
+ * spinner の引数から取り出します。</p>
  */
-internal fun isLdsSpinnerSignature(method: Method): Boolean {
+internal fun isLdsSpinnerSignature(method: Method, composer: String): Boolean {
     val parameters = method.parameterTypes.map { it.toString() }
     return method.returnType == VOID &&
         parameters.size == LDS_SPINNER_PARAMETER_COUNT &&
-        parameters[1] == MODIFIER &&
+        parameters[0].startsWith("L") &&
+        parameters[LDS_SPINNER_MODIFIER_INDEX].startsWith("L") &&
         parameters[2] == BOOLEAN &&
-        parameters[3] == COMPOSER &&
+        parameters[3] == composer &&
         parameters[4] == INT &&
         parameters[5] == INT
 }
@@ -97,12 +88,13 @@ internal fun isLdsSpinnerSignature(method: Method): Boolean {
  * <p>次に、ホームのフィードを描く GCS ページの UI package を DebugMetadata の元 class 名
  * （`com.linecorp.line.gcs.page.ui.`）から求め、**その package から呼ばれていて**、かつ
  * `(Modifier, Composer, int)` を取り spinner を呼ぶ composable を 1 件だけ選びます。
- * spinner を呼ぶ同じ形の composable は APK 全体に 9 件ありますが、GCS ページから呼ばれるのは
+ * spinner を呼ぶ同じ形の composable は APK 全体に 11 件ありますが、GCS ページから呼ばれるのは
  * この 1 件だけです。</p>
  *
  * <h2>抑制の方法</h2>
- * <p>LINE 自身の skip 経路（`shouldExecute` が false のときに通る `l()` + `Y()`）へ合流させる
- * だけで、新しい制御フローを作りません。設定が OFF のときは元の値へ戻します。</p>
+ * <p>LINE 自身の skip 経路（`shouldExecute` が false のときに通る `skipToGroupEnd` と
+ * `endRestartGroup`）へ合流させるだけで、新しい制御フローを作りません。設定が OFF のときは
+ * 元の値へ戻します。</p>
  */
 val homeFeedLoadingIndicatorPatch = bytecodePatch(
     name = "ホームの読み込み表示",
@@ -120,6 +112,15 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
     dependsOn(homeRecentHistoryPatch)
 
     execute {
+        val composeRuntime = resolveComposeRuntime()
+        val debugMetadataType = resolveDebugMetadataType()
+        if (composeRuntime == null || debugMetadataType == null) {
+            patchStatusCollector.record(
+                homeFeedLoadingIndicatorUnappliedRecord(0, "HomeFeedLoadingIndicatorRuntimeAnchorNotResolved"),
+            )
+            return@execute
+        }
+
         val spinnerPackages = homeFeedLoadingIndicatorPackagePrefixes(
             ldsSpinnerAnglesFingerprint.matchAllOrNull().orEmpty().map { it.originalClassDef.type }.toSet(),
         )
@@ -137,7 +138,7 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
         val spinnerFingerprint = Fingerprint(
             returnType = VOID,
             custom = { method, classDef ->
-                classDef.type.startsWith(spinnerPackage) && isLdsSpinnerSignature(method)
+                classDef.type.startsWith(spinnerPackage) && isLdsSpinnerSignature(method, composeRuntime.composer)
             },
         )
         val spinners = spinnerFingerprint.matchAllOrNull().orEmpty()
@@ -151,9 +152,11 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
             return@execute
         }
         val spinner = spinners.single().originalMethod
+        // Modifier の難読化型は spinner の引数から取り出します。
+        val modifier = spinner.parameterTypes[LDS_SPINNER_MODIFIER_INDEX].toString()
 
         val gcsPagePackages = homeFeedLoadingIndicatorPackagePrefixes(
-            gcsPageUiMetadataFingerprint.matchAllOrNull().orEmpty()
+            gcsPageUiMetadataFingerprint(debugMetadataType).matchAllOrNull().orEmpty()
                 .map { it.originalClassDef.type }
                 .toSet(),
         )
@@ -167,7 +170,9 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
 
         val candidateFingerprint = Fingerprint(
             returnType = VOID,
-            custom = { method, _ -> isLoadingIndicatorRendererSignature(method) },
+            custom = { method, _ ->
+                isLoadingIndicatorRendererSignature(method, modifier, composeRuntime.composer)
+            },
             filters = listOf(
                 methodCall(
                     definingClass = spinner.definingClass,
@@ -206,7 +211,7 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
         }
 
         val method = renderers.single().method
-        val gate = homeFeedLoadingIndicatorGate(method)
+        val gate = composeShouldExecuteGate(method, composeRuntime)
         if (gate == null) {
             // cardinality は揃っていても注入位置の shape が崩れている場合は、何も変更しません。
             patchStatusCollector.record(
@@ -220,22 +225,9 @@ val homeFeedLoadingIndicatorPatch = bytecodePatch(
             return@execute
         }
 
-        // 元の結果が false のときは何もしません。true のときだけ hook を読み、
-        // 抑制時は 0、非抑制時は shouldExecute が返すのと同じ 1 に戻します。
         method.addInstructionsWithLabels(
             gate.branchIndex,
-            """
-                if-eqz v${gate.shouldExecuteRegister}, :linimalKeep
-                invoke-static { }, $HOME_FEED_LOADING_INDICATOR_HOOK
-                move-result v${gate.shouldExecuteRegister}
-                if-eqz v${gate.shouldExecuteRegister}, :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x0
-                goto :linimalKeep
-                :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x1
-                :linimalKeep
-                nop
-            """.trimIndent(),
+            composeShouldExecuteSuppression(gate, HOME_FEED_LOADING_INDICATOR_HOOK),
         )
 
         patchStatusCollector.record(
@@ -272,9 +264,9 @@ internal fun homeFeedLoadingIndicatorPackagePrefixes(sourceTypes: Set<String>): 
  * renderer の引数の並び。読み込み表示の composable は view data を持たず、Modifier と Composer と
  * `$$changed` だけを取ります。
  */
-internal fun isLoadingIndicatorRendererSignature(method: Method): Boolean {
+internal fun isLoadingIndicatorRendererSignature(method: Method, modifier: String, composer: String): Boolean {
     val parameters = method.parameterTypes.map { it.toString() }
-    return parameters == listOf(MODIFIER, COMPOSER, INT)
+    return parameters == listOf(modifier, composer, INT)
 }
 
 /**
@@ -301,74 +293,3 @@ private fun calledMethodKeys(method: Method): List<String> =
             methodKey(it.definingClass, it.name, it.parameterTypes.map(CharSequence::toString), it.returnType)
         }
     }
-
-internal data class HomeFeedLoadingIndicatorGate(
-    val branchIndex: Int,
-    val shouldExecuteRegister: Int,
-)
-
-private fun homeFeedLoadingIndicatorGate(method: Method): HomeFeedLoadingIndicatorGate? {
-    val implementation = method.implementation ?: return null
-    return homeFeedLoadingIndicatorGateShape(
-        instructions = implementation.instructions.toList(),
-        hasTryBlocks = implementation.tryBlocks.isNotEmpty(),
-    )
-}
-
-/**
- * `shouldExecute` → `move-result` → `if-eqz` の並びを検証します。
- *
- * <p>`shouldExecute` の戻り値は `Z` なので元の値は 0 か 1 に限られ、注入後に 1 へ戻しても
- * 情報は失われません。分岐先が `if-eqz` と一致する場合は注入が飛び越される可能性があるため、
- * その shape は意図的に拒否します。</p>
- */
-internal fun homeFeedLoadingIndicatorGateShape(
-    instructions: List<Instruction>,
-    hasTryBlocks: Boolean,
-): HomeFeedLoadingIndicatorGate? {
-    if (hasTryBlocks) {
-        return null
-    }
-    if (composerCallIndices(instructions, "l", VOID).size != 1) {
-        return null
-    }
-    if (composerCallIndices(instructions, "Y", END_RESTART_GROUP_RESULT).size != 1) {
-        return null
-    }
-
-    val shouldExecuteIndex = composerCallIndices(instructions, "A", BOOLEAN).singleOrNull() ?: return null
-    val resultMove = instructions.getOrNull(shouldExecuteIndex + 1) as? OneRegisterInstruction ?: return null
-    val branchIndex = shouldExecuteIndex + 2
-    val branch = instructions.getOrNull(branchIndex) as? OneRegisterInstruction ?: return null
-
-    if (
-        instructions[shouldExecuteIndex + 1].opcode != Opcode.MOVE_RESULT ||
-        instructions[branchIndex].opcode != Opcode.IF_EQZ ||
-        branch.registerA != resultMove.registerA ||
-        // 抑制と復元に使う const/4 は 4bit register しか取れません。
-        resultMove.registerA !in 0..15
-    ) {
-        return null
-    }
-
-    if (isDivertedInjectionIndex(instructions, branchIndex)) {
-        return null
-    }
-    return HomeFeedLoadingIndicatorGate(branchIndex, resultMove.registerA)
-}
-
-private fun composerCallIndices(
-    instructions: List<Instruction>,
-    name: String,
-    returnType: String,
-): List<Int> = instructions.indices.filter { index ->
-    val instruction = instructions[index]
-    if (instruction.opcode != Opcode.INVOKE_VIRTUAL) {
-        false
-    } else {
-        val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-        reference?.definingClass == COMPOSER_IMPL &&
-            reference.name == name &&
-            reference.returnType == returnType
-    }
-}

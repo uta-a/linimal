@@ -1,7 +1,6 @@
 package dev.utaa.linimal.patches.features.agenti
 
 import app.morphe.patcher.Fingerprint
-import app.morphe.patcher.Match
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
@@ -22,105 +21,35 @@ import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
-import dev.utaa.linimal.patches.util.BOOLEAN
-import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.VOID
 
 private const val VIEW = "Landroid/view/View;"
 private const val VIEW_STUB = "Landroid/view/ViewStub;"
-private const val IMAGE_VIEW = "Landroid/widget/ImageView;"
 private const val COMPOSE_VIEW = "Landroidx/compose/ui/platform/ComposeView;"
-private const val VIEW_BINDING_FIND_VIEW = "Lyd/b;"
-private const val FRAGMENT_ACTIVITY = "Landroidx/fragment/app/b0;"
-private const val DEBUG_METADATA = "Llb8/e;"
-private const val AI_TALK_CONTROLLER =
-    "Lcom/linecorp/line/chat/ui/impl/message/input/aitalksuggestion/a;"
-private const val AI_TALK_CONTROLLER_SOURCE = "AiTalkSuggestionInputViewController.kt"
-private const val MESSAGE_INPUT_SOURCE = "MessageInputViewControllerImpl.kt"
-private const val OBSERVE_AI_TALK_SOURCE =
-    "MessageInputViewControllerImpl\$observeViewModelForAiTalkSuggestionFeature\$2"
-private const val COMPOSER_BUTTON = 0x7f0b0760
-private const val AI_TALK_SUGGESTION_CHIP_BAR = 0x7f0b0676
-private const val AI_TALK_INPUT_LAYOUT = 0x7f0e0134
-private const val CONTROLLER_IMAGE_VIEW_PARAMETER_INDEX = 8
-private const val CONTROLLER_CHIP_BAR_PARAMETER_INDEX = 2
+private const val AI_TALK_SUGGESTION_CHIP_BAR = 0x7f0b066b  // chat_ui_ai_talk_suggestion_chip_bar
+private const val AI_TALK_INPUT_LAYOUT = 0x7f0e0127  // chat_ui_ai_talk_suggestion_input
 
-/** composer button の visibility gate と、入力欄下 chip bar の supply gate の 2 箇所。 */
-private const val EXPECTED_TARGET_COUNT = 2
-private const val AGENT_I_CHAT_COMPOSER_HOOK =
-    "Ldev/utaa/linimal/extension/features/agenti/AgentIChatComposerHooks;" +
-        "->adjustComposerButtonVisibility(Z)Z"
+/** 入力欄下 chip bar の supply gate 1 箇所。 */
+private const val EXPECTED_TARGET_COUNT = 1
 private const val AGENT_I_CHAT_COMPOSER_CHIP_BAR_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentIChatComposerHooks;" +
         "->adjustAiTalkSuggestionChipBar(Ljava/lang/Object;)Ljava/lang/Object;"
 
-private val aiTalkControllerConstructorParameters = listOf(
-    FRAGMENT_ACTIVITY,
-    VIEW_STUB,
-    "Lif1/b;",
-    "Lxf1/f;",
-    "Lx51/b;",
-    "Lai1/b;",
-    "Ljava/lang/String;",
-    "Lv01/c;",
-    IMAGE_VIEW,
-    "Laf1/m1;",
-)
-
 /**
- * Message input binding の `chat_ui_input_ai_talk_suggestion_button` を resource literal から特定します。
- * `gs1/i0` などの難読化名には依存しません。
- */
-private val composerButtonBindingFingerprint = Fingerprint(
-    returnType = null,
-    parameters = listOf(VIEW),
-    filters = listOf(
-        literal(COMPOSER_BUTTON),
-        methodCall(
-            definingClass = VIEW_BINDING_FIND_VIEW,
-            name = "a",
-            parameters = listOf(VIEW, "I"),
-            returnType = VIEW,
-            opcode = Opcode.INVOKE_STATIC,
-        ),
-    ),
-    custom = { method, classDef ->
-        method.returnType == classDef.type &&
-            classDef.interfaces.contains("Lyd/a;") &&
-            method.implementation != null
-    },
-)
-
-/**
- * MessageInputViewControllerImpl の AI Talk observer coroutine。source metadata から親 controller を導き、
- * generic な message-input binding を AI Talk surface と取り違えないために使用します。
- */
-private val messageInputAiTalkSourceFingerprint = Fingerprint(
-    name = "invokeSuspend",
-    returnType = OBJECT,
-    parameters = listOf(OBJECT),
-    custom = { _, classDef ->
-        hasDebugMetadata(
-            classDef,
-            sourceFile = MESSAGE_INPUT_SOURCE,
-            classNameContains = OBSERVE_AI_TALK_SOURCE,
-        )
-    },
-)
-
-/**
- * stable owner の ViewStub layout-resource → inflate sequence。ここでは注入せず、composer button state
- * observer が同じ AI Talk input surface に確実に接続されていることを検証します。
+ * AI Talk 入力 surface を inflate する controller の constructor。
+ *
+ * 26.11.0 では controller の class 名が難読化されていなかった
+ * (`com.linecorp.line.chat.ui.impl.message.input.aitalksuggestion.a`) ため直接指定していましたが、
+ * 26.14.0 では完全に難読化されるため、layout resource と ViewStub の
+ * `setLayoutResource` → `inflate` の並びだけで特定し、型と constructor signature を実行時に導出します。
  */
 private val aiTalkInflationControllerFingerprint = Fingerprint(
-    definingClass = AI_TALK_CONTROLLER,
     name = "<init>",
     returnType = VOID,
     filters = listOf(
@@ -140,65 +69,49 @@ private val aiTalkInflationControllerFingerprint = Fingerprint(
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
     ),
-    custom = { method, _ ->
-        method.parameterTypes.map(CharSequence::toString) == aiTalkControllerConstructorParameters
+)
+
+/** AI Talk controller を生成する唯一の呼び出し元（MessageInputViewControllerImpl の構築経路）。 */
+private fun aiTalkControllerWiringFingerprint(controllerType: String, controllerParameters: List<String>) =
+    Fingerprint(
+        returnType = VOID,
+        filters = listOf(
+            methodCall(
+                definingClass = controllerType,
+                name = "<init>",
+                parameters = controllerParameters,
+                returnType = VOID,
+                opcode = Opcode.INVOKE_DIRECT_RANGE,
+            ),
+        ),
+    )
+
+/**
+ * `chat_ui_ai_talk_suggestion_chip_bar` を解決する message-input binding の bind factory。
+ *
+ * 26.11.0 では ViewBinding helper (`Lyd/b;->a`) と marker interface (`Lyd/a;`) も条件でしたが、
+ * 26.14.0 では `Lpe/b;->b` / `Lpe/a;` へ変わる難読化名です。resource literal と
+ * 「自分自身の型を返す static factory」という形だけで全 DEX 中 1 件に絞れます。
+ */
+private val aiTalkSuggestionChipBarBindingFingerprint = Fingerprint(
+    returnType = null,
+    parameters = listOf(VIEW),
+    filters = listOf(
+        literal(AI_TALK_SUGGESTION_CHIP_BAR),
+        methodCall(
+            parameters = listOf(VIEW, "I"),
+            returnType = VIEW,
+            opcode = Opcode.INVOKE_STATIC,
+        ),
+    ),
+    custom = { method, classDef ->
+        method.returnType == classDef.type && method.implementation != null
     },
 )
 
 /**
- * resource-bound composer ImageView を stable AI Talk controller constructor の ImageView parameter へ渡す
- * MessageInputViewControllerImpl の controller-construction path。binding / source metadata / controller owner を一つの経路として
- * 確認し、どれか一つでも一意でなければ注入しません。
- */
-private fun composerButtonWiringFingerprint(parentType: String, bindingType: String) = Fingerprint(
-    definingClass = parentType,
-    returnType = VOID,
-    filters = listOf(
-        fieldAccess(
-            definingClass = bindingType,
-            type = IMAGE_VIEW,
-            opcode = Opcode.IGET_OBJECT,
-        ),
-        methodCall(
-            definingClass = AI_TALK_CONTROLLER,
-            name = "<init>",
-            parameters = aiTalkControllerConstructorParameters,
-            returnType = VOID,
-            opcode = Opcode.INVOKE_DIRECT_RANGE,
-        ),
-    ),
-    custom = { _, _ -> true },
-)
-
-/**
- * ViewModel の visibility state を consumer へ反映する唯一の observer。stable owner field、source metadata、
- * VISIBLE/GONE command shape を合わせるため、`bf1/y` の難読化名を識別条件にしません。
- */
-private val composerButtonVisibilityObserverFingerprint = Fingerprint(
-    name = "invokeSuspend",
-    returnType = OBJECT,
-    parameters = listOf(OBJECT),
-    filters = listOf(
-        fieldAccess(
-            definingClass = AI_TALK_CONTROLLER,
-            name = "h",
-            type = IMAGE_VIEW,
-            opcode = Opcode.IGET_OBJECT,
-        ),
-        methodCall(
-            definingClass = VIEW,
-            name = "setVisibility",
-            parameters = listOf("I"),
-            returnType = VOID,
-            opcode = Opcode.INVOKE_VIRTUAL,
-        ),
-    ),
-    custom = { _, classDef -> hasDebugMetadata(classDef, AI_TALK_CONTROLLER_SOURCE) },
-)
-
-/**
  * chip bar view を保持する binding field を読み出す accessor。field 名は resource literal から逆引きするため、
- * `w31/j` などの難読化名も accessor が属する interface 名も識別条件にしません。
+ * `Lo61/j;` などの難読化名も accessor が属する interface 名も識別条件にしません。
  */
 private fun aiTalkSuggestionChipBarAccessorFingerprint(bindingType: String, fieldName: String) = Fingerprint(
     returnType = COMPOSE_VIEW,
@@ -215,19 +128,21 @@ private fun aiTalkSuggestionChipBarAccessorFingerprint(bindingType: String, fiel
 )
 
 /**
- * Agent i in chat の 2 つの surface にだけ runtime gate を置きます。
+ * 入力欄の下に並ぶ AI Talk の候補チップ (`chat_ui_ai_talk_suggestion_chip_bar`) にだけ runtime gate を置きます。
  *
- * 1 つ目は composer button の visibility state です。button を一度だけ GONE にするのではなく、AI Talk
- * ViewModel の state observer が再入場、orientation、keyboard/resume 後に visibility を供給するたびに値を
- * 調整します。2 つ目は入力欄の下に並ぶ chip bar (`chat_ui_ai_talk_suggestion_chip_bar`) です。LINE 自身が
- * chip bar 無効構成で使う null 供給と同じ経路を通し、controller へ渡す前に view を取り除きます。
+ * LINE 自身が chip bar 無効構成で使う null 供給と同じ経路を通し、controller へ渡す前に view を取り除きます。
  *
- * text input、gallery、camera、attach menu はいずれの経路の対象外であり、AI Talk の
+ * 26.11.0 にあったもう 1 つの surface である入力欄の Agent i ボタン
+ * (`id/chat_ui_input_ai_talk_suggestion_button`) は、26.14.0 で layout からもリソースからも削除され、
+ * AI Talk controller の constructor からも ImageView 引数が無くなりました。対象が存在しないため
+ * この patch では扱いません。
+ *
+ * text input、gallery、camera、attach menu はいずれも対象外であり、AI Talk の
  * subscription/backend/settings/network は変更しません。
  */
 val agentIChatComposerPatch = bytecodePatch(
     name = "チャット入力欄の Agent i",
-    description = "チャット入力欄にある Agent i のボタンと候補チップを、実行時設定で非表示にできるようにします。",
+    description = "チャット入力欄にある Agent i の候補チップを、実行時設定で非表示にできるようにします。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)
     availability { _, architecture ->
@@ -240,34 +155,16 @@ val agentIChatComposerPatch = bytecodePatch(
     dependsOn(agentISettingsPatch)
 
     execute {
-        val bindingMatches = composerButtonBindingFingerprint.matchAllOrNull().orEmpty()
-        if (bindingMatches.size != 1) {
-            recordUnappliedStatus(bindingMatches.size, "AgentIChatComposerBindingNotUnique")
+        val inflationMatches = aiTalkInflationControllerFingerprint.matchAllOrNull().orEmpty()
+        if (inflationMatches.size != 1) {
+            recordUnappliedStatus(inflationMatches.size, "AgentIChatComposerInflationControllerNotUnique")
             return@execute
         }
-        val binding = bindingMatches.single()
-        val bindingType = binding.originalClassDef.type
+        val inflation = inflationMatches.single()
+        val controllerType = inflation.originalClassDef.type
+        val controllerParameters = inflation.originalMethod.parameterTypes.map(CharSequence::toString)
 
-        val sourceMatches = messageInputAiTalkSourceFingerprint.matchAllOrNull().orEmpty()
-        if (sourceMatches.size != 1) {
-            recordUnappliedStatus(sourceMatches.size, "AgentIChatComposerSourceMetadataNotUnique")
-            return@execute
-        }
-        val sourceParentTypes = sourceMatches.single().originalClassDef.fields
-            .map { it.type }
-            .filter { it.startsWith("L") }
-            .toSet()
-        if (sourceParentTypes.size != 1) {
-            recordUnsafeFeatureStatus(
-                listOf(PatchId.AGENT_I_CHAT_COMPOSER),
-                expectedTargetCount = EXPECTED_TARGET_COUNT,
-                actualTargetCount = EXPECTED_TARGET_COUNT,
-                reason = "AgentIChatComposerSourceParentShapeMismatch",
-            )
-            return@execute
-        }
-
-        val wiringMatches = composerButtonWiringFingerprint(sourceParentTypes.single(), bindingType)
+        val wiringMatches = aiTalkControllerWiringFingerprint(controllerType, controllerParameters)
             .matchAllOrNull()
             .orEmpty()
         if (wiringMatches.size != 1) {
@@ -276,28 +173,34 @@ val agentIChatComposerPatch = bytecodePatch(
         }
         val wiring = wiringMatches.single()
 
-        val inflationMatches = aiTalkInflationControllerFingerprint.matchAllOrNull().orEmpty()
-        if (inflationMatches.size != 1) {
-            recordUnappliedStatus(inflationMatches.size, "AgentIChatComposerInflationControllerNotUnique")
+        val bindingMatches = aiTalkSuggestionChipBarBindingFingerprint.matchAllOrNull().orEmpty()
+        if (bindingMatches.size != 1) {
+            recordUnappliedStatus(bindingMatches.size, "AgentIChatComposerBindingNotUnique")
             return@execute
         }
+        val binding = bindingMatches.single()
+        val bindingType = binding.originalClassDef.type
 
-        val observerMatches = composerButtonVisibilityObserverFingerprint.matchAllOrNull().orEmpty()
-        if (observerMatches.size != 1) {
-            recordUnappliedStatus(observerMatches.size, "AgentIChatComposerVisibilityObserverNotUnique")
+        // resource literal から binding field を逆引きし、その field を読む accessor が一意なときにだけ
+        // gate を追加します。
+        val chipBarField = aiTalkSuggestionChipBarField(binding.originalMethod, binding.originalClassDef)
+        val accessorMatches = chipBarField
+            ?.let { aiTalkSuggestionChipBarAccessorFingerprint(bindingType, it).matchAllOrNull().orEmpty() }
+            .orEmpty()
+        if (accessorMatches.size != 1) {
+            recordUnappliedStatus(accessorMatches.size, "AgentIChatComposerChipBarAccessorNotUnique")
             return@execute
         }
-        val observer = observerMatches.single()
+        val accessor = accessorMatches.single()
 
-        val gateShape = composerButtonVisibilityGateShape(
-            observer.method,
-            observer.originalClassDef.type,
+        val chipBarGateShape = aiTalkSuggestionChipBarGateShape(
+            method = wiring.method,
+            controllerType = controllerType,
+            controllerParameters = controllerParameters,
+            accessorName = accessor.originalMethod.name,
+            accessorInterfaces = accessor.originalClassDef.interfaces.toSet(),
         )
-        if (
-            !aiTalkInflationShape(inflationMatches.single().method) ||
-            !composerButtonWiringShape(wiring.method, bindingType) ||
-            gateShape == null
-        ) {
+        if (!aiTalkInflationShape(inflation.method) || chipBarGateShape == null) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.AGENT_I_CHAT_COMPOSER),
                 expectedTargetCount = EXPECTED_TARGET_COUNT,
@@ -307,80 +210,27 @@ val agentIChatComposerPatch = bytecodePatch(
             return@execute
         }
 
-        // chip bar は composer button と独立した optional target です。resource literal から binding field を
-        // 逆引きし、その field を読む accessor と supply shape が一意なときにだけ gate を追加します。
-        val chipBarField = aiTalkSuggestionChipBarField(binding.originalMethod, binding.originalClassDef)
-        val chipBarAccessor = chipBarField
-            ?.let { aiTalkSuggestionChipBarAccessorFingerprint(bindingType, it).matchAllOrNull().orEmpty() }
-            ?.singleOrNull()
-        val chipBarGateShape = chipBarAccessor?.let { accessor ->
-            aiTalkSuggestionChipBarGateShape(
-                wiring.method,
-                accessor.originalMethod.name,
-                accessor.originalClassDef.interfaces.toSet(),
-            )
-        }
-
-        observer.method.addInstructions(
-            gateShape.insertionIndex,
+        wiring.method.addInstructions(
+            chipBarGateShape.insertionIndex,
             """
-                invoke-static { v${gateShape.visibilityRegister} }, $AGENT_I_CHAT_COMPOSER_HOOK
-                move-result v${gateShape.visibilityRegister}
+                invoke-static { v${chipBarGateShape.chipBarRegister} }, $AGENT_I_CHAT_COMPOSER_CHIP_BAR_HOOK
+                move-result-object v${chipBarGateShape.chipBarRegister}
+                check-cast v${chipBarGateShape.chipBarRegister}, $COMPOSE_VIEW
             """.trimIndent(),
         )
-        if (chipBarGateShape != null) {
-            wiring.method.addInstructions(
-                chipBarGateShape.insertionIndex,
-                """
-                    invoke-static { v${chipBarGateShape.chipBarRegister} }, $AGENT_I_CHAT_COMPOSER_CHIP_BAR_HOOK
-                    move-result-object v${chipBarGateShape.chipBarRegister}
-                    check-cast v${chipBarGateShape.chipBarRegister}, $COMPOSE_VIEW
-                """.trimIndent(),
-            )
-        }
         patchStatusCollector.record(
             patchId = PatchId.AGENT_I_CHAT_COMPOSER,
             expectedTargetCount = EXPECTED_TARGET_COUNT,
-            actualTargetCount = if (chipBarGateShape == null) 1 else EXPECTED_TARGET_COUNT,
-            reason = if (chipBarGateShape == null) {
-                "AgentIChatComposerChipBarTargetNotFound"
-            } else {
-                "AgentIChatComposerVisibilityGuarded"
-            },
+            actualTargetCount = EXPECTED_TARGET_COUNT,
+            reason = "AgentIChatComposerChipBarGuarded",
         )
     }
 }
-
-private data class ComposerVisibilityGateShape(
-    val insertionIndex: Int,
-    val visibilityRegister: Int,
-)
 
 private data class ChipBarGateShape(
     val insertionIndex: Int,
     val chipBarRegister: Int,
 )
-
-private fun hasDebugMetadata(
-    classDef: ClassDef,
-    sourceFile: String,
-    classNameContains: String? = null,
-): Boolean = classDef.annotations.any { annotation ->
-    if (annotation.type != DEBUG_METADATA) {
-        false
-    } else {
-        val metadataSource = annotation.elements.firstOrNull { it.name == "f" }
-            ?.value
-            .let { it as? StringEncodedValue }
-            ?.value
-        val metadataClass = annotation.elements.firstOrNull { it.name == "c" }
-            ?.value
-            .let { it as? StringEncodedValue }
-            ?.value
-        metadataSource == sourceFile &&
-            (classNameContains == null || metadataClass?.contains(classNameContains) == true)
-    }
-}
 
 private fun aiTalkInflationShape(method: Method): Boolean {
     val instructions = method.implementation?.instructions?.toList() ?: return false
@@ -405,120 +255,13 @@ private fun aiTalkInflationShape(method: Method): Boolean {
         inflate.registerC == setLayout.registerC
 }
 
-private fun composerButtonWiringShape(method: Method, bindingType: String): Boolean {
-    val instructions = method.implementation?.instructions?.toList() ?: return false
-    val controllerCallIndex = instructions.indexOfFirst { instruction ->
-        methodReference(instruction)?.let { reference ->
-            instruction.opcode == Opcode.INVOKE_DIRECT_RANGE &&
-                methodMatches(
-                    reference,
-                    AI_TALK_CONTROLLER,
-                    "<init>",
-                    aiTalkControllerConstructorParameters,
-                    VOID,
-                )
-        } == true
-    }
-    val controllerCall = instructions.getOrNull(controllerCallIndex) as? RegisterRangeInstruction ?: return false
-    if (controllerCall.registerCount != aiTalkControllerConstructorParameters.size + 1) return false
-
-    val imageBindingReadIndex = instructions.indexOfFirst { instruction ->
-        fieldReference(instruction)?.let { reference ->
-            instruction.opcode == Opcode.IGET_OBJECT &&
-                reference.definingClass == bindingType &&
-                reference.type == IMAGE_VIEW
-        } == true
-    }
-    val imageBindingRead = instructions.getOrNull(imageBindingReadIndex) as? TwoRegisterInstruction ?: return false
-    val imageArgumentRegister = controllerCall.startRegister + CONTROLLER_IMAGE_VIEW_PARAMETER_INDEX + 1
-    val imageArgumentIsBound = instructions
-        .subList((imageBindingReadIndex + 1).coerceAtLeast(0), controllerCallIndex)
-        .any { instruction ->
-            val move = instruction as? TwoRegisterInstruction
-            (instruction.opcode == Opcode.MOVE_OBJECT || instruction.opcode == Opcode.MOVE_OBJECT_FROM16) &&
-                move != null &&
-                move.registerA == imageArgumentRegister &&
-                move.registerB == imageBindingRead.registerA
-        }
-
-    return imageBindingReadIndex >= 0 &&
-        imageBindingReadIndex < controllerCallIndex &&
-        imageArgumentIsBound
-}
-
-private fun composerButtonVisibilityGateShape(
-    method: Method,
-    observerType: String,
-): ComposerVisibilityGateShape? {
-    val instructions = method.implementation?.instructions?.toList() ?: return null
-    val imageReadIndex = instructions.indexOfFirst { instruction ->
-        fieldReference(instruction)?.let { reference ->
-            instruction.opcode == Opcode.IGET_OBJECT &&
-                reference.definingClass == AI_TALK_CONTROLLER &&
-                reference.name == "h" &&
-                reference.type == IMAGE_VIEW
-        } == true
-    }
-    val visibilityReadIndex = instructions.indexOfFirst { instruction ->
-        fieldReference(instruction)?.let { reference ->
-            instruction.opcode == Opcode.IGET_BOOLEAN &&
-                reference.definingClass == observerType &&
-                reference.type == BOOLEAN
-        } == true
-    }
-    val imageRead = instructions.getOrNull(imageReadIndex) as? TwoRegisterInstruction ?: return null
-    val visibilityRead = instructions.getOrNull(visibilityReadIndex) as? TwoRegisterInstruction ?: return null
-    // Coroutine の resume state dispatch を通過してから boolean を branch します。boolean register が
-    // state dispatch 中に上書きされず、そのまま VISIBLE/GONE の input になる command shape を確認します。
-    val conditionalIndex = visibilityReadIndex + 13
-    val conditional = instructions.getOrNull(conditionalIndex) as? OneRegisterInstruction ?: return null
-    val visibleLiteral = instructions.getOrNull(conditionalIndex + 1) as? OneRegisterInstruction ?: return null
-    val goneLiteral = instructions.getOrNull(conditionalIndex + 3) as? OneRegisterInstruction ?: return null
-    val setVisibilityIndex = conditionalIndex + 4
-    val setVisibility = instructions.getOrNull(setVisibilityIndex) as? FiveRegisterInstruction ?: return null
-    val setVisibilityReference = methodReference(instructions.getOrNull(setVisibilityIndex)) ?: return null
-
-    if (
-        imageReadIndex != 1 ||
-        visibilityReadIndex != imageReadIndex + 1 ||
-        imageRead.registerA !in 0..15 ||
-        visibilityRead.registerA !in 0..15 ||
-        instructions.getOrNull(visibilityReadIndex + 1)?.opcode != Opcode.SGET_OBJECT ||
-        instructions.getOrNull(visibilityReadIndex + 2)?.opcode != Opcode.IGET ||
-        instructions.getOrNull(visibilityReadIndex + 3)?.opcode != Opcode.CONST_4 ||
-        instructions.getOrNull(visibilityReadIndex + 4)?.opcode != Opcode.IF_EQZ ||
-        instructions.getOrNull(visibilityReadIndex + 5)?.opcode != Opcode.IF_NE ||
-        instructions.getOrNull(visibilityReadIndex + 6)?.opcode != Opcode.INVOKE_STATIC ||
-        instructions.getOrNull(visibilityReadIndex + 7)?.opcode != Opcode.GOTO ||
-        instructions.getOrNull(visibilityReadIndex + 8)?.opcode != Opcode.CONST_STRING ||
-        instructions.getOrNull(visibilityReadIndex + 9)?.opcode != Opcode.INVOKE_STATIC ||
-        instructions.getOrNull(visibilityReadIndex + 10)?.opcode != Opcode.CONST_4 ||
-        instructions.getOrNull(visibilityReadIndex + 11)?.opcode != Opcode.RETURN_OBJECT ||
-        instructions.getOrNull(visibilityReadIndex + 12)?.opcode != Opcode.INVOKE_STATIC ||
-        conditional.opcode != Opcode.IF_EQZ ||
-        conditional.registerA != visibilityRead.registerA ||
-        visibleLiteral.opcode != Opcode.CONST_4 ||
-        visibleLiteral.registerA != setVisibility.registerD ||
-        goneLiteral.opcode != Opcode.CONST_16 ||
-        goneLiteral.registerA != setVisibility.registerD ||
-        setVisibility.opcode != Opcode.INVOKE_VIRTUAL ||
-        !methodMatches(setVisibilityReference, VIEW, "setVisibility", listOf("I"), VOID) ||
-        setVisibility.registerCount != 2 ||
-        setVisibility.registerC != imageRead.registerA ||
-        instructions.getOrNull(conditionalIndex + 2)?.opcode != Opcode.GOTO
-    ) {
-        return null
-    }
-    return ComposerVisibilityGateShape(
-        insertionIndex = visibilityReadIndex + 1,
-        visibilityRegister = visibilityRead.registerA,
-    )
-}
-
 /**
  * bind method 内の `chat_ui_ai_talk_suggestion_chip_bar` literal から、chip bar view を格納する binding field 名を
  * 逆引きします。literal → findChildViewById → check-cast → binding constructor argument → iput の連鎖を
  * すべて確認できたときだけ field 名を返します。
+ *
+ * findChildViewById helper は 26.11.0 の `Lyd/b;->a` から 26.14.0 で `Lpe/b;->b` へ変わったため、
+ * 名前ではなく「(View, I) を受けて View を返す static 呼び出し」という形だけを確認します。
  */
 private fun aiTalkSuggestionChipBarField(bindMethod: Method, bindingClass: ClassDef): String? {
     val instructions = bindMethod.implementation?.instructions?.toList() ?: return null
@@ -535,7 +278,8 @@ private fun aiTalkSuggestionChipBarField(bindMethod: Method, bindingClass: Class
     val findViewReference = methodReference(instructions.getOrNull(literalIndex + 1)) ?: return null
     if (
         instructions[literalIndex + 1].opcode != Opcode.INVOKE_STATIC ||
-        !methodMatches(findViewReference, VIEW_BINDING_FIND_VIEW, "a", listOf(VIEW, "I"), VIEW) ||
+        findViewReference.parameterTypes.map(CharSequence::toString) != listOf(VIEW, "I") ||
+        findViewReference.returnType != VIEW ||
         findViewCall.registerCount != 2 ||
         findViewCall.registerD != literalRegister
     ) {
@@ -638,9 +382,14 @@ private fun bindingComposeViewFieldName(bindingClass: ClassDef, parameterIndex: 
  * accessor 呼び出し → null 判定 → presenter 生成 → controller argument への move という LINE 自身の shape を
  * すべて確認します。null 判定は元から存在し、chip bar が無効な構成では LINE 自身が同じ分岐で null を
  * 供給するため、hook が null を返しても未知の状態を作りません。
+ *
+ * presenter が controller の何番目の引数かは、26.11.0 で定数 (index 2) にしていましたが、
+ * move 先 register と controller constructor の引数型から実行時に決めます。
  */
 private fun aiTalkSuggestionChipBarGateShape(
     method: Method,
+    controllerType: String,
+    controllerParameters: List<String>,
     accessorName: String,
     accessorInterfaces: Set<String>,
 ): ChipBarGateShape? {
@@ -648,20 +397,11 @@ private fun aiTalkSuggestionChipBarGateShape(
     val controllerCallIndex = instructions.indexOfFirst { instruction ->
         methodReference(instruction)?.let { reference ->
             instruction.opcode == Opcode.INVOKE_DIRECT_RANGE &&
-                methodMatches(
-                    reference,
-                    AI_TALK_CONTROLLER,
-                    "<init>",
-                    aiTalkControllerConstructorParameters,
-                    VOID,
-                )
+                methodMatches(reference, controllerType, "<init>", controllerParameters, VOID)
         } == true
     }
     val controllerCall = instructions.getOrNull(controllerCallIndex) as? RegisterRangeInstruction ?: return null
-    if (controllerCall.registerCount != aiTalkControllerConstructorParameters.size + 1) return null
-
-    val chipBarPresenterType = aiTalkControllerConstructorParameters[CONTROLLER_CHIP_BAR_PARAMETER_INDEX]
-    val chipBarArgumentRegister = controllerCall.startRegister + CONTROLLER_CHIP_BAR_PARAMETER_INDEX + 1
+    if (controllerCall.registerCount != controllerParameters.size + 1) return null
 
     val candidates = instructions.indices.filter { index ->
         val accessorCall = instructions[index] as? FiveRegisterInstruction ?: return@filter false
@@ -694,11 +434,8 @@ private fun aiTalkSuggestionChipBarGateShape(
         }
 
         val presenter = instructions.getOrNull(index + 3) as? OneRegisterInstruction ?: return@filter false
-        val presenterType = (instructions[index + 3] as? ReferenceInstruction)?.reference as? TypeReference
-        if (
-            instructions[index + 3].opcode != Opcode.NEW_INSTANCE ||
-            presenterType?.type != chipBarPresenterType
-        ) {
+        val presenterType = ((instructions[index + 3] as? ReferenceInstruction)?.reference as? TypeReference)?.type
+        if (instructions[index + 3].opcode != Opcode.NEW_INSTANCE || presenterType == null) {
             return@filter false
         }
 
@@ -706,7 +443,7 @@ private fun aiTalkSuggestionChipBarGateShape(
         val presenterInitReference = methodReference(instructions.getOrNull(index + 4)) ?: return@filter false
         if (
             instructions[index + 4].opcode != Opcode.INVOKE_DIRECT ||
-            presenterInitReference.definingClass != chipBarPresenterType ||
+            presenterInitReference.definingClass != presenterType ||
             presenterInitReference.name != "<init>" ||
             presenterInitReference.returnType != VOID ||
             presenterInitReference.parameterTypes.map(CharSequence::toString).firstOrNull() != COMPOSE_VIEW ||
@@ -721,9 +458,12 @@ private fun aiTalkSuggestionChipBarGateShape(
         val supplyOpcode = instructions[index + 5].opcode
         val supplyIsMove =
             supplyOpcode == Opcode.MOVE_OBJECT || supplyOpcode == Opcode.MOVE_OBJECT_FROM16
+        // move 先が controller constructor の引数 register であり、その引数型が presenter 型であること。
+        val argumentIndex = supply.registerA - controllerCall.startRegister - 1
         supplyIsMove &&
-            supply.registerA == chipBarArgumentRegister &&
-            supply.registerB == presenter.registerA
+            supply.registerB == presenter.registerA &&
+            argumentIndex in controllerParameters.indices &&
+            controllerParameters[argumentIndex] == presenterType
     }
     val index = candidates.singleOrNull() ?: return null
     val chipBarRegister = (instructions[index + 1] as OneRegisterInstruction).registerA
@@ -751,7 +491,7 @@ private fun recordUnappliedStatus(matchCount: Int, reason: String) {
     patchStatusCollector.record(agentIChatComposerUnappliedRecord(matchCount, reason))
 }
 
-/** 0 件は optional target 未発見、複数件は安全に注入できない ERROR として扱います。 */
+/** 0 件は target 未発見、複数件は安全に注入できない ERROR として扱います。 */
 internal fun agentIChatComposerUnappliedRecord(matchCount: Int, reason: String) = PatchStatusRecord(
     patchId = PatchId.AGENT_I_CHAT_COMPOSER,
     status = if (matchCount > 1) PatchStatus.ERROR else PatchStatus.TARGET_NOT_FOUND,

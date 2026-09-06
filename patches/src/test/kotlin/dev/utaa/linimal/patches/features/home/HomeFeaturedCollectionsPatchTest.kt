@@ -5,19 +5,13 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
-import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction10x
-import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21c
-import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21t
-import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
-import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableTypeReference
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HomeFeaturedCollectionsPatchTest {
@@ -42,25 +36,50 @@ class HomeFeaturedCollectionsPatchTest {
         )
     }
 
+    /** 特集枠 module を他 module から区別できる唯一の非難読化 marker のため、値そのものを固定します。 */
+    @Test
+    fun `the view data marker identifies the featured grid module`() {
+        assertEquals("GcsHomeFeedUnitShortFormGrid(id=", FEATURED_GRID_VIEW_DATA_MARKER)
+    }
+
     @Test
     fun `only the module renderer parameter order is accepted`() {
         assertTrue(
             isFeaturedCollectionsRendererSignature(
-                renderer(listOf("Lexample/home/ViewData;", "Ll72/f;", "Lh3/t;", "I")),
+                renderer(listOf(VIEW_DATA, MODULE_STATE, COMPOSER, "I")),
+                VIEW_DATA,
+                COMPOSER,
+            ),
+        )
+        // module state の型は版ごとに変わるため、位置だけを見て型は問いません。
+        assertTrue(
+            isFeaturedCollectionsRendererSignature(
+                renderer(listOf(VIEW_DATA, "Lexample/other/ModuleState;", COMPOSER, "I")),
+                VIEW_DATA,
+                COMPOSER,
             ),
         )
         // 投稿カード module のように view data の前に module id を取るものは対象外です。
         assertFalse(
             isFeaturedCollectionsRendererSignature(
-                renderer(listOf("Ljava/lang/String;", "Lexample/home/ViewData;", "Ll72/f;", "Lh3/t;", "I")),
+                renderer(listOf("Ljava/lang/String;", VIEW_DATA, MODULE_STATE, COMPOSER, "I")),
+                VIEW_DATA,
+                COMPOSER,
+            ),
+        )
+        // 別 module の view data を取るものは対象外です。
+        assertFalse(
+            isFeaturedCollectionsRendererSignature(
+                renderer(listOf("Lexample/home/OtherViewData;", MODULE_STATE, COMPOSER, "I")),
+                VIEW_DATA,
+                COMPOSER,
             ),
         )
         assertFalse(
-            isFeaturedCollectionsRendererSignature(renderer(listOf("Z", "Ll72/f;", "Lh3/t;", "I"))),
-        )
-        assertFalse(
             isFeaturedCollectionsRendererSignature(
-                renderer(listOf("Lexample/home/ViewData;", "Ll72/f;", "Lh3/t;")),
+                renderer(listOf(VIEW_DATA, MODULE_STATE, COMPOSER)),
+                VIEW_DATA,
+                COMPOSER,
             ),
         )
     }
@@ -68,7 +87,7 @@ class HomeFeaturedCollectionsPatchTest {
     @Test
     fun `only grid state types built by the renderer are counted`() {
         val method = renderer(
-            parameters = listOf("Lexample/home/ViewData;", "Ll72/f;", "Lh3/t;", "I"),
+            parameters = listOf(VIEW_DATA, MODULE_STATE, COMPOSER, "I"),
             instructions = listOf(
                 newInstance("Lexample/grid/GridState;"),
                 newInstance("Lexample/grid/CardState;"),
@@ -103,44 +122,6 @@ class HomeFeaturedCollectionsPatchTest {
         assertEquals(2, ambiguous.actualTargetCount)
     }
 
-    @Test
-    fun `should execute branch is the injection point`() {
-        val gate = homeFeaturedCollectionsGateShape(gateBody(shouldExecuteRegister = 1), hasTryBlocks = false)
-        assertEquals(HomeFeaturedCollectionsGate(branchIndex = 2, shouldExecuteRegister = 1), gate)
-    }
-
-    @Test
-    fun `a register the restore constant cannot address is rejected`() {
-        // const/4 は 4bit register しか取れないため、v16 以降は注入できません。
-        assertNull(homeFeaturedCollectionsGateShape(gateBody(shouldExecuteRegister = 16), hasTryBlocks = false))
-    }
-
-    @Test
-    fun `try blocks and a missing skip path are rejected`() {
-        assertNull(homeFeaturedCollectionsGateShape(gateBody(shouldExecuteRegister = 1), hasTryBlocks = true))
-        assertNull(
-            homeFeaturedCollectionsGateShape(
-                gateBody(shouldExecuteRegister = 1, skipToGroupEndCount = 0),
-                hasTryBlocks = false,
-            ),
-        )
-        assertNull(
-            homeFeaturedCollectionsGateShape(
-                gateBody(shouldExecuteRegister = 1, skipToGroupEndCount = 2),
-                hasTryBlocks = false,
-            ),
-        )
-    }
-
-    @Test
-    fun `a branch that targets the injection point is rejected`() {
-        // 既存の分岐が if-eqz を指していると、注入した gate を飛び越えて元の判定へ戻ります。
-        val instructions = gateBody(shouldExecuteRegister = 1).toMutableList()
-        // shouldExecute(3) + move-result(1) = 4 code units 先の if-eqz を指す分岐を先頭へ足します。
-        instructions.add(0, ImmutableInstruction21t(Opcode.IF_EQZ, 1, 6))
-        assertNull(homeFeaturedCollectionsGateShape(instructions, hasTryBlocks = false))
-    }
-
     private fun renderer(
         parameters: List<String>,
         instructions: List<Instruction> = emptyList(),
@@ -162,26 +143,10 @@ class HomeFeaturedCollectionsPatchTest {
     private fun newInstance(type: String) =
         ImmutableInstruction21c(Opcode.NEW_INSTANCE, 0, ImmutableTypeReference(type))
 
-    private fun gateBody(
-        shouldExecuteRegister: Int,
-        skipToGroupEndCount: Int = 1,
-    ): List<Instruction> = buildList {
-        add(composerCall("A", listOf("I", "Z"), "Z"))
-        add(ImmutableInstruction11x(Opcode.MOVE_RESULT, shouldExecuteRegister))
-        add(ImmutableInstruction21t(Opcode.IF_EQZ, shouldExecuteRegister, 4))
-        add(ImmutableInstruction10x(Opcode.NOP))
-        repeat(skipToGroupEndCount) { add(composerCall("l", emptyList(), "V")) }
-        add(composerCall("Y", emptyList(), "Lh3/p3;"))
+    private companion object {
+        /** 難読化名は版ごとに変わるため、テストでは実物ではなく stand-in を使います。 */
+        const val VIEW_DATA = "Lexample/home/ShortFormGridViewData;"
+        const val MODULE_STATE = "Lexample/home/ModuleState;"
+        const val COMPOSER = "Lexample/compose/Composer;"
     }
-
-    private fun composerCall(
-        name: String,
-        parameters: List<String>,
-        returnType: String,
-    ) = ImmutableInstruction35c(
-        Opcode.INVOKE_VIRTUAL,
-        1,
-        6, 0, 0, 0, 0,
-        ImmutableMethodReference("Lh3/f1;", name, parameters, returnType),
-    )
 }

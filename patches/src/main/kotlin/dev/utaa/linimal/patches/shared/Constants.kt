@@ -15,8 +15,8 @@ object Constants {
         apkFileType = ApkFileType.APKM_REQUIRED,
         targets = listOf(
             AppTarget(
-                version = "26.11.0",
-                versionCodes = mapOf(SupportedAbi.ARM64_V8A to 261100124),
+                version = "26.14.0",
+                versionCodes = mapOf(SupportedAbi.ARM64_V8A to 261400121),
             ),
         ),
     )

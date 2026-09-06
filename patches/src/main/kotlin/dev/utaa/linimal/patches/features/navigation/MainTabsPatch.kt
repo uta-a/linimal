@@ -47,19 +47,19 @@ private val mainTabDescriptorFingerprint = Fingerprint(
     strings = listOf("TIMELINE", "NEWS", "NEWS_ROW", "WALLET", "MINI", "COMMERCE", "COMMERCE_TW"),
     filters = listOf(
         fieldAccess(name = "VOOM", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03d9), // id/bnb_timeline
+        literal(0x7f0b03d0), // id/bnb_timeline
         fieldAccess(name = "NEWS", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03d3), // id/bnb_news
+        literal(0x7f0b03ca), // id/bnb_news
         fieldAccess(name = "NEWS_ROW", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03d4), // id/bnb_news_row
+        literal(0x7f0b03cb), // id/bnb_news_row
         fieldAccess(name = "WALLET", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03db), // id/bnb_wallet
+        literal(0x7f0b03d2), // id/bnb_wallet
         fieldAccess(name = "MINI", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03d1), // id/bnb_mini
+        literal(0x7f0b03c8), // id/bnb_mini
         fieldAccess(name = "COMMERCE", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03c7), // id/bnb_commerce
+        literal(0x7f0b03be), // id/bnb_commerce
         fieldAccess(name = "COMMERCE_TW", opcode = Opcode.SGET_OBJECT),
-        literal(0x7f0b03c9), // id/bnb_commerce_tw
+        literal(0x7f0b03c0), // id/bnb_commerce_tw
     ),
     custom = { _, classDef -> classDef.superclass == ENUM },
 )
@@ -100,7 +100,10 @@ val mainTabsPatch = bytecodePatch(
             accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
             returnType = "V",
             parameters = listOf(
-                "Ljp/naver/line/android/activity/main/MainActivity;",
+                // 26.11.0 では第 1 引数が `Ljp/naver/line/android/activity/main/MainActivity;` でしたが、
+                // 26.14.0 で `androidx.lifecycle.LifecycleOwner`（難読化後は `Landroidx/lifecycle/u0;`）へ
+                // 広げられました。難読化名に依存しないよう wildcard で受けます。
+                "L",
                 "L",
                 "L",
                 "Landroid/view/View;",

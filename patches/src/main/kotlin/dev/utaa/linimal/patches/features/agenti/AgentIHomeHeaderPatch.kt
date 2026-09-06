@@ -7,15 +7,12 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import dev.utaa.linimal.patches.features.ads.homeTopAdPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
@@ -24,14 +21,21 @@ import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 
-private const val HOME_AGENT_ICON = 0x7f080b83
-private const val HOME_AGENT_ACCESSIBILITY_LABEL = 0x7f15006b
-private const val HOME_AGENT_DEEP_LINK = "line://lineai/thread"
-private const val HOME_AGENT_ENTRY = "hometab_v4_header"
+private const val HOME_AGENT_ICON = 0x7f080b87  // home26_navi_top_agent
+private const val HOME_AGENT_ACCESSIBILITY_LABEL = 0x7f15006c  // access_agenti
 private const val HOME_HEADER_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentIHomeHeaderHooks;->adjustVisibility(Z)Z"
 
-/** Agent i icon の drawable、accessibility label、Compose icon call を組み合わせた resource anchor。 */
+/** icon lambda constructor の並び。boolean と callback が icon ごとに交互に並びます。 */
+private val homeAgentIconCallbackParameters = listOf("Z", "L", "Z", "L", "Z", "L", "Z", "L")
+
+/**
+ * Agent i icon の drawable、accessibility label、Compose icon call を組み合わせた resource anchor。
+ *
+ * Compose icon helper は 26.11.0 の `Loa2/m;->c` から 26.14.0 で `Lng2/n;->b` へ名前が変わったため、
+ * 難読化された class / method 名は落とし、引数の並び（先頭 2 つと theme / Set / Composer の位置）だけを
+ * 条件にします。難読化型は前方一致の `"L"` で受けます。
+ */
 private val homeAgentIconFingerprint = Fingerprint(
     returnType = "Ljava/lang/Object;",
     parameters = listOf("Ljava/lang/Object;", "Ljava/lang/Object;", "Ljava/lang/Object;"),
@@ -39,17 +43,15 @@ private val homeAgentIconFingerprint = Fingerprint(
         literal(HOME_AGENT_ACCESSIBILITY_LABEL),
         literal(HOME_AGENT_ICON),
         methodCall(
-            definingClass = "Loa2/m;",
-            name = "c",
             parameters = listOf(
                 "I",
                 "Ljava/lang/String;",
-                "Lvb8/a;",
-                "Ly3/j;",
-                "Loa2/n;",
+                "L",
+                "L",
+                "L",
                 "Lcom/linecorp/line/compose/theme/g;",
                 "Ljava/util/Set;",
-                "Lh3/t;",
+                "L",
                 "I",
                 "I",
             ),
@@ -57,46 +59,28 @@ private val homeAgentIconFingerprint = Fingerprint(
             opcode = Opcode.INVOKE_STATIC_RANGE,
         ),
     ),
-    custom = { _, classDef -> classDef.interfaces.contains("Lvb8/q;") },
+    // 26.11.0 の `classDef.interfaces.contains("Lvb8/q;")` は 26.14.0 で `Laj8/q;` へ変わる
+    // 難読化名でした。2 つの Agent i 専用 resource だけで全 DEX 中 1 件に絞れるため落とします。
 )
 
-/** Agent i deeplink と entry metadata を持つ click lambda。 */
-private val homeAgentEntryActionFingerprint = Fingerprint(
-    returnType = "Ljava/lang/Object;",
-    parameters = emptyList(),
+/**
+ * 4 icon callback を生成する composable のうち Agent i icon callback を持つ唯一の boolean supplier。
+ *
+ * 26.11.0 では deeplink 文字列 `line://lineai/thread` → callback → host → `b` という chain で
+ * 導出していましたが、26.14.0 では deeplink が remote config 由来になり文字列が消えました。
+ * 代わりに、resource で特定済みの icon lambda の constructor を呼ぶ唯一の method として導出します。
+ */
+private fun homeAgentHeaderSupplierFingerprint(iconCallbackType: String) = Fingerprint(
+    returnType = "V",
     filters = listOf(
-        string(HOME_AGENT_DEEP_LINK),
         methodCall(
-            definingClass = "Landroid/net/Uri;",
-            name = "parse",
-            parameters = listOf("Ljava/lang/String;"),
-            returnType = "Landroid/net/Uri;",
-            opcode = Opcode.INVOKE_STATIC,
+            definingClass = iconCallbackType,
+            name = "<init>",
+            parameters = homeAgentIconCallbackParameters,
+            returnType = "V",
+            opcode = Opcode.INVOKE_DIRECT_RANGE,
         ),
-        string(HOME_AGENT_ENTRY),
     ),
-    custom = { _, classDef -> classDef.interfaces.contains("Lvb8/a;") },
-)
-
-/** deeplink lambda を Compose callback へ束ねる creator。 */
-private fun homeAgentEntryCallbackFingerprint(entryActionType: String) = Fingerprint(
-    returnType = "Ljava/lang/Object;",
-    parameters = listOf("Ljava/lang/Object;", "Ljava/lang/Object;"),
-    custom = { method, _ -> methodCreatesType(method, entryActionType) },
-)
-
-/** deeplink callback を生成する Home composable host。難読化 owner はこの creation chain からだけ導出します。 */
-private fun homeAgentEntryHostFingerprint(entryCallbackType: String) = Fingerprint(
-    returnType = "V",
-    parameters = listOf("Lvb8/a;", "Lh3/t;", "I"),
-    custom = { method, _ -> methodCreatesType(method, entryCallbackType) },
-)
-
-/** 4 icon callback を生成する composable のうち Agent i icon callback を持つ唯一の boolean supplier。 */
-private fun homeAgentHeaderSupplierFingerprint(homeOwner: String) = Fingerprint(
-    definingClass = homeOwner,
-    name = "b",
-    returnType = "V",
 )
 
 /**
@@ -124,37 +108,15 @@ val agentIHomeHeaderPatch = bytecodePatch(
             return@execute
         }
 
-        val entryActionMatches = homeAgentEntryActionFingerprint.matchAllOrNull().orEmpty()
-        if (entryActionMatches.size != 1) {
-            recordHomeHeaderUnapplied(entryActionMatches.size, "AgentIHomeHeaderEntryMetadataNotUnique")
-            return@execute
-        }
-
-        val entryActionType = entryActionMatches.single().originalClassDef.type
-        val entryCallbackMatches = homeAgentEntryCallbackFingerprint(entryActionType).matchAllOrNull().orEmpty()
-        if (entryCallbackMatches.size != 1) {
-            recordHomeHeaderUnapplied(entryCallbackMatches.size, "AgentIHomeHeaderEntryCallbackNotUnique")
-            return@execute
-        }
-
-        val homeHostMatches = homeAgentEntryHostFingerprint(
-            entryCallbackMatches.single().originalClassDef.type,
-        ).matchAllOrNull().orEmpty()
-        if (homeHostMatches.size != 1) {
-            recordHomeHeaderUnapplied(homeHostMatches.size, "AgentIHomeHeaderHostNotUnique")
-            return@execute
-        }
-
-        val supplierMatches = homeAgentHeaderSupplierFingerprint(
-            homeHostMatches.single().originalClassDef.type,
-        ).matchAllOrNull().orEmpty()
+        val iconCallbackType = iconMatches.single().originalClassDef.type
+        val supplierMatches = homeAgentHeaderSupplierFingerprint(iconCallbackType).matchAllOrNull().orEmpty()
         if (supplierMatches.size != 1) {
             recordHomeHeaderUnapplied(supplierMatches.size, "AgentIHomeHeaderSupplierNotUnique")
             return@execute
         }
 
         val supplier = supplierMatches.single()
-        if (!guardHomeHeaderSupplier(supplier.method, iconMatches.single().originalClassDef.type)) {
+        if (!guardHomeHeaderSupplier(supplier.method, iconCallbackType)) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.AGENT_I_HOME_HEADER),
                 expectedTargetCount = 1,
@@ -183,36 +145,31 @@ val agentIHomeHeaderPatch = bytecodePatch(
 private fun guardHomeHeaderSupplier(method: Method, iconCallbackType: String): Boolean {
     val implementation = method.implementation ?: return false
     val instructions = implementation.instructions.toList()
+    // 26.11.0 は `Lgg2/r;` / `Lgg2/j;` / `Lgg2/i;` / `Lh3/t;`、26.14.0 は `Lwm2/q;` / `Lwm2/i;` /
+    // `Lwm2/h;` / `Lh3/s;`。いずれも版ごとに変わる難読化型なので前方一致で受けます。
     val expectedParameters = listOf(
-        "Lgg2/r;",
+        "L",
         "Z",
         "Z",
         "Z",
         "Z",
-        "Lgg2/j;",
-        "Lgg2/i;",
-        "Lgg2/i;",
-        "Lgg2/i;",
-        "Lgg2/i;",
-        "Lh3/t;",
+        "L",
+        "L",
+        "L",
+        "L",
+        "L",
+        "L",
         "I",
     )
     val constructorIndices = instructions.mapIndexedNotNull { index, instruction ->
         val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+        val parameters = reference?.parameterTypes?.map(CharSequence::toString)
         index.takeIf {
             instruction.opcode == Opcode.INVOKE_DIRECT_RANGE &&
                 reference?.definingClass == iconCallbackType &&
                 reference.name == "<init>" &&
-                reference.parameterTypes == listOf(
-                    "Z",
-                    "Lgg2/i;",
-                    "Z",
-                    "Lgg2/i;",
-                    "Z",
-                    "Lgg2/i;",
-                    "Z",
-                    "Lgg2/i;",
-                ) &&
+                parameters != null &&
+                parametersStartWith(parameters, homeAgentIconCallbackParameters) &&
                 reference.returnType == "V"
         }
     }
@@ -230,7 +187,7 @@ private fun guardHomeHeaderSupplier(method: Method, iconCallbackType: String): B
             instruction.registerB == firstBooleanParameterRegister
     }
 
-    return method.parameterTypes.map { it.toString() } == expectedParameters &&
+    return parametersStartWith(method.parameterTypes.map(CharSequence::toString), expectedParameters) &&
         parameterStart >= 0 &&
         firstBooleanParameterRegister in 0..255 &&
         constructor.registerCount == 9 &&
@@ -239,10 +196,9 @@ private fun guardHomeHeaderSupplier(method: Method, iconCallbackType: String): B
         sourceCopies.size == 1
 }
 
-private fun methodCreatesType(method: Method, type: String): Boolean = method.implementation?.instructions?.any {
-    it.opcode == Opcode.NEW_INSTANCE &&
-        ((it as? ReferenceInstruction)?.reference as? TypeReference)?.type == type
-} == true
+/** Morphe の parameter 照合と同じく、要素数一致 + 各要素の前方一致で比較します。 */
+private fun parametersStartWith(actual: List<String>, expected: List<String>): Boolean =
+    actual.size == expected.size && actual.zip(expected).all { (a, e) -> a.startsWith(e) }
 
 private fun recordHomeHeaderUnapplied(matchCount: Int, reason: String) {
     patchStatusCollector.record(agentIHomeHeaderUnappliedRecord(matchCount, reason))

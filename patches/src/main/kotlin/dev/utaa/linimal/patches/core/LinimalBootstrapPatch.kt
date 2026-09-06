@@ -8,7 +8,6 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import dev.utaa.linimal.patches.shared.Constants
@@ -26,18 +25,23 @@ private const val BOOTSTRAP_METHOD =
 /**
  * LINE の Application 初期化本体を、難読化名ではなく次の複合条件で特定します。
  * すなわち Application を継承する宣言クラス、static な signature、`Application.onCreate` の呼び出し、
- * process を判定する `Process.myUid`、および初期化順序を示す 2 つの文字列です。
+ * process を判定する `Process.myUid`、および初期化順序を示す文字列です。
+ *
+ * <p>26.11.0 では `LineApplication.disableSystemOutAndErr` の文字列と `accessFlags` も条件に
+ * 含めていましたが、どちらも版差で壊れました。文字列は 26.14.0 で消え、access flags は
+ * `PUBLIC|STATIC`(0x9) から `PUBLIC|STATIC|FINAL`(0x19) へ変わっています（Fingerprint の
+ * accessFlags は完全一致で判定されるため一致しなくなります）。`definingClass` が非難読化の
+ * `LineApplication` に固定されており、その中で `(LineApplication)Lkotlin/Unit;` を返すメソッドは
+ * 1 つだけなので、どちらの条件も uniqueness に寄与していません。落としても対象は 1 件のままです。</p>
  */
 internal val lineApplicationInitializeFingerprint = Fingerprint(
     definingClass = LINE_APPLICATION,
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC),
     returnType = KOTLIN_UNIT,
     parameters = listOf(LINE_APPLICATION),
     filters = listOf(
         methodCall("$ANDROID_APPLICATION->onCreate()V", Opcode.INVOKE_SUPER),
         methodCall("Landroid/os/Process;->myUid()I", Opcode.INVOKE_STATIC),
         string("ApplicationGraph.init"),
-        string("LineApplication.disableSystemOutAndErr"),
     ),
     custom = { _, classDef -> classDef.superclass == ANDROID_APPLICATION },
 )

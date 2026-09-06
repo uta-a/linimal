@@ -25,7 +25,8 @@ import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.VOID
 
-private const val FUNCTION3 = "Lvb8/q;"
+// kotlin.jvm.functions.Function3。26.11.0 の `Lvb8/q;` から 26.14.0 で `Laj8/q;` へ難読化名が変わりました。
+private const val FUNCTION3 = "Laj8/q;"
 
 /** 検索バー composable の引数の並び。AI ボタンの表示 boolean と、その直後の icon variant boolean。 */
 private const val SEARCH_BAR_PARAMETER_COUNT = 10

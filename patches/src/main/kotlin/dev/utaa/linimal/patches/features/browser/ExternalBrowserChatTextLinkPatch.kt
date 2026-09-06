@@ -11,6 +11,7 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -33,49 +34,129 @@ private const val CONTEXT = "Landroid/content/Context;"
 private const val URI = "Landroid/net/Uri;"
 private const val INTENT = "Landroid/content/Intent;"
 private const val VIEW = "Landroid/view/View;"
-private const val FRAGMENT_ACTIVITY = "Landroidx/fragment/app/b0;"
-private const val REFERRER_PARAM = "Lna1/p;"
-private const val REFERRER_LOCATION = "Lna1/p\$b;"
-private const val REFERRER_ACTION = "Lna1/p\$a;"
-private const val LINK_OPTIONS = "Lna1/a;"
-private const val LINK_ROUTER = "Lna1/c;"
-private const val LINK_ROUTING_INTERFACE = "Lna1/b;"
-private const val CHAT_REFERRER = "Lna1/q;"
-private const val CHAT_REFERRER_VALUE = "Lna1/q\$a;"
-private const val NORMALIZED_LINK = "Lna1/o;"
+
+/**
+ * 難読化された object 型を受けるワイルドカードです。Morphe の型照合は前方一致のため、`"L"` は
+ * 任意の object 型に一致します。26.11.0 では `Lna1/p;` 系（referrer param / link options /
+ * link router / routing interface / chat referrer / normalized link）をすべて直書きしていましたが、
+ * 26.14.0 でいずれも改名されたため、非難読化の enum 定数名と命令列の shape から導出します。
+ */
+private const val ANY_OBJECT = "L"
+
+/** `<clinit>` の preset に渡される bitmask。26.11.0 と同じ値であることを固定します。 */
+private const val CHAT_CLICK_PRESET_FLAGS = 4
+
+/** `interface->helper(receiver, url, referrer, z, z, z, z, options, flags)` の形。 */
+private const val DEFAULT_LINK_ROUTING_PARAMETER_COUNT = 9
+private const val DEFAULT_ROUTING_INTERFACE_INDEX = 0
+private const val DEFAULT_REFERRER_PARAMETER_INDEX = 2
+private const val DEFAULT_LINK_OPTIONS_INDEX = 7
+
+/** `router->route(context, uri, options, chatReferrer, z, referrer, z)` の形。 */
+private const val LINK_ROUTER_PARAMETER_COUNT = 7
+private const val LINK_ROUTER_CHAT_REFERRER_INDEX = 3
+
 private const val EXTERNAL_BROWSER_HOOK =
     "Ldev/utaa/linimal/extension/features/browser/ExternalBrowserHooks;" +
         "->tryOpenNormalLinkExternally(Landroid/content/Context;Landroid/net/Uri;)Z"
 
-private val linkRouterParameters = listOf(
-    CONTEXT,
-    URI,
-    LINK_OPTIONS,
-    CHAT_REFERRER,
-    BOOLEAN,
-    REFERRER_PARAM,
-    BOOLEAN,
+/** CHAT / CLICK preset の static field。難読化名ではなく shape から解決した実体です。 */
+private data class ChatClickPreset(
+    val referrerParamType: String,
+    val presetFieldName: String,
 )
 
-private val defaultLinkRoutingParameters = listOf(
-    LINK_ROUTING_INTERFACE,
+/** 通常チャット本文 binder が使う routing helper から導出した、難読化された型です。 */
+private data class ChatTextLinkRouting(
+    val routingInterfaceType: String,
+    val linkOptionsType: String,
+)
+
+private fun defaultLinkRoutingParameters(referrerParamType: String) = listOf(
+    ANY_OBJECT,
     STRING,
-    REFERRER_PARAM,
+    referrerParamType,
     BOOLEAN,
     BOOLEAN,
     BOOLEAN,
     BOOLEAN,
-    LINK_OPTIONS,
+    ANY_OBJECT,
     "I",
 )
 
+private fun linkRouterParameters(referrerParamType: String, linkOptionsType: String) = listOf(
+    CONTEXT,
+    URI,
+    linkOptionsType,
+    ANY_OBJECT,
+    BOOLEAN,
+    referrerParamType,
+    BOOLEAN,
+)
+
 /**
- * 汎用リンク routing の実装。難読化されたクラス名・メソッド名を主要条件にせず、URI 変換、
- * chat referrer model、最終 routing の引数形状を組み合わせて reference DEX の一件に限定します。
+ * CHAT / CLICK preset を組み立てる static initializer。26.11.0 は `Lna1/p;` とその field `h` を
+ * 直書きしていましたが、26.14.0 で改名されたため、非難読化のまま残る enum 定数名 CHAT / CLICK と
+ * 「自分自身の型を自分の static field へ格納する」shape だけで特定します。
+ * この preset が、外部ブラウザへ渡してよい経路を判定する唯一の識別子です。
  */
-private val externalBrowserTargetFingerprint = Fingerprint(
+private val chatClickPresetFingerprint = Fingerprint(
+    name = "<clinit>",
     returnType = VOID,
-    parameters = listOf(STRING, REFERRER_PARAM, BOOLEAN, LINK_OPTIONS),
+    parameters = emptyList(),
+    filters = listOf(
+        fieldAccess(name = "CHAT", opcode = Opcode.SGET_OBJECT),
+        fieldAccess(name = "CLICK", opcode = Opcode.SGET_OBJECT),
+        fieldAccess(definingClass = "this", opcode = Opcode.SPUT_OBJECT),
+    ),
+    custom = { method, classDef ->
+        chatClickPresetFieldNameOrNull(
+            method.implementation?.instructions?.toList().orEmpty(),
+            classDef.type,
+        ) != null
+    },
+)
+
+/**
+ * テキストメッセージ binder が URL を正規化し、preset を読み、routing interface の static helper へ
+ * 渡す経路を確認します。汎用 target を変更する前に、preset が通常チャット本文リンクで使われることを
+ * 保証すると同時に、難読化された routing interface と link options の型をここから導出します。
+ */
+private fun chatTextLinkCallerFingerprint(preset: ChatClickPreset) = Fingerprint(
+    returnType = VOID,
+    parameters = listOf(STRING),
+    filters = listOf(
+        methodCall(
+            parameters = listOf(CONTEXT, STRING, STRING),
+            returnType = ANY_OBJECT,
+            opcode = Opcode.INVOKE_STATIC,
+        ),
+        fieldAccess(
+            definingClass = preset.referrerParamType,
+            name = preset.presetFieldName,
+            type = preset.referrerParamType,
+            opcode = Opcode.SGET_OBJECT,
+        ),
+        fieldAccess(type = ANY_OBJECT, opcode = Opcode.IGET_OBJECT),
+        methodCall(
+            parameters = defaultLinkRoutingParameters(preset.referrerParamType),
+            returnType = VOID,
+            opcode = Opcode.INVOKE_STATIC_RANGE,
+        ),
+    ),
+)
+
+/**
+ * 汎用リンク routing の実装。難読化されたクラス名・メソッド名を条件にせず、URI 変換、
+ * chat referrer model の生成、最終 routing の引数形状、`Context.startActivity` を組み合わせて
+ * 一件に限定します。
+ */
+private fun externalBrowserTargetFingerprint(
+    referrerParamType: String,
+    routing: ChatTextLinkRouting,
+) = Fingerprint(
+    returnType = VOID,
+    parameters = listOf(STRING, referrerParamType, BOOLEAN, routing.linkOptionsType),
     filters = listOf(
         methodCall(
             definingClass = URI,
@@ -84,77 +165,27 @@ private val externalBrowserTargetFingerprint = Fingerprint(
             returnType = URI,
             opcode = Opcode.INVOKE_STATIC,
         ),
-        newInstance(CHAT_REFERRER_VALUE),
-        fieldAccess(type = LINK_ROUTER, opcode = Opcode.IGET_OBJECT),
-        fieldAccess(type = FRAGMENT_ACTIVITY, opcode = Opcode.IGET_OBJECT),
+        newInstance(ANY_OBJECT),
+        fieldAccess(type = ANY_OBJECT, opcode = Opcode.IGET_OBJECT),
+        fieldAccess(type = ANY_OBJECT, opcode = Opcode.IGET_OBJECT),
         methodCall(
-            parameters = linkRouterParameters,
+            parameters = linkRouterParameters(referrerParamType, routing.linkOptionsType),
             returnType = INTENT,
             opcode = Opcode.INVOKE_INTERFACE_RANGE,
         ),
-    ),
-    custom = { _, classDef -> classDef.interfaces.contains(LINK_ROUTING_INTERFACE) },
-)
-
-/** static h preset が CHAT / CLICK と既定の false 値で構成されることを検証します。 */
-private val chatClickPresetFingerprint = Fingerprint(
-    definingClass = REFERRER_PARAM,
-    name = "<clinit>",
-    returnType = VOID,
-    parameters = emptyList(),
-    filters = listOf(
-        fieldAccess(
-            definingClass = REFERRER_LOCATION,
-            name = "CHAT",
-            type = REFERRER_LOCATION,
-            opcode = Opcode.SGET_OBJECT,
-        ),
-        fieldAccess(
-            definingClass = REFERRER_ACTION,
-            name = "CLICK",
-            type = REFERRER_ACTION,
-            opcode = Opcode.SGET_OBJECT,
-        ),
-        fieldAccess(
-            definingClass = REFERRER_PARAM,
-            name = "h",
-            type = REFERRER_PARAM,
-            opcode = Opcode.SPUT_OBJECT,
-        ),
-    ),
-    custom = { method, _ -> hasChatClickPresetShape(method.implementation?.instructions?.toList().orEmpty()) },
-)
-
-/**
- * テキストメッセージ binder が URL を正規化し、h を読み、na1/b へ渡す経路を確認します。
- * 汎用 target を変更する前に、h が通常チャット本文リンクで使われることを保証します。
- */
-private val chatTextLinkCallerFingerprint = Fingerprint(
-    returnType = VOID,
-    parameters = listOf(STRING),
-    filters = listOf(
         methodCall(
-            parameters = listOf(CONTEXT, STRING, STRING),
-            returnType = NORMALIZED_LINK,
-            opcode = Opcode.INVOKE_STATIC,
-        ),
-        fieldAccess(
-            definingClass = REFERRER_PARAM,
-            name = "h",
-            type = REFERRER_PARAM,
-            opcode = Opcode.SGET_OBJECT,
-        ),
-        fieldAccess(type = LINK_OPTIONS, opcode = Opcode.IGET_OBJECT),
-        methodCall(
-            parameters = defaultLinkRoutingParameters,
+            definingClass = CONTEXT,
+            name = "startActivity",
+            parameters = listOf(INTENT),
             returnType = VOID,
-            opcode = Opcode.INVOKE_STATIC_RANGE,
+            opcode = Opcode.INVOKE_VIRTUAL,
         ),
     ),
+    custom = { _, classDef -> classDef.interfaces.contains(routing.routingInterfaceType) },
 )
 
 /**
- * 変更対象は最終の汎用実装だけですが、View click → Kotlin callback → text binder → na1/b routing
+ * 変更対象は最終の汎用実装だけですが、View click → Kotlin callback → text binder → routing interface
  * という完全なクリック経路が存在することも必須にします。
  */
 private fun textLinkCallbackFingerprint(textLinkCaller: Match) = Fingerprint(
@@ -195,7 +226,7 @@ private data class TargetInjectionShape(
 
 /**
  * 外部ブラウザ routing は通常チャット本文だけに限定します。OAuth、Channel permission、Pay、LIFF、
- * Settings WebView、Timeline、rich message は、検証済みの h preset 経路へ入りません。
+ * Settings WebView、Timeline、rich message は、検証済みの preset 経路へ入りません。
  */
 val externalBrowserChatTextLinkPatch = bytecodePatch(
     name = "リンクを外部ブラウザで開く",
@@ -212,7 +243,61 @@ val externalBrowserChatTextLinkPatch = bytecodePatch(
     dependsOn(smartChannelAdsPatch)
 
     execute {
-        val targetMatches = externalBrowserTargetFingerprint.matchAllOrNull().orEmpty()
+        // 26.11.0 は難読化名を直書きしていたため target から解決していました。26.14.0 では
+        // すべての名前が変わるため、非難読化の CHAT / CLICK preset を起点に順へ導出します。
+        val presetMatches = chatClickPresetFingerprint.matchAllOrNull().orEmpty()
+        if (presetMatches.size != 1) {
+            recordFeatureStatus(
+                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
+                expectedTargetCount = 1,
+                actualTargetCount = presetMatches.size,
+                reason = "ExternalBrowserChatPresetNotUnique",
+            )
+            return@execute
+        }
+
+        val presetMatch = presetMatches.single()
+        val referrerParamType = presetMatch.originalClassDef.type
+        val presetFieldName = chatClickPresetFieldNameOrNull(
+            presetMatch.method.implementation?.instructions?.toList().orEmpty(),
+            referrerParamType,
+        )
+        if (presetFieldName == null) {
+            recordUnsafeFeatureStatus(
+                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
+                expectedTargetCount = 1,
+                actualTargetCount = 1,
+                reason = "ExternalBrowserChatPresetShapeMismatch",
+            )
+            return@execute
+        }
+        val preset = ChatClickPreset(referrerParamType, presetFieldName)
+
+        val textLinkCallers = chatTextLinkCallerFingerprint(preset).matchAllOrNull().orEmpty()
+        if (textLinkCallers.size != 1) {
+            recordFeatureStatus(
+                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
+                expectedTargetCount = 1,
+                actualTargetCount = textLinkCallers.size,
+                reason = "ExternalBrowserChatCallerNotUnique",
+            )
+            return@execute
+        }
+
+        val routing = chatTextLinkRoutingOrNull(textLinkCallers.single(), preset)
+        if (routing == null) {
+            recordUnsafeFeatureStatus(
+                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
+                expectedTargetCount = 1,
+                actualTargetCount = 1,
+                reason = "ExternalBrowserChatCallerShapeMismatch",
+            )
+            return@execute
+        }
+
+        val targetMatches = externalBrowserTargetFingerprint(preset.referrerParamType, routing)
+            .matchAllOrNull()
+            .orEmpty()
         if (targetMatches.size != 1) {
             recordFeatureStatus(
                 listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
@@ -231,27 +316,6 @@ val externalBrowserChatTextLinkPatch = bytecodePatch(
                 expectedTargetCount = 1,
                 actualTargetCount = 1,
                 reason = "ExternalBrowserTargetInstructionShapeMismatch",
-            )
-            return@execute
-        }
-
-        if (chatClickPresetFingerprint.matchAllOrNull().orEmpty().size != 1) {
-            recordUnsafeFeatureStatus(
-                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
-                expectedTargetCount = 1,
-                actualTargetCount = 1,
-                reason = "ExternalBrowserChatPresetNotUnique",
-            )
-            return@execute
-        }
-
-        val textLinkCallers = chatTextLinkCallerFingerprint.matchAllOrNull().orEmpty()
-        if (textLinkCallers.size != 1 || !hasChatTextLinkCallerShape(textLinkCallers.singleOrNull())) {
-            recordUnsafeFeatureStatus(
-                listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
-                expectedTargetCount = 1,
-                actualTargetCount = 1,
-                reason = "ExternalBrowserChatCallerShapeMismatch",
             )
             return@execute
         }
@@ -280,10 +344,14 @@ val externalBrowserChatTextLinkPatch = bytecodePatch(
 
         val contextFieldSmali = "${targetShape.contextField.definingClass}->" +
             "${targetShape.contextField.name}:${targetShape.contextField.type}"
+        // preset の identity 比較だけが外部ブラウザへの分岐条件です。ここを緩めると
+        // LINE 内部リンクや決済リンクまで外部へ流れます。
+        val presetFieldSmali =
+            "${preset.referrerParamType}->${preset.presetFieldName}:${preset.referrerParamType}"
         target.method.addInstructionsWithLabels(
             targetShape.insertionIndex,
             """
-                sget-object v${targetShape.presetScratchRegister}, Lna1/p;->h:Lna1/p;
+                sget-object v${targetShape.presetScratchRegister}, $presetFieldSmali
                 if-ne p2, v${targetShape.presetScratchRegister}, :original
                 iget-object v${targetShape.contextScratchRegister}, p0, $contextFieldSmali
                 invoke-static { v${targetShape.contextScratchRegister}, v${targetShape.uriRegister} }, $EXTERNAL_BROWSER_HOOK
@@ -305,15 +373,18 @@ val externalBrowserChatTextLinkPatch = bytecodePatch(
 
 /**
  * URI parse 境界の local register を再利用する前に、reference target の data flow を厳密に検証します。
- * FragmentActivity field は名前に依存せず、元の routing 命令列から取得します。
+ * link router field と Context field は型名に依存せず、routing 命令と `Context.startActivity` の
+ * 引数から裏づけます。
  */
 private fun targetInjectionShape(match: Match): TargetInjectionShape? {
     val method = match.method
     val instructions = method.implementation?.instructions?.toList() ?: return null
     val parseIndex = match.instructionMatches[0].index
+    val chatReferrerIndex = match.instructionMatches[1].index
     val routerFieldIndex = match.instructionMatches[2].index
     val contextFieldIndex = match.instructionMatches[3].index
     val routeIndex = match.instructionMatches[4].index
+    val startActivityIndex = match.instructionMatches[5].index
     val implementation = method.implementation ?: return null
     val parameterStart = implementation.registerCount - method.parameterTypes.size - 1
     val thisRegister = parameterStart
@@ -322,6 +393,8 @@ private fun targetInjectionShape(match: Match): TargetInjectionShape? {
     val parse = instructions.getOrNull(parseIndex) as? FiveRegisterInstruction
     val uriResult = instructions.getOrNull(parseIndex + 1) as? OneRegisterInstruction
     val uriCheck = instructions.getOrNull(parseIndex + 2) as? FiveRegisterInstruction
+    val chatReferrerValue = (instructions.getOrNull(chatReferrerIndex) as? ReferenceInstruction)
+        ?.reference.let { it as? TypeReference }?.type
     val routerRead = instructions.getOrNull(routerFieldIndex) as? TwoRegisterInstruction
     val routerField = (instructions.getOrNull(routerFieldIndex) as? ReferenceInstruction)
         ?.reference as? FieldReference
@@ -331,9 +404,17 @@ private fun targetInjectionShape(match: Match): TargetInjectionShape? {
     val route = instructions.getOrNull(routeIndex) as? RegisterRangeInstruction
     val routeReference = (instructions.getOrNull(routeIndex) as? ReferenceInstruction)
         ?.reference as? MethodReference
+    val chatReferrerType = routeReference
+        ?.parameterTypes
+        ?.getOrNull(LINK_ROUTER_CHAT_REFERRER_INDEX)
+        ?.toString()
     val referrerMove = instructions.getOrNull(routeIndex - 3) as? TwoRegisterInstruction
+    val startActivity = instructions.getOrNull(startActivityIndex) as? FiveRegisterInstruction
+    val activityRead = instructions.getOrNull(startActivityIndex - 1) as? TwoRegisterInstruction
+    val activityField = (instructions.getOrNull(startActivityIndex - 1) as? ReferenceInstruction)
+        ?.reference as? FieldReference
 
-    // 検証済みの reference shape では、この位置の v0/v1 は live ではありません。v0 は h の
+    // 検証済みの reference shape では、この位置の v0/v1 は live ではありません。v0 は preset の
     // identity 比較だけに使い、v1 は Context / hook result の後に元コードで上書きされます。
     if (
         implementation.registerCount - (method.parameterTypes.size + 1) < 2 ||
@@ -349,20 +430,35 @@ private fun targetInjectionShape(match: Match): TargetInjectionShape? {
             .let { it as? MethodReference }
             ?.let { it.definingClass == OBJECT && it.name == "getClass" && it.returnType == "Ljava/lang/Class;" }
             != true ||
+        routeReference == null ||
+        routeReference.parameterTypes.size != LINK_ROUTER_PARAMETER_COUNT ||
+        routeReference.returnType != INTENT ||
+        // 生成される chat referrer は routing 引数の sealed 型の入れ子実装です。
+        // 26.11.0 の `newInstance(Lna1/q$a;)` 直書きを、この関係で置き換えます。
+        chatReferrerType == null ||
+        chatReferrerValue == null ||
+        !chatReferrerValue.startsWith(chatReferrerType.dropLast(1) + "$") ||
         routerRead?.opcode != Opcode.IGET_OBJECT ||
         routerRead.registerB != thisRegister ||
-        routerField?.type != LINK_ROUTER ||
+        routerField == null ||
         routerField.definingClass != match.originalClassDef.type ||
+        // link router field の型が、そのまま routing 呼び出しの receiver 型であることを裏づけます。
+        routerField.type != routeReference.definingClass ||
         contextRead?.opcode != Opcode.IGET_OBJECT ||
         contextRead.registerB != thisRegister ||
         contextRead.registerA != 1 ||
-        contextField?.type != FRAGMENT_ACTIVITY ||
+        contextField == null ||
         contextField.definingClass != match.originalClassDef.type ||
+        // Context field は型名ではなく、同じ field が `Context.startActivity` の receiver として
+        // 読み直されることで裏づけます。26.11.0 の `Landroidx/fragment/app/b0;` 直書きの置き換えです。
+        startActivity?.opcode != Opcode.INVOKE_VIRTUAL ||
+        startActivity.registerCount != 2 ||
+        activityRead?.opcode != Opcode.IGET_OBJECT ||
+        activityRead.registerB != thisRegister ||
+        activityRead.registerA != startActivity.registerC ||
+        activityField != contextField ||
         route?.opcode != Opcode.INVOKE_INTERFACE_RANGE ||
-        routeReference?.definingClass != LINK_ROUTER ||
-        routeReference.parameterTypes != linkRouterParameters ||
-        routeReference.returnType != INTENT ||
-        route.registerCount != 8 ||
+        route.registerCount != LINK_ROUTER_PARAMETER_COUNT + 1 ||
         route.startRegister != routerRead.registerA ||
         route.startRegister + 1 != contextRead.registerA ||
         route.startRegister + 2 != uriResult.registerA ||
@@ -382,82 +478,116 @@ private fun targetInjectionShape(match: Match): TargetInjectionShape? {
     )
 }
 
-private fun hasChatClickPresetShape(instructions: List<com.android.tools.smali.dexlib2.iface.instruction.Instruction>): Boolean {
-    val chatIndex = instructions.indexOfFirst { instruction ->
-        val reference = (instruction as? ReferenceInstruction)?.reference as? FieldReference
-        instruction.opcode == Opcode.SGET_OBJECT &&
-            reference?.definingClass == REFERRER_LOCATION &&
-            reference.name == "CHAT" &&
-            reference.type == REFERRER_LOCATION
-    }
-    val clickIndex = instructions.indexOfFirst { instruction ->
-        val reference = (instruction as? ReferenceInstruction)?.reference as? FieldReference
-        instruction.opcode == Opcode.SGET_OBJECT &&
-            reference?.definingClass == REFERRER_ACTION &&
-            reference.name == "CLICK" &&
-            reference.type == REFERRER_ACTION
-    }
-    val presetStoreIndex = instructions.indexOfFirst { instruction ->
-        val reference = (instruction as? ReferenceInstruction)?.reference as? FieldReference
-        instruction.opcode == Opcode.SPUT_OBJECT &&
-            reference?.definingClass == REFERRER_PARAM &&
-            reference.name == "h" &&
-            reference.type == REFERRER_PARAM
-    }
-    val chatRead = instructions.getOrNull(chatIndex) as? OneRegisterInstruction
-    val clickRead = instructions.getOrNull(clickIndex) as? OneRegisterInstruction
-    val presetConstructor = instructions.getOrNull(presetStoreIndex - 1) as? FiveRegisterInstruction
-    val presetConstructorReference = (instructions.getOrNull(presetStoreIndex - 1) as? ReferenceInstruction)
-        ?.reference as? MethodReference
-    val presetStore = instructions.getOrNull(presetStoreIndex) as? OneRegisterInstruction
-    val falseMask = presetConstructor?.registerF?.let { register ->
-        instructions.subList(0, presetStoreIndex - 1)
-            .asReversed()
-            .firstNotNullOfOrNull { instruction ->
-                val literal = instruction as? NarrowLiteralInstruction
-                val literalRegister = instruction as? OneRegisterInstruction
-                literal?.takeIf { literalRegister?.registerA == register }?.narrowLiteral
-            }
-    }
+/**
+ * `<clinit>` の中から「CHAT / CLICK と既定の bitmask で組み立てて自分の static field へ格納する」
+ * 唯一の store を探し、その field 名を返します。難読化された field 名を条件にしないための導出です。
+ */
+private fun chatClickPresetFieldNameOrNull(
+    instructions: List<Instruction>,
+    referrerParamType: String,
+): String? {
+    val candidates = instructions.indices.mapNotNull { index ->
+        val store = instructions[index]
+        val storeField = (store as? ReferenceInstruction)?.reference as? FieldReference
+        val storeRegister = (store as? OneRegisterInstruction)?.registerA
+        val constructor = instructions.getOrNull(index - 1) as? FiveRegisterInstruction
+        val constructorReference = (instructions.getOrNull(index - 1) as? ReferenceInstruction)
+            ?.reference as? MethodReference
+        val constructorParameters = constructorReference?.parameterTypes?.map(CharSequence::toString)
 
-    return chatIndex >= 0 &&
-        clickIndex > chatIndex &&
-        presetStoreIndex > clickIndex &&
-        chatRead != null &&
-        clickRead != null &&
-        presetConstructor?.opcode == Opcode.INVOKE_DIRECT &&
-        presetConstructorReference?.definingClass == REFERRER_PARAM &&
-        presetConstructorReference.name == "<init>" &&
-        presetConstructorReference.parameterTypes == listOf(REFERRER_LOCATION, REFERRER_ACTION, "I") &&
-        presetConstructorReference.returnType == VOID &&
-        presetConstructor.registerCount == 4 &&
-        presetConstructor.registerD == chatRead.registerA &&
-        presetConstructor.registerE == clickRead.registerA &&
-        falseMask == 4 &&
-        presetStore?.registerA == presetConstructor.registerC
+        if (
+            store.opcode != Opcode.SPUT_OBJECT ||
+            storeField?.definingClass != referrerParamType ||
+            storeField.type != referrerParamType ||
+            storeRegister == null ||
+            constructor?.opcode != Opcode.INVOKE_DIRECT ||
+            constructor.registerCount != 4 ||
+            constructorReference?.definingClass != referrerParamType ||
+            constructorReference.name != "<init>" ||
+            constructorReference.returnType != VOID ||
+            constructorParameters?.size != 3 ||
+            constructorParameters[2] != "I" ||
+            storeRegister != constructor.registerC
+        ) {
+            return@mapNotNull null
+        }
+
+        val chatRead = lastWriteOrNull(instructions, index - 1, constructor.registerD)
+        val clickRead = lastWriteOrNull(instructions, index - 1, constructor.registerE)
+        val flags = (lastWriteOrNull(instructions, index - 1, constructor.registerF) as? NarrowLiteralInstruction)
+            ?.narrowLiteral
+
+        if (
+            !isEnumConstantRead(chatRead, constructorParameters[0], "CHAT") ||
+            !isEnumConstantRead(clickRead, constructorParameters[1], "CLICK") ||
+            flags != CHAT_CLICK_PRESET_FLAGS
+        ) {
+            return@mapNotNull null
+        }
+
+        storeField.name
+    }
+    return candidates.singleOrNull()
 }
 
-private fun hasChatTextLinkCallerShape(match: Match?): Boolean {
-    val candidate = match ?: return false
-    val instructions = candidate.method.implementation?.instructions?.toList() ?: return false
-    val presetReadIndex = candidate.instructionMatches[1].index
-    val routeIndex = candidate.instructionMatches[3].index
+/** [index] より手前で [register] へ最後に書き込んだ命令。見つからない、または別命令なら照合が落ちます。 */
+private fun lastWriteOrNull(
+    instructions: List<Instruction>,
+    index: Int,
+    register: Int,
+): Instruction? = (index - 1 downTo 0)
+    .firstOrNull { candidate -> (instructions[candidate] as? OneRegisterInstruction)?.registerA == register }
+    ?.let(instructions::get)
+
+private fun isEnumConstantRead(
+    instruction: Instruction?,
+    enumType: String,
+    constantName: String,
+): Boolean {
+    val field = (instruction as? ReferenceInstruction)?.reference as? FieldReference
+    return instruction?.opcode == Opcode.SGET_OBJECT &&
+        field?.definingClass == enumType &&
+        field.name == constantName &&
+        field.type == enumType
+}
+
+/**
+ * 通常チャット本文 binder が preset をそのまま routing helper の referrer 引数へ渡していることを
+ * 確認し、難読化された routing interface と link options の型を返します。
+ */
+private fun chatTextLinkRoutingOrNull(match: Match, preset: ChatClickPreset): ChatTextLinkRouting? {
+    val instructions = match.method.implementation?.instructions?.toList() ?: return null
+    val presetReadIndex = match.instructionMatches[1].index
+    val routeIndex = match.instructionMatches[3].index
     val presetRead = instructions.getOrNull(presetReadIndex) as? OneRegisterInstruction
     val presetField = (instructions.getOrNull(presetReadIndex) as? ReferenceInstruction)
         ?.reference as? FieldReference
     val route = instructions.getOrNull(routeIndex) as? RegisterRangeInstruction
     val routeReference = (instructions.getOrNull(routeIndex) as? ReferenceInstruction)
         ?.reference as? MethodReference
+    val routeParameters = routeReference?.parameterTypes?.map(CharSequence::toString)
 
-    return presetRead?.opcode == Opcode.SGET_OBJECT &&
-        presetField?.definingClass == REFERRER_PARAM &&
-        presetField.name == "h" &&
-        presetField.type == REFERRER_PARAM &&
-        route?.opcode == Opcode.INVOKE_STATIC_RANGE &&
-        routeReference?.parameterTypes == defaultLinkRoutingParameters &&
-        routeReference.returnType == VOID &&
-        route.registerCount == defaultLinkRoutingParameters.size &&
-        route.startRegister + 2 == presetRead.registerA
+    if (
+        presetRead?.opcode != Opcode.SGET_OBJECT ||
+        presetField?.definingClass != preset.referrerParamType ||
+        presetField.name != preset.presetFieldName ||
+        presetField.type != preset.referrerParamType ||
+        route?.opcode != Opcode.INVOKE_STATIC_RANGE ||
+        routeReference?.returnType != VOID ||
+        routeParameters?.size != DEFAULT_LINK_ROUTING_PARAMETER_COUNT ||
+        routeParameters[DEFAULT_REFERRER_PARAMETER_INDEX] != preset.referrerParamType ||
+        // Kotlin interface の static helper は自身を第 1 引数に取るため、ここから interface 型を得ます。
+        routeParameters[DEFAULT_ROUTING_INTERFACE_INDEX] != routeReference.definingClass ||
+        route.registerCount != DEFAULT_LINK_ROUTING_PARAMETER_COUNT ||
+        route.startRegister + DEFAULT_REFERRER_PARAMETER_INDEX != presetRead.registerA
+    ) {
+        return null
+    }
+
+    return ChatTextLinkRouting(
+        routingInterfaceType = routeReference.definingClass,
+        linkOptionsType = routeParameters[DEFAULT_LINK_OPTIONS_INDEX],
+    )
 }
 
 private fun hasTextLinkCallbackShape(match: Match?): Boolean {

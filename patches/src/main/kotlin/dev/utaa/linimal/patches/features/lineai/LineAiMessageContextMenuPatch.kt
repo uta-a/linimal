@@ -32,43 +32,73 @@ import dev.utaa.linimal.patches.util.branchTargetAddress
 import dev.utaa.linimal.patches.util.instructionAddress
 
 private const val CONTEXT = "Landroid/content/Context;"
-private const val CONTEXT_MENU_ITEM = "Lj51/c;"
-private const val CONTEXT_MENU_MODEL = "Lne1/x0;"
-private const val CONTEXT_MENU_MAPPER = "Lne1/g;"
-private const val CONTEXT_MENU_CALLBACK = "Lne1/h0;"
-private const val LINE_AI_ENTRY_SOURCE = "Lrq1/a;"
 private const val LINE_AI_CONTEXT_SOURCE_VALUE = "chatroom_context_menu"
 private const val LINE_AI_CONTEXT_HOOK =
     "Ldev/utaa/linimal/extension/features/lineai/LineAiMessageContextMenuHooks;->adjustAvailability(Z)Z"
 
 /**
- * Concrete LINE_AI model: icon / label resource tuple, callback construction, and enum field are all required.
- * This validates the static item independently from the long-press supplier before any code is injected.
+ * 26.11.0 で条件にしていた難読化型は 26.14.0 で以下のように変わりました。
+ *
+ * - context menu item enum: `Lj51/c;` → `Lc81/c;`
+ * - context menu model enum: `Lne1/x0;` → `Lkh1/w0;`
+ * - model → item mapper: `Lne1/g;` → `Lkh1/g;`
+ * - LINE AI click callback: `Lne1/h0;` → `Lkh1/e0;`
+ * - LINE AI entry source enum: `Lrq1/a;` → `Lzt1/a;`
+ *
+ * そのためどれも定数では持たず、難読化されない enum 定数名・resource・文字列から順に導出します。
  */
-private val lineAiMessageContextModelFingerprint = Fingerprint(
-    definingClass = CONTEXT_MENU_MODEL,
+
+/** The source enum is independently anchored by its stable value and parameter string. */
+private val lineAiContextEntrySourceFingerprint = Fingerprint(
     name = "<clinit>",
     returnType = VOID,
     parameters = emptyList(),
     filters = listOf(
-        newInstance(CONTEXT_MENU_CALLBACK),
-        literal(0x7f08064a), // chat_ui_context_line_ai
-        literal(0x7f151848), // line_chat_button_lineai
+        string(LINE_AI_CONTEXT_SOURCE_VALUE),
         fieldAccess(
-            definingClass = CONTEXT_MENU_MODEL,
+            name = "CONTEXT_MENU",
+            opcode = Opcode.SPUT_OBJECT,
+        ),
+    ),
+)
+
+/** Callback attached to the resource-validated item must enter LINE AI from the context-menu source. */
+private fun lineAiMessageContextCallbackFingerprint(entrySourceType: String) = Fingerprint(
+    returnType = OBJECT,
+    parameters = listOf(OBJECT, OBJECT, OBJECT),
+    filters = listOf(
+        fieldAccess(
+            definingClass = entrySourceType,
+            name = "CONTEXT_MENU",
+            type = entrySourceType,
+            opcode = Opcode.SGET_OBJECT,
+        ),
+    ),
+)
+
+/**
+ * Concrete LINE_AI model: icon / label resource tuple, callback construction, and enum field are all required.
+ * This validates the static item independently from the long-press supplier before any code is injected.
+ */
+private fun lineAiMessageContextModelFingerprint(callbackType: String) = Fingerprint(
+    name = "<clinit>",
+    returnType = VOID,
+    parameters = emptyList(),
+    filters = listOf(
+        newInstance(callbackType),
+        literal(0x7f080635), // chat_ui_context_line_ai
+        literal(0x7f15192e), // line_chat_button_lineai
+        fieldAccess(
             name = "LINE_AI",
-            type = CONTEXT_MENU_MODEL,
             opcode = Opcode.SPUT_OBJECT,
         ),
     ),
 )
 
 /** Mapping from the context action enum to the resource-validated model. */
-private val lineAiMessageContextMapperFingerprint = Fingerprint(
-    definingClass = CONTEXT_MENU_MAPPER,
-    name = "d",
-    returnType = CONTEXT_MENU_MODEL,
-    parameters = listOf(CONTEXT_MENU_ITEM),
+private fun lineAiMessageContextMapperFingerprint(modelType: String) = Fingerprint(
+    returnType = modelType,
+    parameters = listOf("L"),
     filters = listOf(
         methodCall(
             definingClass = "Ljava/lang/Enum;",
@@ -77,42 +107,10 @@ private val lineAiMessageContextMapperFingerprint = Fingerprint(
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
         fieldAccess(
-            definingClass = CONTEXT_MENU_MODEL,
+            definingClass = modelType,
             name = "LINE_AI",
-            type = CONTEXT_MENU_MODEL,
+            type = modelType,
             opcode = Opcode.SGET_OBJECT,
-        ),
-    ),
-)
-
-/** Callback attached to the resource-validated item must enter LINE AI from the context-menu source. */
-private val lineAiMessageContextCallbackFingerprint = Fingerprint(
-    definingClass = CONTEXT_MENU_CALLBACK,
-    returnType = OBJECT,
-    parameters = listOf(OBJECT, OBJECT, OBJECT),
-    filters = listOf(
-        fieldAccess(
-            definingClass = LINE_AI_ENTRY_SOURCE,
-            name = "CONTEXT_MENU",
-            type = LINE_AI_ENTRY_SOURCE,
-            opcode = Opcode.SGET_OBJECT,
-        ),
-    ),
-)
-
-/** The source enum is independently anchored by its stable value and parameter string. */
-private val lineAiContextEntrySourceFingerprint = Fingerprint(
-    definingClass = LINE_AI_ENTRY_SOURCE,
-    name = "<clinit>",
-    returnType = VOID,
-    parameters = emptyList(),
-    filters = listOf(
-        string(LINE_AI_CONTEXT_SOURCE_VALUE),
-        fieldAccess(
-            definingClass = LINE_AI_ENTRY_SOURCE,
-            name = "CONTEXT_MENU",
-            type = LINE_AI_ENTRY_SOURCE,
-            opcode = Opcode.SPUT_OBJECT,
         ),
     ),
 )
@@ -121,14 +119,15 @@ private val lineAiContextEntrySourceFingerprint = Fingerprint(
  * The unique long-press supplier: `LINE_AI` enum object, context-menu source check, then the three availability
  * predicates and a direct return of that enum object. The target class / method name is not an identifier condition.
  */
-private val lineAiMessageContextSupplierFingerprint = Fingerprint(
-    returnType = CONTEXT_MENU_ITEM,
-    parameters = listOf(CONTEXT, "Lv01/a;", "Lj51/a;", BOOLEAN),
+private fun lineAiMessageContextSupplierFingerprint(itemType: String) = Fingerprint(
+    returnType = itemType,
+    // 第 2 / 第 3 引数は 26.11.0 が `Lv01/a;` / `Lj51/a;`、26.14.0 が `Ll31/a;` / `Lc81/a;`。
+    parameters = listOf(CONTEXT, "L", "L", BOOLEAN),
     filters = listOf(
         fieldAccess(
-            definingClass = CONTEXT_MENU_ITEM,
+            definingClass = itemType,
             name = "LINE_AI",
-            type = CONTEXT_MENU_ITEM,
+            type = itemType,
             opcode = Opcode.SGET_OBJECT,
         ),
         string(LINE_AI_CONTEXT_SOURCE_VALUE),
@@ -161,26 +160,44 @@ val lineAiMessageContextMenuPatch = bytecodePatch(
     dependsOn(agentIChatComposerPatch)
 
     execute {
-        val modelMatches = lineAiMessageContextModelFingerprint.matchAllOrNull().orEmpty()
-        val mapperMatches = lineAiMessageContextMapperFingerprint.matchAllOrNull().orEmpty()
-        val callbackMatches = lineAiMessageContextCallbackFingerprint.matchAllOrNull().orEmpty()
+        // 難読化型は「entry source enum → click callback → model enum → mapper → item enum」の順に導出します。
         val sourceMatches = lineAiContextEntrySourceFingerprint.matchAllOrNull().orEmpty()
-        val supplierMatches = lineAiMessageContextSupplierFingerprint.matchAllOrNull().orEmpty()
+        if (sourceMatches.size != 1) {
+            recordLineAiMessageContextMenuUnapplied(sourceMatches.size, "LineAiLongPressContextEntrySourceNotUnique")
+            return@execute
+        }
+        val entrySourceType = sourceMatches.single().originalClassDef.type
 
-        val invalidCount = listOf(
-            modelMatches.size to "LineAiLongPressContextModelNotUnique",
-            mapperMatches.size to "LineAiLongPressContextMapperNotUnique",
-            callbackMatches.size to "LineAiLongPressContextCallbackNotUnique",
-            sourceMatches.size to "LineAiLongPressContextEntrySourceNotUnique",
-            supplierMatches.size to "LineAiLongPressContextSupplierNotUnique",
-        ).firstOrNull { (count, _) -> count != 1 }
-        if (invalidCount != null) {
-            recordLineAiMessageContextMenuUnapplied(invalidCount.first, invalidCount.second)
+        val callbackMatches = lineAiMessageContextCallbackFingerprint(entrySourceType).matchAllOrNull().orEmpty()
+        if (callbackMatches.size != 1) {
+            recordLineAiMessageContextMenuUnapplied(callbackMatches.size, "LineAiLongPressContextCallbackNotUnique")
+            return@execute
+        }
+        val callbackType = callbackMatches.single().originalClassDef.type
+
+        val modelMatches = lineAiMessageContextModelFingerprint(callbackType).matchAllOrNull().orEmpty()
+        if (modelMatches.size != 1) {
+            recordLineAiMessageContextMenuUnapplied(modelMatches.size, "LineAiLongPressContextModelNotUnique")
+            return@execute
+        }
+        val modelType = modelMatches.single().originalClassDef.type
+
+        val mapperMatches = lineAiMessageContextMapperFingerprint(modelType).matchAllOrNull().orEmpty()
+        if (mapperMatches.size != 1) {
+            recordLineAiMessageContextMenuUnapplied(mapperMatches.size, "LineAiLongPressContextMapperNotUnique")
+            return@execute
+        }
+        // mapper の唯一の引数が context menu item enum です。
+        val itemType = mapperMatches.single().originalMethod.parameterTypes.single().toString()
+
+        val supplierMatches = lineAiMessageContextSupplierFingerprint(itemType).matchAllOrNull().orEmpty()
+        if (supplierMatches.size != 1) {
+            recordLineAiMessageContextMenuUnapplied(supplierMatches.size, "LineAiLongPressContextSupplierNotUnique")
             return@execute
         }
 
         val supplier = supplierMatches.single()
-        val injectionShape = lineAiMessageContextSupplierInjectionShape(supplier)
+        val injectionShape = lineAiMessageContextSupplierInjectionShape(supplier, itemType)
         if (injectionShape == null) {
             patchStatusCollector.record(
                 unsafeFeatureStatus(
@@ -216,7 +233,10 @@ private data class MessageContextSupplierInjectionShape(
 )
 
 /** Validates the exact operand flow before changing the first conjunct of the LINE_AI supply predicate. */
-private fun lineAiMessageContextSupplierInjectionShape(match: Match): MessageContextSupplierInjectionShape? {
+private fun lineAiMessageContextSupplierInjectionShape(
+    match: Match,
+    itemType: String,
+): MessageContextSupplierInjectionShape? {
     val method = match.method
     val implementation = method.implementation ?: return null
     val instructions = implementation.instructions.toList()
@@ -245,9 +265,9 @@ private fun lineAiMessageContextSupplierInjectionShape(match: Match): MessageCon
 
     if (
         instructions.getOrNull(lineAiFieldIndex)?.opcode != Opcode.SGET_OBJECT ||
-        lineAiField?.definingClass != CONTEXT_MENU_ITEM ||
+        lineAiField?.definingClass != itemType ||
         lineAiField.name != "LINE_AI" ||
-        lineAiField.type != CONTEXT_MENU_ITEM ||
+        lineAiField.type != itemType ||
         lineAiFieldIndex >= entrySourceIndex ||
         instructions.getOrNull(entrySourceIndex)?.opcode != Opcode.CONST_STRING ||
         instructions.getOrNull(entryContainsIndex)?.opcode != Opcode.INVOKE_INTERFACE ||

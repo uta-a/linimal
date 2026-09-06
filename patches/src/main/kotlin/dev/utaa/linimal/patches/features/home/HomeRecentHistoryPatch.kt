@@ -8,11 +8,6 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
-import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -22,12 +17,12 @@ import dev.utaa.linimal.patches.status.unsafeFeatureStatus
 import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.INT
 import dev.utaa.linimal.patches.util.VOID
-import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.composeShouldExecuteGate
+import dev.utaa.linimal.patches.util.composeShouldExecuteSuppression
+import dev.utaa.linimal.patches.util.debugMetadataSource
+import dev.utaa.linimal.patches.util.resolveComposeRuntime
+import dev.utaa.linimal.patches.util.resolveDebugMetadataType
 
-private const val DEBUG_METADATA = "Llb8/e;"
-private const val COMPOSER = "Lh3/t;"
-private const val COMPOSER_IMPL = "Lh3/f1;"
-private const val END_RESTART_GROUP_RESULT = "Lh3/p3;"
 private const val HOME_RECENT_HISTORY_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeRecentHistoryHooks;->shouldSuppress()Z"
 
@@ -60,24 +55,12 @@ internal const val RECENT_HISTORY_CARD_MINIMUM_PARAMETER_COUNT = 3
  * activity card を描く composable の package を、coroutine の DebugMetadata から導きます。
  * source metadata は R8 後も残るため、難読化された class 名を anchor にせずに済みます。
  */
-private val activityCardSourceMetadataFingerprint = Fingerprint(
+private fun activityCardSourceMetadataFingerprint(debugMetadataType: String) = Fingerprint(
     custom = { _, classDef ->
-        classDef.annotations.any { annotation ->
-            if (annotation.type != DEBUG_METADATA) {
-                false
-            } else {
-                val declaringSource = annotation.elements.firstOrNull { it.name == "c" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value
-                    ?.contains(ACTIVITY_CARD_SOURCE) == true
-                val sourceFile = annotation.elements.firstOrNull { it.name == "f" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value == ACTIVITY_CARD_SOURCE_FILE
-                declaringSource && sourceFile
-            }
-        }
+        val source = debugMetadataSource(classDef, debugMetadataType)
+        source != null &&
+            source.className.contains(ACTIVITY_CARD_SOURCE) &&
+            source.sourceFile == ACTIVITY_CARD_SOURCE_FILE
     },
 )
 
@@ -115,7 +98,16 @@ val homeRecentHistoryPatch = bytecodePatch(
     dependsOn(homeFeaturedCollectionsPatch)
 
     execute {
-        val activityCardPackages = activityCardSourceMetadataFingerprint.matchAllOrNull().orEmpty()
+        val composeRuntime = resolveComposeRuntime()
+        val debugMetadataType = resolveDebugMetadataType()
+        if (composeRuntime == null || debugMetadataType == null) {
+            patchStatusCollector.record(
+                homeRecentHistoryUnappliedRecord(0, "HomeRecentHistoryRuntimeAnchorNotResolved"),
+            )
+            return@execute
+        }
+
+        val activityCardPackages = activityCardSourceMetadataFingerprint(debugMetadataType).matchAllOrNull().orEmpty()
             .map { it.originalClassDef.type }
             .toSet()
             .let(::activityCardPackagePrefixes)
@@ -130,19 +122,18 @@ val homeRecentHistoryPatch = bytecodePatch(
         }
         val activityCardPackage = activityCardPackages.single()
 
+        // 26.14.0 では同じ marker を持つ card 内容型が Home26 と Global Home の 2 つに増えました。
+        // 内容型そのものを 1 件に絞る代わりに、activity card の package にある renderer が
+        // 1 件だけであることで対象を確定します。
         val cardContentTypes = recentlyUsedServiceCardFingerprint.matchAllOrNull().orEmpty()
             .map { it.originalClassDef.type }
             .toSet()
-        if (cardContentTypes.size != HOME_RECENT_HISTORY_TARGET_COUNT) {
+        if (cardContentTypes.isEmpty()) {
             patchStatusCollector.record(
-                homeRecentHistoryUnappliedRecord(
-                    cardContentTypes.size,
-                    "HomeRecentHistoryCardContentTypeNotUnique",
-                ),
+                homeRecentHistoryUnappliedRecord(0, "HomeRecentHistoryCardContentTypeNotFound"),
             )
             return@execute
         }
-        val cardContentType = cardContentTypes.single()
 
         /**
          * 「最近の履歴」card の renderer。難読化された class / method 名ではなく、card の内容型を
@@ -153,28 +144,23 @@ val homeRecentHistoryPatch = bytecodePatch(
             returnType = VOID,
             custom = { method, classDef ->
                 classDef.type.startsWith(activityCardPackage) &&
-                    isRecentHistoryCardRendererSignature(method, cardContentType)
+                    isRecentHistoryCardRendererSignature(method, cardContentTypes, composeRuntime.composer)
             },
+            // `endRestartGroup` は method 名を安定して導出できないため filter から外し、
+            // 注入前の shape 判定側で「呼出しが 1 件だけあること」を確認します。
             filters = listOf(
                 methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "A",
+                    definingClass = composeRuntime.composerImpl,
+                    name = composeRuntime.shouldExecute,
                     parameters = listOf(INT, BOOLEAN),
                     returnType = BOOLEAN,
                     opcode = Opcode.INVOKE_VIRTUAL,
                 ),
                 methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "l",
+                    definingClass = composeRuntime.composerImpl,
+                    name = composeRuntime.skipToGroupEnd,
                     parameters = emptyList(),
                     returnType = VOID,
-                    opcode = Opcode.INVOKE_VIRTUAL,
-                ),
-                methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "Y",
-                    parameters = emptyList(),
-                    returnType = END_RESTART_GROUP_RESULT,
                     opcode = Opcode.INVOKE_VIRTUAL,
                 ),
             ),
@@ -188,7 +174,7 @@ val homeRecentHistoryPatch = bytecodePatch(
         }
 
         val method = renderers.single().method
-        val gate = homeRecentHistoryGate(method)
+        val gate = composeShouldExecuteGate(method, composeRuntime)
         if (gate == null) {
             // cardinality は揃っていても注入位置の shape が崩れている場合は、何も変更しません。
             patchStatusCollector.record(
@@ -202,22 +188,9 @@ val homeRecentHistoryPatch = bytecodePatch(
             return@execute
         }
 
-        // 元の結果が false のときは何もしません。true のときだけ hook を読み、
-        // 抑制時は 0、非抑制時は shouldExecute が返すのと同じ 1 に戻します。
         method.addInstructionsWithLabels(
             gate.branchIndex,
-            """
-                if-eqz v${gate.shouldExecuteRegister}, :linimalKeep
-                invoke-static { }, $HOME_RECENT_HISTORY_HOOK
-                move-result v${gate.shouldExecuteRegister}
-                if-eqz v${gate.shouldExecuteRegister}, :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x0
-                goto :linimalKeep
-                :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x1
-                :linimalKeep
-                nop
-            """.trimIndent(),
+            composeShouldExecuteSuppression(gate, HOME_RECENT_HISTORY_HOOK),
         )
 
         patchStatusCollector.record(
@@ -253,81 +226,14 @@ internal fun activityCardPackagePrefixes(sourceTypes: Set<String>): Set<String> 
  * card renderer の引数の並び。card ごとに中間の引数（表示位置・log 情報・callback）が変わるため、
  * 先頭の内容型と末尾の composer・`$$changed` の位置だけを検証します。
  */
-internal fun isRecentHistoryCardRendererSignature(method: Method, cardContentType: String): Boolean {
+internal fun isRecentHistoryCardRendererSignature(
+    method: Method,
+    cardContentTypes: Set<String>,
+    composer: String,
+): Boolean {
     val parameters = method.parameterTypes.map { it.toString() }
     return parameters.size >= RECENT_HISTORY_CARD_MINIMUM_PARAMETER_COUNT &&
-        parameters.first() == cardContentType &&
-        parameters[parameters.size - 2] == COMPOSER &&
+        parameters.first() in cardContentTypes &&
+        parameters[parameters.size - 2] == composer &&
         parameters.last() == INT
-}
-
-internal data class HomeRecentHistoryGate(
-    val branchIndex: Int,
-    val shouldExecuteRegister: Int,
-)
-
-private fun homeRecentHistoryGate(method: Method): HomeRecentHistoryGate? {
-    val implementation = method.implementation ?: return null
-    return homeRecentHistoryGateShape(
-        instructions = implementation.instructions.toList(),
-        hasTryBlocks = implementation.tryBlocks.isNotEmpty(),
-    )
-}
-
-/**
- * `shouldExecute` → `move-result` → `if-eqz` の並びを検証します。
- *
- * <p>`shouldExecute` の戻り値は `Z` なので元の値は 0 か 1 に限られ、注入後に 1 へ戻しても
- * 情報は失われません。分岐先が `if-eqz` と一致する場合は注入が飛び越される可能性があるため、
- * その shape は意図的に拒否します。</p>
- */
-internal fun homeRecentHistoryGateShape(
-    instructions: List<Instruction>,
-    hasTryBlocks: Boolean,
-): HomeRecentHistoryGate? {
-    if (hasTryBlocks) {
-        return null
-    }
-    if (composerCallIndices(instructions, "l", VOID).size != 1) {
-        return null
-    }
-    if (composerCallIndices(instructions, "Y", END_RESTART_GROUP_RESULT).size != 1) {
-        return null
-    }
-
-    val shouldExecuteIndex = composerCallIndices(instructions, "A", BOOLEAN).singleOrNull() ?: return null
-    val resultMove = instructions.getOrNull(shouldExecuteIndex + 1) as? OneRegisterInstruction ?: return null
-    val branchIndex = shouldExecuteIndex + 2
-    val branch = instructions.getOrNull(branchIndex) as? OneRegisterInstruction ?: return null
-
-    if (
-        instructions[shouldExecuteIndex + 1].opcode != Opcode.MOVE_RESULT ||
-        instructions[branchIndex].opcode != Opcode.IF_EQZ ||
-        branch.registerA != resultMove.registerA ||
-        // 抑制と復元に使う const/4 は 4bit register しか取れません。
-        resultMove.registerA !in 0..15
-    ) {
-        return null
-    }
-
-    if (isDivertedInjectionIndex(instructions, branchIndex)) {
-        return null
-    }
-    return HomeRecentHistoryGate(branchIndex, resultMove.registerA)
-}
-
-private fun composerCallIndices(
-    instructions: List<Instruction>,
-    name: String,
-    returnType: String,
-): List<Int> = instructions.indices.filter { index ->
-    val instruction = instructions[index]
-    if (instruction.opcode != Opcode.INVOKE_VIRTUAL) {
-        false
-    } else {
-        val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-        reference?.definingClass == COMPOSER_IMPL &&
-            reference.name == name &&
-            reference.returnType == returnType
-    }
 }

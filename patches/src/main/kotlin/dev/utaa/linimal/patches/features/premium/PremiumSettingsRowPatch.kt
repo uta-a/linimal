@@ -30,14 +30,23 @@ import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
 import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 
-private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0570 // line_user_settings_premium_item
-private const val LYP_PREMIUM_TITLE = 0x7f151df5 // line_settings_category_lyppfornonsubscriber
-private const val LINE_PREMIUM_TITLE = 0x7f151df4 // line_settings_category_linepfornonsubscriber
+private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0552 // line_user_settings_premium_item
+private const val LYP_PREMIUM_TITLE = 0x7f151f1d // line_settings_category_lyppfornonsubscriber
+private const val LINE_PREMIUM_TITLE = 0x7f151f1c // line_settings_category_linepfornonsubscriber
 private const val PREMIUM_SETTINGS_ROW_HOOK =
     "Ldev/utaa/linimal/extension/features/PremiumSettingsRowHooks;->adjustVisibility(Z)Z"
 private const val BOOLEAN_UNBOX = "$BOXED_BOOLEAN->booleanValue()$BOOLEAN"
 private const val BOOLEAN_BOX = "$BOXED_BOOLEAN->valueOf($BOOLEAN)$BOXED_BOOLEAN"
 
+/**
+ * 難読化された object 型を受けるワイルドカードです。Morphe の型照合は前方一致のため、`"L"` は
+ * 任意の object 型に一致します。26.11.0 では Kotlin function 型 (`Lvb8/p;` / `Lvb8/l;`) と
+ * 設定行 enum (`Lpx4/t0$b;`) を直書きしていましたが、26.14.0 でいずれも改名されたため、
+ * 引数の並びと個数だけを条件にします。
+ */
+private const val ANY_OBJECT = "L"
+
+/** layout resource と組み合わせて model を一意にするための、constructor 引数の並びです。 */
 private val premiumItemConstructorParameters = listOf(
     "Ljava/lang/String;",
     "I",
@@ -45,16 +54,16 @@ private val premiumItemConstructorParameters = listOf(
     "Ljava/lang/Integer;",
     "I",
     "I",
-    "Lvb8/p;",
-    "Lvb8/l;",
-    "Lpx4/t0\$b;",
-    "Lvb8/p;",
-    "Lvb8/p;",
+    ANY_OBJECT,
+    ANY_OBJECT,
+    ANY_OBJECT,
+    ANY_OBJECT,
+    ANY_OBJECT,
 )
 
 /**
- * Premium item model は layout resource と constructor signature で特定します。ここで得た type だけを
- * 次の catalog fingerprint に渡すため、難読化された model class 名を固定条件にしません。
+ * Premium item model は layout resource と constructor signature で特定します。ここで得た type と
+ * 実際の引数型だけを次の catalog fingerprint に渡すため、難読化名を固定条件にしません。
  */
 private val premiumSettingsItemModelFingerprint = Fingerprint(
     name = "<init>",
@@ -64,7 +73,10 @@ private val premiumSettingsItemModelFingerprint = Fingerprint(
 )
 
 /** Main Settings catalog は2種の Premium title resource と導出済み item constructor で特定します。 */
-private fun premiumSettingsCatalogFingerprint(premiumItemType: String) = Fingerprint(
+private fun premiumSettingsCatalogFingerprint(
+    premiumItemType: String,
+    constructorParameters: List<String>,
+) = Fingerprint(
     name = "<clinit>",
     accessFlags = listOf(AccessFlags.STATIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
@@ -74,7 +86,7 @@ private fun premiumSettingsCatalogFingerprint(premiumItemType: String) = Fingerp
         methodCall(
             definingClass = premiumItemType,
             name = "<init>",
-            parameters = premiumItemConstructorParameters,
+            parameters = constructorParameters,
             returnType = "V",
             opcode = Opcode.INVOKE_DIRECT_RANGE,
         ),
@@ -129,8 +141,17 @@ val premiumSettingsRowPatch = bytecodePatch(
             return@execute
         }
         val premiumItemType = itemModelMatches.single().originalClassDef.type
+        // ワイルドカードで一致させた引数の並びを、ここで解決済みの実型へ確定させます。
+        // 以降の catalog 照合と construction 走査は、この実型でのみ一致させます。
+        val premiumItemConstructorTypes = itemModelMatches.single()
+            .method
+            .parameterTypes
+            .map(CharSequence::toString)
 
-        val catalogMatches = premiumSettingsCatalogFingerprint(premiumItemType).matchAllOrNull().orEmpty()
+        val catalogMatches = premiumSettingsCatalogFingerprint(
+            premiumItemType,
+            premiumItemConstructorTypes,
+        ).matchAllOrNull().orEmpty()
         if (catalogMatches.size != 1) {
             patchStatusCollector.record(
                 premiumSettingsRowUnappliedRecord(0, "PremiumSettingsCatalogNotUnique"),
@@ -138,7 +159,11 @@ val premiumSettingsRowPatch = bytecodePatch(
             return@execute
         }
 
-        val variants = resolvePremiumSettingsVariants(catalogMatches.single(), premiumItemType)
+        val variants = resolvePremiumSettingsVariants(
+            catalogMatches.single(),
+            premiumItemType,
+            premiumItemConstructorTypes,
+        )
         if (variants == null) {
             patchStatusCollector.record(
                 premiumSettingsRowUnappliedRecord(0, "PremiumSettingsVariantsUnresolved"),
@@ -243,10 +268,11 @@ private data class PremiumSettingsVisibilityGate(
 private fun resolvePremiumSettingsVariants(
     catalogMatch: Match,
     premiumItemType: String,
+    constructorParameters: List<String>,
 ): List<PremiumSettingsVariant>? {
     val instructions = catalogMatch.method.implementation?.instructions?.toList() ?: return null
     val constructorIndices = instructions.mapIndexedNotNull { index, instruction ->
-        index.takeIf { isPremiumItemConstructor(instruction, premiumItemType) }
+        index.takeIf { isPremiumItemConstructor(instruction, premiumItemType, constructorParameters) }
     }
 
     val variants = constructorIndices.mapNotNull { constructorIndex ->
@@ -264,6 +290,7 @@ private fun resolvePremiumSettingsVariants(
             itemStart,
             constructorIndex,
             premiumItemType,
+            constructorParameters,
         ) ?: return@mapNotNull null
 
         if (titleResources.size != 1) {
@@ -284,9 +311,10 @@ private fun finalVisibilityPredicateType(
     itemStart: Int,
     constructorIndex: Int,
     premiumItemType: String,
+    constructorParameters: List<String>,
 ): String? {
     val constructor = instructions.getOrNull(constructorIndex) as? RegisterRangeInstruction ?: return null
-    if (constructor.registerCount != premiumItemConstructorParameters.size + 1) {
+    if (constructor.registerCount != constructorParameters.size + 1) {
         return null
     }
     val finalArgumentRegister = constructor.startRegister + constructor.registerCount - 1
@@ -307,12 +335,16 @@ private fun finalVisibilityPredicateType(
 
 private val OBJECT_MOVE_OPCODES = setOf(Opcode.MOVE_OBJECT, Opcode.MOVE_OBJECT_FROM16, Opcode.MOVE_OBJECT_16)
 
-private fun isPremiumItemConstructor(instruction: Instruction, premiumItemType: String): Boolean {
+private fun isPremiumItemConstructor(
+    instruction: Instruction,
+    premiumItemType: String,
+    constructorParameters: List<String>,
+): Boolean {
     val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference ?: return false
     return instruction.opcode == Opcode.INVOKE_DIRECT_RANGE &&
         reference.definingClass == premiumItemType &&
         reference.name == "<init>" &&
-        reference.parameterTypes == premiumItemConstructorParameters &&
+        reference.parameterTypes.map(CharSequence::toString) == constructorParameters &&
         reference.returnType == "V"
 }
 

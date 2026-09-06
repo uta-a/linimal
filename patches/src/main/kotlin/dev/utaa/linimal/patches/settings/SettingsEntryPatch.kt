@@ -9,7 +9,6 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -18,52 +17,75 @@ import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.patchStatusCollector
 
-private const val SETTINGS_CATEGORY_SUPER = "Lpx4/p1;"
 private const val LIST_TYPE = "Ljava/util/List;"
-private const val LIST_BUILDER = "Leb8/r;->E([Ljava/lang/Object;)Ljava/util/List;"
+private const val OBJECT_ARRAY = "[Ljava/lang/Object;"
+
+/**
+ * 難読化された object 型を受けるワイルドカードです。Morphe の parameter 照合は前方一致のため、
+ * `"L"` は任意の object 型に一致します。版ごとに変わる名前を条件に持ち込まないための手段で、
+ * MainTabsPatch の constructor fingerprint と同じ手法です。
+ */
+private const val ANY_OBJECT = "L"
 private const val APPEND_ENTRY_METHOD =
     "Ldev/utaa/linimal/extension/settings/SettingsEntryHooks;->appendEntry(Ljava/util/List;)Ljava/util/List;"
 
 /**
  * 設定一覧を組み立てる static initializer を、難読化名ではなく初期化内に残る
- * 関数参照名の並びと、リスト生成の呼び出しで特定します。
+ * 関数参照名と、リスト生成呼び出しの形状で特定します。
+ *
+ * <p>26.11.0 では `createLypItemDescription` と `isPremiumSubscribed` も条件に含め、
+ * superclass と accessFlags も見ていました。26.14.0 では `createLypItemDescription` が
+ * APK 全体から消え、`isPremiumSubscribed` はこの `<clinit>` には現れず、superclass の
+ * 難読化名も変わりました（`Lpx4/p1;` → `Lm55/q1;`）。残る 2 つの関数参照名だけで全 DEX の
+ * `<clinit>` を走査しても一致は 1 件のため、版ごとに変わる条件は落としています。
+ * `name = "<clinit>"` が static/constructor を含意するので accessFlags も不要です。</p>
+ *
+ * <p>リスト生成も `Leb8/r;->E` という難読化名での指定をやめ、
+ * 「`[Ljava/lang/Object;` を受けて `List` を返す static 呼び出し」という形状で当てます。
+ * 26.14.0 では `Lji8/r;->F` に変わっていますが、形状は同じです。</p>
  */
 internal val mainSettingsListFingerprint = Fingerprint(
     name = "<clinit>",
-    accessFlags = listOf(AccessFlags.STATIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
     parameters = emptyList(),
     filters = listOf(
-        string("createLypItemDescription"),
-        string("isPremiumSubscribed"),
         string("shouldShowCustomAppIconSettings"),
         string("openIapPurchaseHistory"),
-        methodCall(LIST_BUILDER, Opcode.INVOKE_STATIC),
+        methodCall(
+            parameters = listOf(OBJECT_ARRAY),
+            returnType = LIST_TYPE,
+            opcode = Opcode.INVOKE_STATIC,
+        ),
     ),
-    custom = { _, classDef -> classDef.superclass == SETTINGS_CATEGORY_SUPER },
 )
 
 /**
  * 設定項目モデルの constructor を、名前ではなく引数の形状だけで特定します。
- * runtime 側の reflection も同じ形状を前提にするため、ここで一意性を検証します。
+ * runtime 側の [SettingsEntryFactory] も同じ 13 引数の形状を前提に reflection するため、
+ * ここで一意性を検証します。
+ *
+ * <p>難読化された型（Kotlin の Function1 / Function2、enum、モデル種別）は [ANY_OBJECT] で
+ * 受けます。26.14.0 では 26.11.0 から名前だけが変わり、形状は同一でした
+ * （`Lvb8/p;` → `Laj8/p;`、`Lu08/e;` → `Lb88/e;`、`Lvb8/l;` → `Laj8/l;`、
+ * `Lpx4/t0;` → `Lm55/u0;`）。非難読化の 0 / 1 / 2 / 5 / 12 番目だけで全 DEX を走査しても
+ * 一致は 1 件のため、名前は条件に含めません。accessFlags も同じ理由で落としています。</p>
  */
 internal val settingsItemConstructorFingerprint = Fingerprint(
     name = "<init>",
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
     parameters = listOf(
         "Ljava/lang/String;",
         "Ljava/lang/Integer;",
         "I",
-        "Lvb8/p;",
-        "Lvb8/p;",
+        ANY_OBJECT,
+        ANY_OBJECT,
         "Ljava/lang/Integer;",
-        "Lvb8/p;",
-        "Lu08/e;",
-        "Lvb8/l;",
-        "Lvb8/l;",
-        "Lpx4/t0;",
-        "Lvb8/p;",
+        ANY_OBJECT,
+        ANY_OBJECT,
+        ANY_OBJECT,
+        ANY_OBJECT,
+        ANY_OBJECT,
+        ANY_OBJECT,
         "Z",
     ),
 )
@@ -97,7 +119,7 @@ val settingsEntryPatch = bytecodePatch(
 
         val match = listMatches.single()
         val method = match.method
-        val listBuilderIndex = match.instructionMatches[4].index
+        val listBuilderIndex = match.instructionMatches[2].index
         val moveResult = method.getInstruction<OneRegisterInstruction>(listBuilderIndex + 1)
         val storeField = method.getInstruction<ReferenceInstruction>(listBuilderIndex + 2)
         val listField = storeField.reference as? FieldReference

@@ -9,7 +9,6 @@ import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -21,7 +20,14 @@ import dev.utaa.linimal.patches.status.recordUnappliedFeatureStatus
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 
 private const val RESOURCES = "Landroid/content/res/Resources;"
-private const val CHAT_MENU_ENUM = "Lfg1/a\$b;"
+/**
+ * 難読化された object 型を受けるワイルドカードです。Morphe の parameter 照合は前方一致のため、
+ * `"L"` は任意の object 型に一致します。版ごとに変わる名前を条件へ持ち込まないための手段です。
+ */
+private const val ANY_OBJECT = "L"
+
+/** 共通 superclass の constructor で、項目 enum が何番目の引数かを表します。 */
+private const val CHAT_MENU_ENUM_PARAMETER_INDEX = 3
 private const val CHAT_MENU_HOOK =
     "Ldev/utaa/linimal/extension/features/ChatMenuHooks;->shouldHide(Ljava/lang/Object;)Z"
 
@@ -33,11 +39,11 @@ private val chatMenuPatchIds = listOf(
 
 /** それぞれの concrete item class を resource literal と enum anchor から先に特定します。 */
 private val calendarItemClassFingerprint =
-    chatMenuItemClassFingerprint(0x7f151798) // line_calendar_plusmenu_calendar
+    chatMenuItemClassFingerprint(0x7f15187e) // line_calendar_plusmenu_calendar
 private val giftItemClassFingerprint =
-    chatMenuItemClassFingerprint(0x7f150cce) // chathistory_attach_dialog_label_giftshop
+    chatMenuItemClassFingerprint(0x7f150d5a) // chathistory_attach_dialog_label_giftshop
 private val payItemClassFingerprint =
-    chatMenuItemClassFingerprint(0x7f150cd8) // chathistory_attach_dialog_label_select_linepay
+    chatMenuItemClassFingerprint(0x7f150d64) // chathistory_attach_dialog_label_select_linepay
 
 private fun chatMenuItemClassFingerprint(labelResource: Int) = Fingerprint(
     returnType = "Ljava/lang/String;",
@@ -48,12 +54,12 @@ private fun chatMenuItemClassFingerprint(labelResource: Int) = Fingerprint(
 private val calendarConstructorFingerprint = chatMenuItemConstructorFingerprint(
     calendarItemClassFingerprint,
     "CALENDAR",
-    0x7f080643, // chat_ui_context_calendar
+    0x7f08062d, // chat_ui_context_calendar
 )
 private val giftConstructorFingerprint = chatMenuItemConstructorFingerprint(
     giftItemClassFingerprint,
     "GIFT",
-    0x7f08070c, // chat_ui_plus_gift
+    0x7f0806fc, // chat_ui_plus_gift
 )
 private val payConstructorFingerprint = chatMenuItemConstructorFingerprint(
     payItemClassFingerprint,
@@ -68,20 +74,25 @@ private fun chatMenuItemConstructorFingerprint(
 ): Fingerprint = Fingerprint(
     classFingerprint = classFingerprint,
     name = "<init>",
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
     filters = buildList {
-        fieldAccess(
-            definingClass = CHAT_MENU_ENUM,
-            name = enumName,
-            type = CHAT_MENU_ENUM,
-            opcode = Opcode.SGET_OBJECT,
-        ).also(::add)
+        // enum の型名は版ごとに変わるため、定数名だけで当てます。
+        fieldAccess(name = enumName, opcode = Opcode.SGET_OBJECT).also(::add)
         if (iconResource != null) {
             literal(iconResource).also(::add)
         }
+        // 共通 superclass の constructor へ渡す引数の並び。難読化型は ANY_OBJECT で受けます。
         methodCall(
-            parameters = listOf("Ln/c;", "I", "L", CHAT_MENU_ENUM, "L", "Z", "L", "I"),
+            parameters = listOf(
+                "Ln/c;",
+                "I",
+                ANY_OBJECT,
+                ANY_OBJECT,
+                ANY_OBJECT,
+                "Z",
+                ANY_OBJECT,
+                "I",
+            ),
             returnType = "V",
             opcode = Opcode.INVOKE_DIRECT_RANGE,
         ).also(::add)
@@ -145,6 +156,27 @@ val chatPlusMenuPatch = bytecodePatch(
             return@execute
         }
 
+        // 項目 enum の型名は版ごとに変わるため、CALENDAR item の constructor が呼ぶ
+        // 共通 superclass の <init> から、その場で引数の型として取り出します。
+        val superConstructor = calendarConstructors.single()
+            .instructionMatches
+            .last()
+            .instruction as? ReferenceInstruction
+        val chatMenuEnumType =
+            (superConstructor?.reference as? MethodReference)
+                ?.parameterTypes
+                ?.getOrNull(CHAT_MENU_ENUM_PARAMETER_INDEX)
+                ?.toString()
+        if (chatMenuEnumType == null) {
+            recordFeatureStatus(
+                chatMenuPatchIds,
+                expectedTargetCount = 1,
+                actualTargetCount = 1,
+                reason = "ChatMenuEnumTypeNotResolved",
+            )
+            return@execute
+        }
+
         val commonSuperclass = calendarClass.superclass
         if (
             commonSuperclass == null ||
@@ -166,7 +198,7 @@ val chatPlusMenuPatch = bytecodePatch(
         val predicateFingerprint = Fingerprint(
             definingClass = commonSuperclass,
             returnType = "Z",
-            parameters = listOf("Lgi1/b;", "Lfg1/a;", "Lhg1/a\$a;"),
+            parameters = listOf(ANY_OBJECT, ANY_OBJECT, ANY_OBJECT),
             filters = listOf(
                 methodCall(
                     definingClass = "Ljava/lang/Object;",
@@ -174,7 +206,7 @@ val chatPlusMenuPatch = bytecodePatch(
                     returnType = "Ljava/lang/Class;",
                     opcode = Opcode.INVOKE_VIRTUAL,
                 ),
-                fieldAccess(definingClass = "this", type = CHAT_MENU_ENUM, opcode = Opcode.IGET_OBJECT),
+                fieldAccess(definingClass = "this", type = chatMenuEnumType, opcode = Opcode.IGET_OBJECT),
                 methodCall(
                     definingClass = "Ljava/lang/Enum;",
                     name = "ordinal",

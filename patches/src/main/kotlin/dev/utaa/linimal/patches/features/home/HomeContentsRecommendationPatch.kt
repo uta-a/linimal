@@ -8,7 +8,6 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -25,7 +24,6 @@ import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
 import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
 import dev.utaa.linimal.patches.util.registerSurvivesBetween
 
-private const val CONTENT_MODEL = "Li42/c;"
 private const val RECOMMENDATION_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeRecommendationHooks;->shouldSuppress()Z"
 
@@ -35,16 +33,16 @@ private const val THIS_REGISTER = 0
 /** recommendation placement ViewHolder の layout resource と superclass を組み合わせた class anchor。 */
 private val recommendationViewHolderClassFingerprint = Fingerprint(
     name = "<init>",
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
     returnType = "V",
     parameters = listOf(
         "Landroid/widget/LinearLayout;",
         "Lcom/bumptech/glide/n;",
         "Landroidx/lifecycle/u0;",
-        "Lb18/f;",
+        // 版ごとに変わる難読化型。前方一致で任意の object 型に一致します。
+        "L",
     ),
     filters = listOf(
-        literal(0x7f0b11e6), // home_tab_contents_recommendation_placement
+        literal(0x7f0b11c2), // home_tab_contents_recommendation_placement
         methodCall(
             definingClass = "Landroid/view/View;",
             name = "findViewById",
@@ -54,31 +52,30 @@ private val recommendationViewHolderClassFingerprint = Fingerprint(
         ),
         fieldAccess(definingClass = "this", type = "Landroid/widget/LinearLayout;", opcode = Opcode.IPUT_OBJECT),
     ),
-    custom = { _, classDef -> classDef.superclass == "Ll72/u;" },
 )
 
 /**
- * equality short-circuit → tracker cleanup → removeAllViews → model list iteration の binder。
+ * equality short-circuit → removeAllViews → model list iteration の binder。
  * field 名は使わず、cache field reference は matched instruction から動的に取得します。
+ *
+ * <p>26.11.0 では cache field の型（`Li42/c;`）と tracker cleanup の receiver（`Ll72/r;`）を
+ * 難読化名で固定していました。どちらも版ごとに変わるため条件から外し、cache field は
+ * 「`this` から読む object field」として受けて、その型が model list を持つ class と一致することを
+ * 注入前の shape 判定で確認します。</p>
  */
-private val recommendationBindFingerprint = Fingerprint(
-    classFingerprint = recommendationViewHolderClassFingerprint,
+private fun recommendationBindFingerprint(ownerType: String) = Fingerprint(
+    definingClass = ownerType,
     returnType = "V",
-    parameters = listOf("Ll72/j;"),
+    // 引数は版ごとに変わる難読化型のため、前方一致のワイルドカードで受けます。
+    parameters = listOf("L"),
     filters = listOf(
-        fieldAccess(definingClass = "this", type = CONTENT_MODEL, opcode = Opcode.IGET_OBJECT),
+        fieldAccess(definingClass = "this", opcode = Opcode.IGET_OBJECT),
         methodCall(
             definingClass = "Lkotlin/jvm/internal/p;",
             name = "b",
             parameters = listOf("Ljava/lang/Object;", "Ljava/lang/Object;"),
             returnType = "Z",
             opcode = Opcode.INVOKE_STATIC,
-        ),
-        methodCall(
-            definingClass = "Ll72/r;",
-            parameters = emptyList(),
-            returnType = "V",
-            opcode = Opcode.INVOKE_VIRTUAL,
         ),
         methodCall(
             definingClass = "Landroid/view/ViewGroup;",
@@ -106,7 +103,21 @@ val homeContentsRecommendationPatch = bytecodePatch(
     dependsOn(lineAiEntryPatch)
 
     execute {
-        val matches = recommendationBindFingerprint.matchAllOrNull().orEmpty()
+        // class anchor は明示的に解決します。Fingerprint(classFingerprint = ...) は一致しない場合に
+        // 例外を投げ、直列の dependsOn チェーン全体を止めてしまうためです。
+        val ownerMatches = recommendationViewHolderClassFingerprint.matchAllOrNull().orEmpty()
+        if (ownerMatches.size != 1) {
+            recordFeatureStatus(
+                listOf(PatchId.HOME_CONTENTS_RECOMMENDATION),
+                expectedTargetCount = 1,
+                actualTargetCount = ownerMatches.size,
+                reason = "HomeRecommendationViewHolderNotUnique",
+            )
+            return@execute
+        }
+
+        val ownerType = ownerMatches.single().originalClassDef.type
+        val matches = recommendationBindFingerprint(ownerType).matchAllOrNull().orEmpty()
         if (matches.size != 1) {
             recordFeatureStatus(
                 listOf(PatchId.HOME_CONTENTS_RECOMMENDATION),
@@ -120,13 +131,15 @@ val homeContentsRecommendationPatch = bytecodePatch(
         val match = matches.single()
         val method = match.method
         val cacheIndex = match.instructionMatches[0].index
-        val cleanupIndex = match.instructionMatches[3].index
-        val listIndex = match.instructionMatches[4].index
+        val cleanupIndex = match.instructionMatches[2].index
+        val listIndex = match.instructionMatches[3].index
         val instructions = method.implementation?.instructions?.toList().orEmpty()
         val cacheRead = instructions.getOrNull(cacheIndex) as? TwoRegisterInstruction
         val cacheField = (instructions.getOrNull(cacheIndex) as? ReferenceInstruction)
             ?.reference as? FieldReference
         val listRead = instructions.getOrNull(listIndex) as? OneRegisterInstruction
+        val listField = (instructions.getOrNull(listIndex) as? ReferenceInstruction)
+            ?.reference as? FieldReference
         val cleanupReference = (instructions.getOrNull(cleanupIndex) as? ReferenceInstruction)
             ?.reference as? MethodReference
 
@@ -141,7 +154,8 @@ val homeContentsRecommendationPatch = bytecodePatch(
             cleanupReference.parameterTypes.isNotEmpty() ||
             cleanupReference.returnType != "V" ||
             cacheField?.definingClass != match.originalClassDef.type ||
-            cacheField.type != CONTENT_MODEL ||
+            // cache する model の型は、直後に列挙する model list を持つ class と同じでなければなりません。
+            cacheField.type != listField?.definingClass ||
             cacheRead?.registerB != 0 ||
             listRead == null ||
             listRead.registerA !in 0..15 ||
@@ -164,7 +178,7 @@ val homeContentsRecommendationPatch = bytecodePatch(
             homeRecommendationInjectionIndex(
                 instructions = originalInstructions,
                 cleanupIndex = cleanupIndex,
-                // fingerprint が引数を `Ll72/j;` 1 つに固定しているため、wide を考えず
+                // fingerprint が引数を object 型 1 つに固定しているため、wide を考えず
                 // 「registers - 引数 - this」で p0 の register 番号が求まります。
                 thisParameterRegister = it.registerCount - method.parameterTypes.size - 1,
                 hasTryBlocks = it.tryBlocks.isNotEmpty(),

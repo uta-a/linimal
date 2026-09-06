@@ -11,13 +11,12 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -27,22 +26,26 @@ import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
 import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
+import dev.utaa.linimal.patches.util.debugMetadataSource
+import dev.utaa.linimal.patches.util.resolveDebugMetadataType
 
-private const val SETTINGS_AGENT_I_TITLE = 0x7f151e38
-private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f151e3b
-private const val SETTINGS_ITEM = "Lpx4/v;"
-private const val SETTINGS_TARGET = "Llx4/m0;"
+private const val SETTINGS_AGENT_I_TITLE = 0x7f151f62  // line_settings_title_agenti
+private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f151f65  // line_settings_title_lineaiservices
 private const val SETTINGS_TARGET_LINE_AI_SERVICE = "TARGET_LINE_AI_SERVICE"
-private const val DEBUG_METADATA = "Llb8/e;"
 private const val MAIN_SETTINGS_CATEGORY_SOURCE = "LineUserMainSettingsCategory.kt"
+private const val MAIN_SETTINGS_FRAGMENT =
+    "Lcom/linecorp/line/settings/main/LineUserMainSettingsFragment;"
 private const val SETTINGS_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentISettingsHooks;->adjustVisibility(Z)Z"
 private const val BOOLEAN_UNBOX = "$BOXED_BOOLEAN->booleanValue()$BOOLEAN"
 private const val BOOLEAN_BOX = "$BOXED_BOOLEAN->valueOf($BOOLEAN)$BOXED_BOOLEAN"
 
 /**
- * Main Settings static catalog の 2 variant entry。title resource と catalog item constructor を合わせ、
- * owner の難読化名は識別条件にしません。
+ * Main Settings static catalog の 2 variant entry。
+ *
+ * 26.11.0 では catalog item の型 `Lpx4/v;` も条件でしたが、26.14.0 で `Lm55/v;` に変わる難読化名です。
+ * 2 つの title resource と `<clinit>` だけで全 DEX 中 1 件に絞れるため落とし、item の型は
+ * 一致した `<clinit>` の中から実行時に導出します。
  */
 private val settingsCatalogFingerprint = Fingerprint(
     name = "<clinit>",
@@ -51,56 +54,52 @@ private val settingsCatalogFingerprint = Fingerprint(
     filters = listOf(
         literal(SETTINGS_AGENT_I_TITLE),
         literal(SETTINGS_LINE_AI_SERVICES_TITLE),
-        methodCall(
-            definingClass = SETTINGS_ITEM,
-            name = "<init>",
-            returnType = "V",
-            opcode = Opcode.INVOKE_DIRECT_RANGE,
-        ),
     ),
 )
 
-/** Both catalog click actions share the stable TARGET_LINE_AI_SERVICE telemetry target. */
+/**
+ * Both catalog click actions share the stable TARGET_LINE_AI_SERVICE telemetry target.
+ *
+ * enum 定数名 `TARGET_LINE_AI_SERVICE` は難読化されないため、26.11.0 で条件にしていた宣言クラス
+ * (`Llx4/m0;` → 26.14.0 は `Li55/s0;`)、遷移 method 名 (`H3` → `J3`) とその引数型、
+ * `Lvb8/l;` interface 判定はいずれも落とします。
+ */
 private val settingsAgentActionFingerprint = Fingerprint(
     returnType = "Ljava/lang/Object;",
     parameters = listOf("Ljava/lang/Object;"),
     filters = listOf(
         fieldAccess(
-            definingClass = SETTINGS_TARGET,
             name = SETTINGS_TARGET_LINE_AI_SERVICE,
-            type = SETTINGS_TARGET,
             opcode = Opcode.SGET_OBJECT,
         ),
         methodCall(
-            definingClass = "Lcom/linecorp/line/settings/main/LineUserMainSettingsFragment;",
-            name = "H3",
-            parameters = listOf("Lb18/c;"),
+            definingClass = MAIN_SETTINGS_FRAGMENT,
+            parameters = listOf("L"),
             returnType = "V",
             opcode = Opcode.INVOKE_STATIC,
         ),
     ),
-    custom = { _, classDef -> classDef.interfaces.contains("Lvb8/l;") },
 )
 
 /**
  * The two async predicates execute normal product visibility logic first. Debug metadata confirms they are
  * source-generated predicate continuations, then the catalog association below selects only the two entries.
+ *
+ * 26.11.0 で条件にしていた `Lpg0/e;` / `Lug0/s;` / `Ljw4/m2;` は 26.14.0 でそれぞれ `Lui0/f;` /
+ * `Lb3/hb;` / `Lg45/m2;` へ変わる難読化名です。難読化されない `isEnabled` と呼び出し形だけを残します。
  */
-private val settingsVisibilityPredicateFingerprint = Fingerprint(
+private fun settingsVisibilityPredicateFingerprint(debugMetadataType: String) = Fingerprint(
     name = "invokeSuspend",
     returnType = "Ljava/lang/Object;",
     parameters = listOf("Ljava/lang/Object;"),
     filters = listOf(
         methodCall(
-            definingClass = "Lpg0/e;",
             name = "isEnabled",
             returnType = "Z",
             opcode = Opcode.INVOKE_INTERFACE,
         ),
         methodCall(
-            definingClass = "Lug0/s;",
-            name = "a",
-            parameters = listOf("Ljw4/m2;"),
+            parameters = listOf("L"),
             returnType = "Z",
             opcode = Opcode.INVOKE_STATIC,
         ),
@@ -112,7 +111,9 @@ private val settingsVisibilityPredicateFingerprint = Fingerprint(
             opcode = Opcode.INVOKE_STATIC,
         ),
     ),
-    custom = { _, classDef -> isMainSettingsCategoryContinuation(classDef) },
+    custom = { _, classDef ->
+        debugMetadataSource(classDef, debugMetadataType)?.sourceFile == MAIN_SETTINGS_CATEGORY_SOURCE
+    },
 )
 
 /**
@@ -135,6 +136,12 @@ val agentISettingsPatch = bytecodePatch(
     dependsOn(agentIWalletHeaderPatch)
 
     execute {
+        val debugMetadataType = resolveDebugMetadataType()
+        if (debugMetadataType == null) {
+            recordSettingsUnapplied(0, "AgentISettingsDebugMetadataNotResolved")
+            return@execute
+        }
+
         val catalogMatches = settingsCatalogFingerprint.matchAllOrNull().orEmpty()
         if (catalogMatches.size != 1) {
             recordSettingsUnapplied(catalogMatches.size, "AgentISettingsCatalogNotUnique")
@@ -147,7 +154,9 @@ val agentISettingsPatch = bytecodePatch(
             return@execute
         }
 
-        val predicateMatches = settingsVisibilityPredicateFingerprint.matchAllOrNull().orEmpty()
+        val predicateMatches = settingsVisibilityPredicateFingerprint(debugMetadataType)
+            .matchAllOrNull()
+            .orEmpty()
         if (predicateMatches.isEmpty()) {
             recordSettingsUnapplied(0, "AgentISettingsPredicatesNotResolved")
             return@execute
@@ -226,20 +235,45 @@ private data class VisibilityGate(
     val booleanRegister: Int,
 )
 
-/** Associates each title-bearing px4/v construction segment with one action and one generated predicate. */
+/**
+ * catalog `<clinit>` から catalog item の型を導出します。
+ *
+ * 2 つの title literal それぞれの直後にある最初の range constructor 呼び出しが同じ型であることを
+ * 要求します（26.11.0 は `Lpx4/v;`、26.14.0 は `Lm55/v;`）。
+ */
+private fun settingsItemType(instructions: List<Instruction>): String? {
+    val titles = listOf(SETTINGS_AGENT_I_TITLE, SETTINGS_LINE_AI_SERVICES_TITLE)
+    val types = titles.map { title ->
+        val titleIndex = instructions.indices.singleOrNull { index ->
+            (instructions[index] as? NarrowLiteralInstruction)?.narrowLiteral == title
+        } ?: return null
+        val constructorIndex = (titleIndex + 1 until instructions.size).firstOrNull { index ->
+            val reference = (instructions[index] as? ReferenceInstruction)?.reference as? MethodReference
+            instructions[index].opcode == Opcode.INVOKE_DIRECT_RANGE &&
+                reference?.name == "<init>" &&
+                reference.returnType == "V"
+        } ?: return null
+        val reference = (instructions[constructorIndex] as? ReferenceInstruction)?.reference as? MethodReference
+        reference?.definingClass ?: return null
+    }
+    return types.distinct().singleOrNull()
+}
+
+/** Associates each title-bearing catalog-item construction segment with one action and one generated predicate. */
 private fun resolveSettingsVariants(
     catalogMatch: Match,
     actionMatches: List<Match>,
     predicateMatches: List<Match>,
 ): List<SettingsVariant>? {
     val instructions = catalogMatch.method.implementation?.instructions?.toList() ?: return null
+    val itemType = settingsItemType(instructions) ?: return null
     val actionTypes = actionMatches.map { it.originalClassDef.type }.toSet()
     val predicatesByType = predicateMatches.groupBy { it.originalClassDef.type }
     val itemConstructorIndices = instructions.mapIndexedNotNull { index, instruction ->
         val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
         index.takeIf {
             instruction.opcode == Opcode.INVOKE_DIRECT_RANGE &&
-                reference?.definingClass == SETTINGS_ITEM &&
+                reference?.definingClass == itemType &&
                 reference.name == "<init>" &&
                 reference.returnType == "V"
         }
@@ -248,7 +282,7 @@ private fun resolveSettingsVariants(
     val variants = itemConstructorIndices.mapNotNull { constructorIndex ->
         val itemStart = (constructorIndex - 1 downTo 0).firstOrNull { index ->
             instructions[index].opcode == Opcode.NEW_INSTANCE &&
-                ((instructions[index] as? ReferenceInstruction)?.reference as? TypeReference)?.type == SETTINGS_ITEM
+                ((instructions[index] as? ReferenceInstruction)?.reference as? TypeReference)?.type == itemType
         } ?: return@mapNotNull null
         val segment = instructions.subList(itemStart, constructorIndex + 1)
         val titles = segment.mapNotNull { instruction ->
@@ -296,12 +330,6 @@ private fun visibilityGate(match: Match): VisibilityGate? {
         hasTryBlocks = implementation.tryBlocks.isNotEmpty(),
     ) ?: return null
     return VisibilityGate(match, shape.insertionIndex, shape.booleanRegister)
-}
-
-private fun isMainSettingsCategoryContinuation(classDef: ClassDef): Boolean = classDef.annotations.any { annotation ->
-    annotation.type == DEBUG_METADATA &&
-        (annotation.elements.firstOrNull { it.name == "f" }?.value as? StringEncodedValue)?.value ==
-            MAIN_SETTINGS_CATEGORY_SOURCE
 }
 
 private fun recordSettingsUnapplied(matchCount: Int, reason: String) {

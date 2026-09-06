@@ -7,11 +7,10 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
-import app.morphe.patcher.string
-import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
@@ -26,37 +25,20 @@ private const val WALLET_HEADER_OWNER =
     "Lcom/linecorp/line/wallet/impl/v3/view/WalletV3GrandDesignHeaderView;"
 private const val WALLET_AGENT_STATE =
     "Lcom/linecorp/line/wallet/impl/v3/view/WalletV3GrandDesignHeaderView\$a;"
-private const val WALLET_AGENT_ACTION_ENTRY = "minitab_header"
-private const val WALLET_AGENT_ICON = 0x7f0821c0
-private const val WALLET_AGENT_ACCESSIBILITY_LABEL = 0x7f150343
+private const val WALLET_AGENT_ICON = 0x7f0821dc  // wallet_agent_i_navigate_icon
+private const val WALLET_AGENT_ACCESSIBILITY_LABEL = 0x7f150351  // access_minitab_agenti
 private const val WALLET_HEADER_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentIWalletHeaderHooks;->adjustButtonState(Ljava/lang/Object;)Ljava/lang/Object;"
 
-/** Agent i click action の entry metadata と stable Wallet owner を組み合わせた metadata anchor。 */
-private val walletAgentActionFingerprint = Fingerprint(
-    returnType = "Ljava/lang/Object;",
-    parameters = emptyList(),
-    filters = listOf(
-        string(WALLET_AGENT_ACTION_ENTRY),
-        methodCall(
-            definingClass = "Landroid/content/Context;",
-            name = "startActivity",
-            parameters = listOf("Landroid/content/Intent;"),
-            returnType = "V",
-            opcode = Opcode.INVOKE_VIRTUAL,
-        ),
-    ),
-    custom = { _, classDef ->
-        classDef.type.startsWith(WALLET_HEADER_OWNER.removeSuffix(";")) &&
-            classDef.interfaces.contains("Lvb8/a;")
-    },
-)
-
-/** Wallet header の Agent i button state setup。campaign / search state setup を含めません。 */
+/**
+ * Wallet header の Agent i button state setup。campaign / search state setup を含めません。
+ *
+ * 26.11.0 では難読化された method 名 `o` と accessFlags も条件にしていましたが、どちらも版ごとに
+ * 変わり得るため落としました。2 つの Agent i 専用 resource と stable な `setAgentIButtonState` だけで
+ * 全 DEX 中 1 件に絞れます。
+ */
 private val walletAgentStateSupplierFingerprint = Fingerprint(
     definingClass = WALLET_HEADER_OWNER,
-    name = "o",
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
     returnType = "V",
     parameters = emptyList(),
     filters = listOf(
@@ -91,12 +73,6 @@ val agentIWalletHeaderPatch = bytecodePatch(
     dependsOn(agentIHomeHeaderPatch)
 
     execute {
-        val actionMatches = walletAgentActionFingerprint.matchAllOrNull().orEmpty()
-        if (actionMatches.size != 1) {
-            recordWalletHeaderUnapplied(actionMatches.size, "AgentIWalletEntryMetadataNotUnique")
-            return@execute
-        }
-
         val supplierMatches = walletAgentStateSupplierFingerprint.matchAllOrNull().orEmpty()
         if (supplierMatches.size != 1) {
             recordWalletHeaderUnapplied(supplierMatches.size, "AgentIWalletStateSupplierNotUnique")
@@ -104,7 +80,7 @@ val agentIWalletHeaderPatch = bytecodePatch(
         }
 
         val supplier = supplierMatches.single()
-        val stateSupply = walletAgentStateSupply(supplier.method, actionMatches.single().originalClassDef.type)
+        val stateSupply = walletAgentStateSupply(supplier.method)
         if (stateSupply == null) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.AGENT_I_WALLET_HEADER),
@@ -140,8 +116,14 @@ private data class WalletAgentStateSupply(
 /**
  * Validates the final host call and proves that its argument is the unique Agent i state object constructed here.
  * The original method body remains intact; only the exact final argument register is replaced.
+ *
+ * 26.11.0 では click action の型を別 fingerprint（deeplink 用の `minitab_header` 文字列と
+ * `Context.startActivity`）から取得していました。26.14.0 では click action が
+ * `onAgentIButtonClick` への method reference へ置き換わり、その文字列も startActivity 呼び出しも
+ * 無くなったため、state constructor へ渡される callback 引数そのものを register から辿って
+ * 「この method 内で 1 度だけ生成された、owner の nested class」であることを確認します。
  */
-private fun walletAgentStateSupply(method: Method, actionType: String): WalletAgentStateSupply? {
+private fun walletAgentStateSupply(method: Method): WalletAgentStateSupply? {
     val implementation = method.implementation ?: return null
     val instructions = implementation.instructions.toList()
     val setters = instructions.mapIndexedNotNull { index, instruction ->
@@ -164,19 +146,37 @@ private fun walletAgentStateSupply(method: Method, actionType: String): WalletAg
     val stateConstructors = instructions.mapIndexedNotNull { index, instruction ->
         val constructor = instruction as? FiveRegisterInstruction ?: return@mapIndexedNotNull null
         val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-        index.takeIf {
+        val parameters = reference?.parameterTypes?.map(CharSequence::toString)
+        // 第 3 引数は click callback (kotlin.jvm.functions.Function0)。26.11.0 は `Lvb8/a;`、
+        // 26.14.0 は `Laj8/a;` と版ごとに変わる難読化型なので前方一致で受けます。
+        val parametersMatch = parameters != null &&
+            parameters.size == 4 &&
+            parameters[0] == "I" &&
+            parameters[1] == "I" &&
+            parameters[2].startsWith("L") &&
+            parameters[3] == "Ljava/util/Set;"
+        constructor.takeIf {
             instruction.opcode == Opcode.INVOKE_DIRECT &&
                 reference?.definingClass == WALLET_AGENT_STATE &&
                 reference.name == "<init>" &&
-                reference.parameterTypes == listOf("I", "I", "Lvb8/a;", "Ljava/util/Set;") &&
+                parametersMatch &&
                 reference.returnType == "V" &&
                 constructor.registerCount == 5 &&
                 constructor.registerC == stateSupply.stateRegister
-        }
+        }?.let { index to it }
     }
+    val stateConstructor = stateConstructors.singleOrNull() ?: return null
+
+    // state constructor が受け取る click callback は、この method 内で 1 度だけ生成された
+    // Wallet header owner の nested class でなければなりません。
+    val actionRegister = stateConstructor.second.registerF
     val actionInstances = instructions.count { instruction ->
+        val type = ((instruction as? ReferenceInstruction)?.reference as? TypeReference)?.type
         instruction.opcode == Opcode.NEW_INSTANCE &&
-            ((instruction as? ReferenceInstruction)?.reference as? TypeReference)?.type == actionType
+            (instruction as? OneRegisterInstruction)?.registerA == actionRegister &&
+            type != null &&
+            type.startsWith(WALLET_HEADER_OWNER.removeSuffix(";")) &&
+            type != WALLET_AGENT_STATE
     }
 
     return stateSupply.takeIf {
@@ -185,8 +185,7 @@ private fun walletAgentStateSupply(method: Method, actionType: String): WalletAg
             it.stateRegister in 0..15 &&
             it.setterIndex == instructions.lastIndex - 1 &&
             instructions.lastOrNull()?.opcode == Opcode.RETURN_VOID &&
-            stateConstructors.singleOrNull() != null &&
-            stateConstructors.single() < it.setterIndex &&
+            stateConstructor.first < it.setterIndex &&
             actionInstances == 1
     }
 }

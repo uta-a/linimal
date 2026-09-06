@@ -8,12 +8,8 @@ import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.bytecodePatch
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
-import com.android.tools.smali.dexlib2.iface.instruction.Instruction
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
-import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
@@ -22,14 +18,14 @@ import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
 import dev.utaa.linimal.patches.util.BOOLEAN
+import dev.utaa.linimal.patches.util.INT
 import dev.utaa.linimal.patches.util.VOID
-import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.composeShouldExecuteGate
+import dev.utaa.linimal.patches.util.composeShouldExecuteSuppression
+import dev.utaa.linimal.patches.util.debugMetadataSource
+import dev.utaa.linimal.patches.util.resolveComposeRuntime
+import dev.utaa.linimal.patches.util.resolveDebugMetadataType
 
-private const val DEBUG_METADATA = "Llb8/e;"
-private const val COMPOSER = "Lh3/t;"
-private const val COMPOSER_IMPL = "Lh3/f1;"
-private const val END_RESTART_GROUP_RESULT = "Lh3/p3;"
-private const val FEED_MODULE_STATE = "Ll72/f;"
 private const val HOME_FEATURED_COLLECTIONS_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeFeaturedCollectionsHooks;->shouldSuppress()Z"
 
@@ -40,6 +36,15 @@ private const val HOME_FEATURED_COLLECTIONS_HOOK =
 private const val FEATURED_GRID_SOURCE = "Home26FeedShortFormGridKt"
 private const val FEATURED_GRID_SOURCE_FILE = "Home26FeedShortFormGrid.kt"
 
+/**
+ * 特集枠 module の view data が `toString()` に必ず残す marker。
+ *
+ * <p>26.11.0 では renderer の第 2 引数を feed module state の難読化型（`Ll72/f;`）で固定していましたが、
+ * この型名は版ごとに変わります。代わりに第 1 引数の view data を非難読化の marker で固定し、
+ * module state の位置は型を問わない object 型としてだけ検証します。</p>
+ */
+internal const val FEATURED_GRID_VIEW_DATA_MARKER = "GcsHomeFeedUnitShortFormGrid(id="
+
 /** 特集枠の module renderer は 1 件だけです。解決できなければ一切注入しません。 */
 internal const val HOME_FEATURED_COLLECTIONS_TARGET_COUNT = 1
 
@@ -49,28 +54,19 @@ internal const val HOME_FEATURED_COLLECTIONS_TARGET_COUNT = 1
  */
 internal const val FEATURED_GRID_STATE_TYPE_MINIMUM = 2
 
+/** 特集枠 module の view data。`toString()` の marker だけを anchor にします。 */
+private val featuredGridViewDataFingerprint = Fingerprint(strings = listOf(FEATURED_GRID_VIEW_DATA_MARKER))
+
 /**
  * 特集枠の grid を描く composable の package を、coroutine の DebugMetadata から導きます。
  * source metadata は R8 後も残るため、難読化された class 名を anchor にせずに済みます。
  */
-private val featuredGridSourceMetadataFingerprint = Fingerprint(
+private fun featuredGridSourceMetadataFingerprint(debugMetadataType: String) = Fingerprint(
     custom = { _, classDef ->
-        classDef.annotations.any { annotation ->
-            if (annotation.type != DEBUG_METADATA) {
-                false
-            } else {
-                val declaringSource = annotation.elements.firstOrNull { it.name == "c" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value
-                    ?.contains(FEATURED_GRID_SOURCE) == true
-                val sourceFile = annotation.elements.firstOrNull { it.name == "f" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value == FEATURED_GRID_SOURCE_FILE
-                declaringSource && sourceFile
-            }
-        }
+        val source = debugMetadataSource(classDef, debugMetadataType)
+        source != null &&
+            source.className.contains(FEATURED_GRID_SOURCE) &&
+            source.sourceFile == FEATURED_GRID_SOURCE_FILE
     },
 )
 
@@ -97,7 +93,16 @@ val homeFeaturedCollectionsPatch = bytecodePatch(
     dependsOn(premiumSettingsRowPatch)
 
     execute {
-        val gridPackages = featuredGridSourceMetadataFingerprint.matchAllOrNull().orEmpty()
+        val composeRuntime = resolveComposeRuntime()
+        val debugMetadataType = resolveDebugMetadataType()
+        if (composeRuntime == null || debugMetadataType == null) {
+            patchStatusCollector.record(
+                homeFeaturedCollectionsUnappliedRecord(0, "HomeFeaturedCollectionsRuntimeAnchorNotResolved"),
+            )
+            return@execute
+        }
+
+        val gridPackages = featuredGridSourceMetadataFingerprint(debugMetadataType).matchAllOrNull().orEmpty()
             .map { it.originalClassDef.type }
             .toSet()
             .let(::featuredGridPackagePrefixes)
@@ -112,36 +117,45 @@ val homeFeaturedCollectionsPatch = bytecodePatch(
         }
         val gridPackage = gridPackages.single()
 
+        val viewDataTypes = featuredGridViewDataFingerprint.matchAllOrNull().orEmpty()
+            .map { it.originalClassDef.type }
+            .toSet()
+        if (viewDataTypes.size != 1) {
+            patchStatusCollector.record(
+                homeFeaturedCollectionsUnappliedRecord(
+                    viewDataTypes.size,
+                    "HomeFeaturedGridViewDataNotUnique",
+                ),
+            )
+            return@execute
+        }
+        val viewDataType = viewDataTypes.single()
+
         /**
-         * 特集枠の module renderer。難読化された class / method 名ではなく、module renderer の
-         * 引数の並び、grid state を組み立てていること、composer lifecycle の呼出しで絞り込みます。
+         * 特集枠の module renderer。難読化された class / method 名ではなく、view data を第 1 引数に
+         * 取ること、grid state を組み立てていること、composer lifecycle の呼出しで絞り込みます。
          */
         val rendererFingerprint = Fingerprint(
             returnType = VOID,
             custom = { method, _ ->
-                isFeaturedCollectionsRendererSignature(method) &&
+                isFeaturedCollectionsRendererSignature(method, viewDataType, composeRuntime.composer) &&
                     featuredGridStateTypes(method, gridPackage).size >= FEATURED_GRID_STATE_TYPE_MINIMUM
             },
+            // `endRestartGroup` は method 名を安定して導出できないため filter から外し、
+            // 注入前の shape 判定側で「呼出しが 1 件だけあること」を確認します。
             filters = listOf(
                 methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "A",
-                    parameters = listOf("I", BOOLEAN),
+                    definingClass = composeRuntime.composerImpl,
+                    name = composeRuntime.shouldExecute,
+                    parameters = listOf(INT, BOOLEAN),
                     returnType = BOOLEAN,
                     opcode = Opcode.INVOKE_VIRTUAL,
                 ),
                 methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "l",
+                    definingClass = composeRuntime.composerImpl,
+                    name = composeRuntime.skipToGroupEnd,
                     parameters = emptyList(),
                     returnType = VOID,
-                    opcode = Opcode.INVOKE_VIRTUAL,
-                ),
-                methodCall(
-                    definingClass = COMPOSER_IMPL,
-                    name = "Y",
-                    parameters = emptyList(),
-                    returnType = END_RESTART_GROUP_RESULT,
                     opcode = Opcode.INVOKE_VIRTUAL,
                 ),
             ),
@@ -158,7 +172,7 @@ val homeFeaturedCollectionsPatch = bytecodePatch(
         }
 
         val method = renderers.single().method
-        val gate = homeFeaturedCollectionsGate(method)
+        val gate = composeShouldExecuteGate(method, composeRuntime)
         if (gate == null) {
             // cardinality は揃っていても注入位置の shape が崩れている場合は、何も変更しません。
             patchStatusCollector.record(
@@ -172,22 +186,9 @@ val homeFeaturedCollectionsPatch = bytecodePatch(
             return@execute
         }
 
-        // 元の結果が false のときは何もしません。true のときだけ hook を読み、
-        // 抑制時は 0、非抑制時は shouldExecute が返すのと同じ 1 に戻します。
         method.addInstructionsWithLabels(
             gate.branchIndex,
-            """
-                if-eqz v${gate.shouldExecuteRegister}, :linimalKeep
-                invoke-static { }, $HOME_FEATURED_COLLECTIONS_HOOK
-                move-result v${gate.shouldExecuteRegister}
-                if-eqz v${gate.shouldExecuteRegister}, :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x0
-                goto :linimalKeep
-                :linimalRestore
-                const/4 v${gate.shouldExecuteRegister}, 0x1
-                :linimalKeep
-                nop
-            """.trimIndent(),
+            composeShouldExecuteSuppression(gate, HOME_FEATURED_COLLECTIONS_HOOK),
         )
 
         patchStatusCollector.record(
@@ -220,16 +221,20 @@ internal fun featuredGridPackagePrefixes(sourceTypes: Set<String>): Set<String> 
     .toSet()
 
 /**
- * module renderer の引数の並び。view data の型だけが module ごとに変わるため、その位置は
- * 型を問わず、feed module state・composer・changed flag の並びだけを検証します。
+ * module renderer の引数の並び。module state の型は版ごとに変わるため、その位置は型を問わず、
+ * view data・composer・changed flag の並びだけを検証します。
  */
-internal fun isFeaturedCollectionsRendererSignature(method: Method): Boolean {
+internal fun isFeaturedCollectionsRendererSignature(
+    method: Method,
+    viewDataType: String,
+    composer: String,
+): Boolean {
     val parameters = method.parameterTypes.map { it.toString() }
     return parameters.size == 4 &&
-        parameters[0].startsWith("L") &&
-        parameters[1] == FEED_MODULE_STATE &&
-        parameters[2] == COMPOSER &&
-        parameters[3] == "I"
+        parameters[0] == viewDataType &&
+        parameters[1].startsWith("L") &&
+        parameters[2] == composer &&
+        parameters[3] == INT
 }
 
 /** renderer が組み立てる、特集枠 grid の composable と同じ package の view state 型。 */
@@ -239,74 +244,3 @@ internal fun featuredGridStateTypes(method: Method, gridPackage: String): Set<St
         .mapNotNull { ((it as? ReferenceInstruction)?.reference as? TypeReference)?.type }
         .filter { it.startsWith(gridPackage) }
         .toSet()
-
-internal data class HomeFeaturedCollectionsGate(
-    val branchIndex: Int,
-    val shouldExecuteRegister: Int,
-)
-
-private fun homeFeaturedCollectionsGate(method: Method): HomeFeaturedCollectionsGate? {
-    val implementation = method.implementation ?: return null
-    return homeFeaturedCollectionsGateShape(
-        instructions = implementation.instructions.toList(),
-        hasTryBlocks = implementation.tryBlocks.isNotEmpty(),
-    )
-}
-
-/**
- * `shouldExecute` → `move-result` → `if-eqz` の並びを検証します。
- *
- * <p>`shouldExecute` の戻り値は `Z` なので元の値は 0 か 1 に限られ、注入後に 1 へ戻しても
- * 情報は失われません。分岐先が `if-eqz` と一致する場合は注入が飛び越される可能性があるため、
- * その shape は意図的に拒否します。</p>
- */
-internal fun homeFeaturedCollectionsGateShape(
-    instructions: List<Instruction>,
-    hasTryBlocks: Boolean,
-): HomeFeaturedCollectionsGate? {
-    if (hasTryBlocks) {
-        return null
-    }
-    if (composerCallIndices(instructions, "l", VOID).size != 1) {
-        return null
-    }
-    if (composerCallIndices(instructions, "Y", END_RESTART_GROUP_RESULT).size != 1) {
-        return null
-    }
-
-    val shouldExecuteIndex = composerCallIndices(instructions, "A", BOOLEAN).singleOrNull() ?: return null
-    val resultMove = instructions.getOrNull(shouldExecuteIndex + 1) as? OneRegisterInstruction ?: return null
-    val branchIndex = shouldExecuteIndex + 2
-    val branch = instructions.getOrNull(branchIndex) as? OneRegisterInstruction ?: return null
-
-    if (
-        instructions[shouldExecuteIndex + 1].opcode != Opcode.MOVE_RESULT ||
-        instructions[branchIndex].opcode != Opcode.IF_EQZ ||
-        branch.registerA != resultMove.registerA ||
-        // 抑制と復元に使う const/4 は 4bit register しか取れません。
-        resultMove.registerA !in 0..15
-    ) {
-        return null
-    }
-
-    if (isDivertedInjectionIndex(instructions, branchIndex)) {
-        return null
-    }
-    return HomeFeaturedCollectionsGate(branchIndex, resultMove.registerA)
-}
-
-private fun composerCallIndices(
-    instructions: List<Instruction>,
-    name: String,
-    returnType: String,
-): List<Int> = instructions.indices.filter { index ->
-    val instruction = instructions[index]
-    if (instruction.opcode != Opcode.INVOKE_VIRTUAL) {
-        false
-    } else {
-        val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
-        reference?.definingClass == COMPOSER_IMPL &&
-            reference.name == name &&
-            reference.returnType == returnType
-    }
-}

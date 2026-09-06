@@ -4,7 +4,6 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.Match
 import app.morphe.patcher.checkCast
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.ApkArchitecture
@@ -22,7 +21,6 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
@@ -31,19 +29,18 @@ import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 import dev.utaa.linimal.patches.status.unsafeFeatureStatus
+import dev.utaa.linimal.patches.util.debugMetadataSource
 import dev.utaa.linimal.patches.util.isDivertedInjectionIndex
+import dev.utaa.linimal.patches.util.resolveDebugMetadataType
 
-private const val DEBUG_METADATA = "Llb8/e;"
-private const val PERFORMANCE_AD_MODEL = "Lyj2/c;"
-private const val FLOW_COLLECTOR = "Lze8/j;"
 private const val FLOW_CONTINUATION = "Lkotlin/coroutines/Continuation;"
 private const val FLOW_EMIT = "emit"
-private const val SINGLETON_LIST_OWNER = "Leb8/v;"
-private const val SINGLETON_LIST_METHOD = "i"
-private const val GCS_AD_LIST_METHOD = "g"
+private const val OBJECT = "Ljava/lang/Object;"
 private const val LIST = "Ljava/util/List;"
 private const val OBJECT_ARRAY = "[Ljava/lang/Object;"
-private const val HOME_DEFAULT_MODULE_CATALOG_CONTEXT = "Lm52/c;"
+
+/** module view data が実装する非難読化の contract。難読化された interface 名の代わりに使います。 */
+private const val MODULE_VIEW_DATA_KEY = "getKey"
 private const val HOME_PERFORMANCE_AD_MIDDLE_ID =
     "home-content-server_home-performance-ad-middle"
 private const val HOME_PERFORMANCE_AD_BOTTOM_ID =
@@ -53,8 +50,8 @@ private const val HOME_LAN_BANNER_MODULE_ID = "home-content-server_home-lan-bann
 private const val HOME_RECENTLY_UPDATED_PROFILE_MODULE_ID =
     "home-content-server_home-recently-profile-update"
 private const val HOME_PERFORMANCE_AD_CATALOG_TARGET_COUNT = 2
-private const val HOME_PERFORMANCE_AD_LAYOUT = 0x7f0e0405
-private const val HOME_GCS_AD_LAYOUT = 0x7f0e036d
+private const val HOME_PERFORMANCE_AD_LAYOUT = 0x7f0e03eb  // home_gcs_performance_ad_banner_row
+private const val HOME_GCS_AD_LAYOUT = 0x7f0e0351  // gcs_ad_section
 private const val CREATE_VIEW_DATA_FLOW_SOURCE =
     "GcsHomePerformanceAdModuleController\$createViewDataFlow\$\$inlined\$map\$1\$2"
 private const val MODULE_CONTROLLER_SOURCE = "GcsHomePerformanceAdModuleController.kt"
@@ -67,35 +64,28 @@ private const val HOME_TOP_AD_HOOK =
 private const val HOME_PERFORMANCE_AD_CATALOG_HOOK =
     "Ldev/utaa/linimal/extension/features/HomeTopAdHooks;->filterHomePerformanceAdCatalogItems(Ljava/util/List;)Ljava/util/List;"
 
-/** Home Feed の汎用 AdModel を描く専用 GCS ad controller の coroutine。 */
-private val homeGcsAdCreateViewDataFingerprint = Fingerprint(
-    returnType = "Ljava/lang/Object;",
-    parameters = listOf("Ljava/lang/Object;"),
+/**
+ * Home Feed の汎用 AdModel を描く専用 GCS ad controller の coroutine。
+ *
+ * <p>singleton list の factory は 26.11.0 では `Leb8/v;->g` でしたが、Kotlin stdlib の難読化名は
+ * 版ごとに変わります。source metadata で class を 1 件に絞れているため、factory は
+ * 「object 1 つを取り List を返す static 呼出し」であることだけを条件にします。</p>
+ */
+private fun homeGcsAdCreateViewDataFingerprint(debugMetadataType: String) = Fingerprint(
+    returnType = OBJECT,
+    parameters = listOf(OBJECT),
     filters = listOf(
         methodCall(
-            definingClass = SINGLETON_LIST_OWNER,
-            name = GCS_AD_LIST_METHOD,
-            parameters = listOf("Ljava/lang/Object;"),
+            parameters = listOf(OBJECT),
             returnType = LIST,
             opcode = Opcode.INVOKE_STATIC,
         ),
     ),
     custom = { _, classDef ->
-        classDef.annotations.any { annotation ->
-            if (annotation.type != DEBUG_METADATA) {
-                false
-            } else {
-                val sourceController = annotation.elements.firstOrNull { it.name == "c" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value == GCS_AD_CREATE_VIEW_DATA_SOURCE
-                val sourceFile = annotation.elements.firstOrNull { it.name == "f" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value == GCS_AD_MODULE_CONTROLLER_SOURCE
-                sourceController && sourceFile
-            }
-        }
+        val source = debugMetadataSource(classDef, debugMetadataType)
+        source != null &&
+            source.className == GCS_AD_CREATE_VIEW_DATA_SOURCE &&
+            source.sourceFile == GCS_AD_MODULE_CONTROLLER_SOURCE
     },
 )
 
@@ -104,36 +94,33 @@ private val homeGcsAdCreateViewDataFingerprint = Fingerprint(
  * continuation の直上の nested class が、performance ad 専用 item を singleton list に変換して
  * module Flow へ emit する mapper です。
  */
-private val createViewDataFlowSourceFingerprint = Fingerprint(
+private fun createViewDataFlowSourceFingerprint(debugMetadataType: String) = Fingerprint(
     custom = { _, classDef ->
-        classDef.annotations.any { annotation ->
-            if (annotation.type != DEBUG_METADATA) {
-                false
-            } else {
-                val sourceController = annotation.elements.firstOrNull { it.name == "c" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value
-                    ?.contains(CREATE_VIEW_DATA_FLOW_SOURCE) == true
-                val sourceFile = annotation.elements.firstOrNull { it.name == "f" }
-                    ?.value
-                    .let { it as? StringEncodedValue }
-                    ?.value == MODULE_CONTROLLER_SOURCE
-                sourceController && sourceFile
-            }
-        }
+        val source = debugMetadataSource(classDef, debugMetadataType)
+        source != null &&
+            source.className.contains(CREATE_VIEW_DATA_FLOW_SOURCE) &&
+            source.sourceFile == MODULE_CONTROLLER_SOURCE
     },
 )
 
-/** GcsHomePerformanceAdViewData の toString contract と ad model field を組み合わせた class anchor。 */
+/**
+ * GcsHomePerformanceAdViewData の toString contract を anchor にした class anchor。
+ *
+ * <p>26.11.0 では module view data の interface（`Ll72/j;`）と ad model field の型（`Lyj2/c;`）でも
+ * 絞っていましたが、どちらも版ごとに変わる難読化名です。marker は APK 全体で 1 件しかないため、
+ * 非難読化の `getKey()` contract を持つことだけを追加条件にします。</p>
+ */
 private val performanceAdViewDataFingerprint = Fingerprint(
     returnType = "Ljava/lang/String;",
     parameters = emptyList(),
-    filters = listOf(
-        string(VIEW_DATA_TO_STRING),
-        fieldAccess(type = PERFORMANCE_AD_MODEL, opcode = Opcode.IGET_OBJECT),
-    ),
-    custom = { _, classDef -> classDef.interfaces.contains("Ll72/j;") },
+    filters = listOf(string(VIEW_DATA_TO_STRING)),
+    custom = { _, classDef ->
+        classDef.methods.any { method ->
+            method.name == MODULE_VIEW_DATA_KEY &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == "Ljava/lang/String;"
+        }
+    },
 )
 
 /**
@@ -142,7 +129,8 @@ private val performanceAdViewDataFingerprint = Fingerprint(
  */
 private val homePerformanceAdCatalogFingerprint = Fingerprint(
     returnType = LIST,
-    parameters = listOf(HOME_DEFAULT_MODULE_CATALOG_CONTEXT),
+    // catalog context は版ごとに変わる難読化型のため、前方一致のワイルドカードで受けます。
+    parameters = listOf("L"),
     filters = listOf(
         // Fingerprint filters are matched in instruction order. The middle module reuses the
         // module-name register for the bottom module, so the shared name appears only once.
@@ -160,7 +148,8 @@ private val homePerformanceAdCatalogFingerprint = Fingerprint(
  */
 private fun moduleControllerFingerprint(controllerType: String) = Fingerprint(
     definingClass = controllerType,
-    returnType = "Ll72/k;",
+    // module view holder は版ごとに変わる難読化型のため、前方一致のワイルドカードで受けます。
+    returnType = "L",
     parameters = listOf("Landroid/view/ViewGroup;", "Ljava/lang/Enum;"),
     filters = listOf(
         literal(HOME_PERFORMANCE_AD_LAYOUT),
@@ -177,7 +166,8 @@ private fun moduleControllerFingerprint(controllerType: String) = Fingerprint(
 /** `GcsAdModuleController.d` の広告専用 row factory。 */
 private fun homeGcsAdModuleControllerFingerprint(controllerType: String) = Fingerprint(
     definingClass = controllerType,
-    returnType = "Ll72/k;",
+    // module view holder は版ごとに変わる難読化型のため、前方一致のワイルドカードで受けます。
+    returnType = "L",
     parameters = listOf("Landroid/view/ViewGroup;", "Ljava/lang/Enum;"),
     filters = listOf(literal(HOME_GCS_AD_LAYOUT)),
 )
@@ -188,22 +178,21 @@ private fun homeGcsAdModuleControllerFingerprint(controllerType: String) = Finge
  */
 private fun performanceAdListGateFingerprint(mapperType: String, viewDataType: String) = Fingerprint(
     definingClass = mapperType,
-    returnType = "Ljava/lang/Object;",
-    parameters = listOf("Ljava/lang/Object;", FLOW_CONTINUATION),
+    returnType = OBJECT,
+    parameters = listOf(OBJECT, FLOW_CONTINUATION),
+    // singleton list factory と FlowCollector の型名は版ごとに変わるため条件から外し、
+    // 引数と戻り値の形、および非難読化の `emit` 名だけで並びを固定します。
     filters = listOf(
         checkCast(viewDataType),
         methodCall(
-            definingClass = SINGLETON_LIST_OWNER,
-            name = SINGLETON_LIST_METHOD,
-            parameters = listOf("Ljava/lang/Object;"),
-            returnType = "Ljava/util/List;",
+            parameters = listOf(OBJECT),
+            returnType = LIST,
             opcode = Opcode.INVOKE_STATIC,
         ),
         methodCall(
-            definingClass = FLOW_COLLECTOR,
             name = FLOW_EMIT,
-            parameters = listOf("Ljava/lang/Object;", FLOW_CONTINUATION),
-            returnType = "Ljava/lang/Object;",
+            parameters = listOf(OBJECT, FLOW_CONTINUATION),
+            returnType = OBJECT,
             opcode = Opcode.INVOKE_INTERFACE,
         ),
     ),
@@ -228,6 +217,15 @@ val homeTopAdPatch = bytecodePatch(
     dependsOn(readReceiptSupplierPreparationPatch)
 
     execute {
+        // `@DebugMetadata` の型名は版ごとに変わるため、実行時に導出します。
+        val debugMetadataType = resolveDebugMetadataType()
+        if (debugMetadataType == null) {
+            patchStatusCollector.record(
+                homePerformanceAdCatalogUnappliedRecord(0, "HomeTopAdDebugMetadataNotResolved"),
+            )
+            return@execute
+        }
+
         val catalogMatches = homePerformanceAdCatalogFingerprint.matchAllOrNull().orEmpty()
         if (catalogMatches.size != 1) {
             patchStatusCollector.record(
@@ -248,7 +246,9 @@ val homeTopAdPatch = bytecodePatch(
             return@execute
         }
 
-        val sourceContinuationTypes = createViewDataFlowSourceFingerprint.matchAllOrNull().orEmpty()
+        val sourceContinuationTypes = createViewDataFlowSourceFingerprint(debugMetadataType)
+            .matchAllOrNull()
+            .orEmpty()
             .map { it.originalClassDef.type }
             .toSet()
         if (sourceContinuationTypes.size != 1) {
@@ -307,7 +307,7 @@ val homeTopAdPatch = bytecodePatch(
             return@execute
         }
 
-        val gcsAdMatches = homeGcsAdCreateViewDataFingerprint.matchAllOrNull().orEmpty()
+        val gcsAdMatches = homeGcsAdCreateViewDataFingerprint(debugMetadataType).matchAllOrNull().orEmpty()
         if (gcsAdMatches.size != 1) {
             patchStatusCollector.record(
                 homeGcsAdModuleGateUnappliedRecord(
@@ -444,16 +444,16 @@ private fun performanceAdListEmissionGate(match: Match, viewDataType: String): H
 
     // `move-result-object <list>` is immediately followed by coroutine state storage and collector emit.
     // The hook replaces only that list value, without changing the item object, upstream Flow, or lifecycle state.
+    // FlowCollector と singleton list factory の型名は版ごとに変わるため、名前ではなく
+    // 「collector field の型が emit の宣言クラスと一致すること」で同一性を確認します。
     if (
         singletonListIndex != castIndex + 1 ||
         emitIndex != singletonListIndex + 4 ||
         instructions.getOrNull(castIndex)?.opcode != Opcode.CHECK_CAST ||
         castType.type != viewDataType ||
         singletonList.opcode != Opcode.INVOKE_STATIC ||
-        singletonListReference.definingClass != SINGLETON_LIST_OWNER ||
-        singletonListReference.name != SINGLETON_LIST_METHOD ||
-        singletonListReference.parameterTypes != listOf("Ljava/lang/Object;") ||
-        singletonListReference.returnType != "Ljava/util/List;" ||
+        singletonListReference.parameterTypes != listOf(OBJECT) ||
+        singletonListReference.returnType != LIST ||
         singletonList.registerCount != 1 ||
         singletonList.registerC != cast.registerA ||
         listResult.opcode != Opcode.MOVE_RESULT_OBJECT ||
@@ -462,12 +462,11 @@ private fun performanceAdListEmissionGate(match: Match, viewDataType: String): H
         stateWrite.opcode != Opcode.IPUT ||
         stateField.type != "I" ||
         collectorRead.opcode != Opcode.IGET_OBJECT ||
-        collectorField.type != FLOW_COLLECTOR ||
         emit.opcode != Opcode.INVOKE_INTERFACE ||
-        emitReference.definingClass != FLOW_COLLECTOR ||
+        collectorField.type != emitReference.definingClass ||
         emitReference.name != FLOW_EMIT ||
-        emitReference.parameterTypes != listOf("Ljava/lang/Object;", FLOW_CONTINUATION) ||
-        emitReference.returnType != "Ljava/lang/Object;" ||
+        emitReference.parameterTypes != listOf(OBJECT, FLOW_CONTINUATION) ||
+        emitReference.returnType != OBJECT ||
         emit.registerCount != 3 ||
         emit.registerC != collectorRead.registerA ||
         emit.registerD != listResult.registerA
@@ -509,11 +508,11 @@ internal fun homeGcsAdListGateShape(
         ?.reference as? MethodReference) ?: return null
     val listResult = instructions.getOrNull(listFactoryIndex + 1) as? OneRegisterInstruction ?: return null
     val returnInstruction = instructions.getOrNull(listFactoryIndex + 2) as? OneRegisterInstruction ?: return null
+    // singleton list factory の宣言クラスと method 名は版ごとに変わるため、引数と戻り値の形だけで
+    // 判定します。呼出し元の class は source metadata で 1 件に絞れています。
     if (
         instructions[listFactoryIndex].opcode != Opcode.INVOKE_STATIC ||
-        reference.definingClass != SINGLETON_LIST_OWNER ||
-        reference.name != GCS_AD_LIST_METHOD ||
-        reference.parameterTypes != listOf("Ljava/lang/Object;") ||
+        reference.parameterTypes != listOf(OBJECT) ||
         reference.returnType != LIST ||
         factory.registerCount != 1 ||
         listResult.opcode != Opcode.MOVE_RESULT_OBJECT ||

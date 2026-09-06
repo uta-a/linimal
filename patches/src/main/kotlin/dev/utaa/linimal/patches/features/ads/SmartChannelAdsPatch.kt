@@ -19,6 +19,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
@@ -29,7 +30,14 @@ import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 
 private const val SMART_CHANNEL_LAYOUT =
     "Lcom/linecorp/line/admolin/smartch/v2/view/SmartChannelViewLayout;"
-private const val RENDERER = "Lpm2/a;"
+
+/**
+ * 難読化された object 型を受けるワイルドカードです。Morphe の型照合は前方一致のため、`"L"` は
+ * 任意の object 型に一致します。26.11.0 では renderer (`Lpm2/a;`)、placement (`Lui5/a;`)、
+ * lifecycle (`Lfj5/a;`)、theme context (`Lk/d;`) を直書きしていましたが、26.14.0 でいずれも
+ * 改名されたため条件から外し、必要な型は非難読化 anchor から実行時に導出します。
+ */
+private const val ANY_OBJECT = "L"
 private const val FLOW_CONTINUATION = "Lkotlin/coroutines/Continuation;"
 private const val UNIT = "Lkotlin/Unit;"
 private const val UNIT_INSTANCE = "INSTANCE"
@@ -44,12 +52,67 @@ private const val SMART_CHANNEL_PLACEMENT_HOOK =
 internal const val SMART_CHANNEL_TARGET_COUNT = 3
 
 /**
+ * SmartChannelViewLayout の tag lookup → factory → addView → renderer bind sequence。
+ * presentation の組立だけを対象にし、ad request / response / billing / payment の経路には触れません。
+ *
+ * <p>26.11.0 では renderer 型と placement / lifecycle の引数型を直書きしていました。26.14.0 で
+ * すべて改名されたため、非難読化のまま残る `SmartChannelViewLayout` / `View.findViewWithTag` /
+ * `ViewGroup.addView` を anchor にし、難読化型は [ANY_OBJECT] で受けます。この match が
+ * 他 2 件の fingerprint に渡す難読化名の唯一の供給元です。</p>
+ */
+private val smartChannelInitialBindFingerprint = Fingerprint(
+    returnType = "V",
+    parameters = listOf(ANY_OBJECT, ANY_OBJECT, "Ljava/lang/String;", ANY_OBJECT),
+    filters = listOf(
+        fieldAccess(type = SMART_CHANNEL_LAYOUT, opcode = Opcode.IGET_OBJECT),
+        methodCall(
+            definingClass = "Landroid/view/View;",
+            name = "findViewWithTag",
+            parameters = listOf("Ljava/lang/Object;"),
+            returnType = "Landroid/view/View;",
+            opcode = Opcode.INVOKE_VIRTUAL,
+        ),
+        methodCall(
+            parameters = listOf("Landroid/content/Context;", ANY_OBJECT),
+            returnType = "Landroid/view/View;",
+            opcode = Opcode.INVOKE_INTERFACE,
+        ),
+        methodCall(
+            definingClass = "Landroid/view/ViewGroup;",
+            name = "addView",
+            parameters = listOf("Landroid/view/View;"),
+            returnType = "V",
+            opcode = Opcode.INVOKE_VIRTUAL,
+        ),
+        // 生成した View を renderer interface へ落とす check-cast。ここで得た型が renderer です。
+        checkCast(ANY_OBJECT),
+        methodCall(parameters = listOf(ANY_OBJECT), returnType = "V", opcode = Opcode.INVOKE_INTERFACE),
+        methodCall(parameters = emptyList(), returnType = "V", opcode = Opcode.INVOKE_INTERFACE),
+    ),
+)
+
+/**
+ * [smartChannelInitialBindFingerprint] の match から取り出した、版ごとに変わる難読化名です。
+ * ここを起点にすることで、ui state gate と rebind の fingerprint から難読化名の直書きを排除します。
+ */
+private data class SmartChannelAnchors(
+    val bindClass: String,
+    val bindName: String,
+    val bindParameters: List<String>,
+    val rendererType: String,
+    val rendererBindName: String,
+    val rendererModelType: String,
+    val completionClass: String,
+    val completionName: String,
+)
+
+/**
  * Smart Channel の placement UI state handler。SmartChannelViewLayout の visibility 切替、
  * renderer の生成 / bind / cleanup をまとめて行う唯一の funnel で、Flow collector の emit として
  * 実装されています。枠（SmartChannelViewLayout）を表示状態へ戻す経路はこの method に限られるため、
  * ここを塞げば枠は layout XML の既定値 gone のまま維持されます。
  */
-private val smartChannelUiStateFingerprint = Fingerprint(
+private fun smartChannelUiStateFingerprint(anchors: SmartChannelAnchors) = Fingerprint(
     returnType = "Ljava/lang/Object;",
     parameters = listOf("Ljava/lang/Object;", FLOW_CONTINUATION),
     filters = listOf(
@@ -62,20 +125,22 @@ private val smartChannelUiStateFingerprint = Fingerprint(
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
         methodCall(
-            definingClass = RENDERER,
+            definingClass = anchors.rendererType,
             name = "onPause",
             parameters = emptyList(),
             returnType = "V",
             opcode = Opcode.INVOKE_INTERFACE,
         ),
         methodCall(
-            parameters = listOf("Lui5/a;", "Lfj5/a;", "Ljava/lang/String;", "L"),
+            definingClass = anchors.bindClass,
+            name = anchors.bindName,
+            parameters = anchors.bindParameters,
             returnType = "V",
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
         methodCall(
-            definingClass = "Lfj5/a;",
-            name = "j",
+            definingClass = anchors.completionClass,
+            name = anchors.completionName,
             parameters = emptyList(),
             returnType = "V",
             opcode = Opcode.INVOKE_INTERFACE,
@@ -83,54 +148,8 @@ private val smartChannelUiStateFingerprint = Fingerprint(
     ),
 )
 
-/**
- * SmartChannelViewLayout の tag lookup → factory → addView → pm2/a bind sequence。
- * presentation の組立だけを対象にし、ad request / response / billing / payment の経路には触れません。
- */
-private val smartChannelInitialBindFingerprint = Fingerprint(
-    returnType = "V",
-    parameters = listOf("Lui5/a;", "Lfj5/a;", "Ljava/lang/String;", "L"),
-    filters = listOf(
-        fieldAccess(type = SMART_CHANNEL_LAYOUT, opcode = Opcode.IGET_OBJECT),
-        methodCall(
-            definingClass = "Landroid/view/View;",
-            name = "findViewWithTag",
-            parameters = listOf("Ljava/lang/Object;"),
-            returnType = "Landroid/view/View;",
-            opcode = Opcode.INVOKE_VIRTUAL,
-        ),
-        methodCall(
-            parameters = listOf("Landroid/content/Context;", "Lk/d;"),
-            returnType = "Landroid/view/View;",
-            opcode = Opcode.INVOKE_INTERFACE,
-        ),
-        methodCall(
-            definingClass = "Landroid/view/ViewGroup;",
-            name = "addView",
-            parameters = listOf("Landroid/view/View;"),
-            returnType = "V",
-            opcode = Opcode.INVOKE_VIRTUAL,
-        ),
-        checkCast(RENDERER),
-        methodCall(
-            definingClass = RENDERER,
-            name = "l",
-            parameters = listOf("Lyj2/c;"),
-            returnType = "V",
-            opcode = Opcode.INVOKE_INTERFACE,
-        ),
-        methodCall(
-            definingClass = "Lfj5/a;",
-            name = "j",
-            parameters = emptyList(),
-            returnType = "V",
-            opcode = Opcode.INVOKE_INTERFACE,
-        ),
-    ),
-)
-
-/** orientation rebind callback: existing renderer lookup → pm2/a.l(model) → View.post. */
-private val smartChannelRebindFingerprint = Fingerprint(
+/** orientation rebind callback: existing renderer lookup → renderer.bind(model) → View.post. */
+private fun smartChannelRebindFingerprint(anchors: SmartChannelAnchors) = Fingerprint(
     returnType = "Ljava/lang/Object;",
     parameters = emptyList(),
     filters = listOf(
@@ -141,11 +160,15 @@ private val smartChannelRebindFingerprint = Fingerprint(
             returnType = "Ljava/lang/String;",
             opcode = Opcode.INVOKE_STATIC,
         ),
-        methodCall(parameters = emptyList(), returnType = RENDERER, opcode = Opcode.INVOKE_VIRTUAL),
         methodCall(
-            definingClass = RENDERER,
-            name = "l",
-            parameters = listOf("Lyj2/c;"),
+            parameters = emptyList(),
+            returnType = anchors.rendererType,
+            opcode = Opcode.INVOKE_VIRTUAL,
+        ),
+        methodCall(
+            definingClass = anchors.rendererType,
+            name = anchors.rendererBindName,
+            parameters = listOf(anchors.rendererModelType),
             returnType = "V",
             opcode = Opcode.INVOKE_INTERFACE,
         ),
@@ -174,14 +197,37 @@ val smartChannelAdsPatch = bytecodePatch(
     dependsOn(homeTrendingPatch)
 
     execute {
-        val uiStateMatches = smartChannelUiStateFingerprint.matchAllOrNull().orEmpty()
         val initialMatches = smartChannelInitialBindFingerprint.matchAllOrNull().orEmpty()
-        val rebindMatches = smartChannelRebindFingerprint.matchAllOrNull().orEmpty()
+        if (initialMatches.size > 1) {
+            recordUnsafeFeatureStatus(
+                listOf(PatchId.SMART_CHANNEL_ADS),
+                expectedTargetCount = SMART_CHANNEL_TARGET_COUNT,
+                actualTargetCount = initialMatches.size,
+                reason = "SmartChannelTargetNotUnique",
+            )
+            return@execute
+        }
+
+        // 難読化名は initial bind の命令列からのみ導出します。ここが解決できないと ui state gate と
+        // rebind の照合条件も作れないため、注入せず TARGET_NOT_FOUND を残します。
+        val anchors = initialMatches.singleOrNull()?.let(::smartChannelAnchorsOrNull)
+        if (anchors == null) {
+            patchStatusCollector.record(
+                patchId = PatchId.SMART_CHANNEL_ADS,
+                expectedTargetCount = SMART_CHANNEL_TARGET_COUNT,
+                actualTargetCount = 0,
+                reason = "SmartChannelRendererNotResolved",
+            )
+            return@execute
+        }
+
+        val uiStateMatches = smartChannelUiStateFingerprint(anchors).matchAllOrNull().orEmpty()
+        val rebindMatches = smartChannelRebindFingerprint(anchors).matchAllOrNull().orEmpty()
         val actualTargetCount = uiStateMatches.size + initialMatches.size + rebindMatches.size
 
         // expected target set は ui state gate / initial bind / rebind の 3 件です。
         // いずれかが複数一致した時点で注入位置を一意に決められないため、注入せず ERROR を残します。
-        if (uiStateMatches.size > 1 || initialMatches.size > 1 || rebindMatches.size > 1) {
+        if (uiStateMatches.size > 1 || rebindMatches.size > 1) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.SMART_CHANNEL_ADS),
                 expectedTargetCount = SMART_CHANNEL_TARGET_COUNT,
@@ -195,11 +241,9 @@ val smartChannelAdsPatch = bytecodePatch(
         if (uiStateMatches.size == 1) {
             unsafe = !guardPlacementUiState(uiStateMatches.single()) || unsafe
         }
-        if (initialMatches.size == 1) {
-            unsafe = !guardInitialBind(initialMatches.single()) || unsafe
-        }
+        unsafe = !guardInitialBind(initialMatches.single()) || unsafe
         if (rebindMatches.size == 1) {
-            unsafe = !guardRebind(rebindMatches.single()) || unsafe
+            unsafe = !guardRebind(rebindMatches.single(), anchors) || unsafe
         }
 
         if (unsafe) {
@@ -236,6 +280,37 @@ internal fun smartChannelSuppressionRecord(
         else -> "SmartChannelTargetPartial"
     },
 )
+
+/**
+ * initial bind の match から renderer / model / lifecycle completion の難読化名を取り出します。
+ * check-cast された型が bind 呼び出しの receiver 型と一致することを確認し、renderer 以外の
+ * check-cast を拾っていないことを保証します。
+ */
+private fun smartChannelAnchorsOrNull(match: Match): SmartChannelAnchors? {
+    val instructions = match.method.implementation?.instructions?.toList() ?: return null
+    val rendererCast = instructions.getOrNull(match.instructionMatches[4].index) as? ReferenceInstruction
+    val rendererType = (rendererCast?.reference as? TypeReference)?.type ?: return null
+    val bind = (instructions.getOrNull(match.instructionMatches[5].index) as? ReferenceInstruction)
+        ?.reference as? MethodReference ?: return null
+    val completion = (instructions.getOrNull(match.instructionMatches[6].index) as? ReferenceInstruction)
+        ?.reference as? MethodReference ?: return null
+    val modelType = bind.parameterTypes.singleOrNull()?.toString() ?: return null
+
+    if (bind.definingClass != rendererType || completion.definingClass == rendererType) {
+        return null
+    }
+
+    return SmartChannelAnchors(
+        bindClass = match.originalClassDef.type,
+        bindName = match.method.name,
+        bindParameters = match.method.parameterTypes.map(CharSequence::toString),
+        rendererType = rendererType,
+        rendererBindName = bind.name,
+        rendererModelType = modelType,
+        completionClass = completion.definingClass,
+        completionName = completion.name,
+    )
+}
 
 /**
  * `iget-object <frame>, <handler>, SmartChannelViewLayout` の直後に runtime gate を置きます。
@@ -332,7 +407,7 @@ private fun guardInitialBind(match: Match): Boolean {
     val scratchLiteral = instructions.getOrNull(findViewIndex + 2) as? NarrowLiteralInstruction
 
     // `move-result-object <tag view>` の直後は const/4 v2, 0。OFF はその const をそのまま通し、
-    // ON は final fj5/a.j() へ進めて request/lifecycle completion を残します。
+    // ON は末尾の lifecycle completion へ進めて request/lifecycle completion を残します。
     if (
         findView?.opcode != Opcode.INVOKE_VIRTUAL ||
         findViewReference?.definingClass != "Landroid/view/View;" ||
@@ -363,7 +438,7 @@ private fun guardInitialBind(match: Match): Boolean {
     return true
 }
 
-private fun guardRebind(match: Match): Boolean {
+private fun guardRebind(match: Match, anchors: SmartChannelAnchors): Boolean {
     val method = match.method
     val bindIndex = match.instructionMatches[2].index
     val instructions = method.implementation?.instructions?.toList().orEmpty()
@@ -379,9 +454,9 @@ private fun guardRebind(match: Match): Boolean {
     if (
         bind?.opcode != Opcode.INVOKE_INTERFACE ||
         bind.registerCount != 2 ||
-        bindReference?.definingClass != RENDERER ||
-        bindReference.name != "l" ||
-        bindReference.parameterTypes != listOf("Lyj2/c;") ||
+        bindReference?.definingClass != anchors.rendererType ||
+        bindReference.name != anchors.rendererBindName ||
+        bindReference.parameterTypes.map(CharSequence::toString) != listOf(anchors.rendererModelType) ||
         rendererRegister == null ||
         rendererRegister !in 0..15 ||
         modelRegister == null ||
