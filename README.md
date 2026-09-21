@@ -1,176 +1,112 @@
 # Linimal
 
-Linimal は、公式 LINE Android クライアントへ runtime 設定で切り替え可能な変更を適用する、Morphe ベースの GPL-3.0 パッチバンドルです。
+Linimal は、公式 LINE Android クライアント向けの Morphe パッチバンドルです（GPL-3.0）。広告や使わない機能の表示を消し、既読の送信を制御できるようにします。すべての機能は LINE の設定画面から個別に ON / OFF でき、OFF のときは公式 LINE と同じ動作になります。
 
-LINE の通信、認証、通知、通話、メッセージ送受信などの主要機能は公式実装を利用し、不要な UI や機能だけをユーザーが制御できる構成を目指します。Linimal は独立したプロジェクトであり、LINE および Morphe の公式プロジェクトではありません。
+Linimal は独立したプロジェクトであり、LINE および Morphe の公式プロジェクトではありません。
 
-## Morphe への追加
+## 対象
 
-Linimal は公式 Morphe のパッチソースには含まれないため、パッチソースとして自分で追加します。
+| 項目 | 値 |
+| --- | --- |
+| アプリ | LINE（`jp.naver.line.android`） |
+| バージョン | 26.11.0（versionCode 261100124） |
+| アーキテクチャ | arm64-v8a |
+| 入力形式 | APKM |
 
-対象は LINE 26.11.0 (versionCode 261100124) arm64-v8a の APKM のみです（詳細は [Reference version](#reference-version)）。Morphe には APKM をそのまま渡し、base と ABI/density split を分解しないでください。
+上記以外のバージョンには対応していません。Morphe には APKM をそのまま渡してください。`--force` での適用は想定していません。
 
-### パッチソースとして追加 (Android)
+## 導入
 
-Android 端末で以下をタップすると Morphe Manager が開き、確認のうえで Linimal がパッチソースとして追加されます。以降は Morphe のパッチ一覧に `Linimal` が表示されます。
+### Morphe Manager（Android）
+
+Android 端末で次のリンクを開くと、Morphe Manager に Linimal がパッチソースとして追加されます。新しいリリースは Morphe が自動で検出します。
 
 [**➕ Linimal を Morphe に追加**](https://morphe.software/add-source?github=uta-a/linimal)
 
-> [!IMPORTANT]
-> このリンクは、リポジトリが public であり、かつ `.mpp` を添付した GitHub リリースが存在する場合にのみ機能します。どちらかが欠けていると Morphe はバンドルを取得できません。
+`.mpp` ファイルから追加する場合は、パッチソース画面の `+` から `Local` を選び、[リリース](https://github.com/uta-a/linimal/releases)の `patches-*.mpp` を指定します。この方法では自動更新されません。
 
-パッチソースとして追加すると、新しいリリースを Morphe が自動で検出します。以下のローカル `.mpp` を使う方法は自動更新されません。
+LINE の APKM を選び、`Linimal` を適用します。
 
-### ローカル `.mpp` から追加 (Morphe Manager)
+### Morphe Desktop（CLI）
 
-1. パッチソース画面を開く
-2. `+` から `Local` を選ぶ
-3. 端末へ転送した `patches-*.mpp` を選択する
-4. LINE の APKM を選び、`Linimal` を適用する
-
-### Morphe Desktop (GUI)
-
-1. Morphe Desktop を起動する
-2. 設定で Expert mode を有効にする
-3. LINE の APKM を読み込む
-4. Patch source で `LOCAL PATCH FILE` から `patches/build/libs/patches-*.mpp` を選ぶ
-5. `Linimal` を選択して実行する
-
-パッチを繰り返しビルドする場合は、設定で Developer options を有効にし、ソースを `patches/build/libs/` フォルダーへ向けます。フォルダー内の最新の `.mpp` が自動的に読み込まれるため、再ビルドのたびにファイルを選び直す必要がなくなります。
-
-### Morphe Desktop (CLI)
+Java 21 以上が必要です。
 
 ```sh
 java -jar morphe-desktop-*-all.jar patch \
-  --patches patches/build/libs/patches-0.1.0.mpp \
+  --patches patches-*.mpp \
   --out line-linimal.apk \
-  "line-apk/jp.naver.line.android_26.11.0-261100124_2arch_7dpi_b4f7cc253b4eab6903c1c27496682626_apkmirror.com.apkm"
+  <LINE の APKM>
 ```
 
-Morphe Desktop は Java 21 以上を必要とします。ビルド用の Java 17 とは別要件です。
+### 公式 LINE からの移行
 
-`--force` は APK のバージョン互換チェックを飛ばすため、Linimal では使用しないでください。reference version 以外への適用は検証していません。
+パッチを当てた LINE は公式版と署名が違うため、公式アプリに上書きインストールできません。次の順で移行します。
 
-### 適用後
+1. [MicroG-RE の準備](#microg-re-でトークをバックアップする)を済ませる。
+2. 公式 LINE で、トークを Google ドライブへバックアップする。
+3. 公式 LINE をアンインストールし、Linimal を適用した LINE をインストールする。
+4. ログインし、Google ドライブから復元する。
 
-LINE の設定画面の一番下に `Linimal` が追加されます。ここから Linimal の設定を変更できます。
+## 使い方
 
-Linimal のすべての機能は Morphe のパッチ選択ではなく、LINE 内の Linimal 設定で切り替えます。設定が OFF のときは公式 LINE の挙動を維持します。
+LINE の設定画面の一番下に `Linimal` が追加されます。設定は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般` の 5 ページに分かれています。
 
-## Reference version
-
-```text
-Application  : LINE
-Package      : jp.naver.line.android
-LINE Version : 26.11.0
-Version Code : 261100124
-Architecture : arm64-v8a
-Input Format : APKM
-Patch System : Morphe
-```
-
-v1 開発中は上記の reference version のみを対象とします。
+初期値は新規インストール時の値です。更新しても、それまでの設定は引き継がれます。LINE の変更などで対象を特定できなかった機能は、自動で無効になり、設定画面でも操作できなくなります。
 
 ## 機能
 
-| 分類 | 機能 | 初期値 | 内容 |
+| ページ | 設定 | 初期値 | 内容 |
 | --- | --- | --- | --- |
-| 広告 | Smart Channel | ON | Chat tab上部のSmart Channelを表示しません。 |
-| 広告 | Home 内の広告 | ON | GCS Home Performance Ad の middle / bottom module と Home Feed の広告カードを表示対象から除外します。広告通信と保存期限は変更しません。 |
-| Agent i・LINE AI / 各画面の上部 | Home header | ON | Home 上部ナビゲーションの Agent i を表示しません。 |
-| Agent i・LINE AI / 各画面の上部 | Wallet header | ON | Wallet mini-tab header の Agent i を表示しません。 |
-| Agent i・LINE AI / 各画面の上部 | Chat list search | ON | トーク一覧の検索欄右にある Agent i を表示しません。検索欄がその分だけ広がります。 |
-| Agent i・LINE AI / トーク | Chat information | ON | Chat information menu の Manage account を表示しません。 |
-| Agent i・LINE AI / トーク | Chat composer | ON | 通常チャット入力欄の Agent i in chat と AI Talk Suggestions の入口ボタン、および入力欄の下に並ぶ返信提案の chip bar を表示しません。 |
-| Agent i・LINE AI / トーク | Message context menu | ON | メッセージ長押しmenuの AI Edit を表示しません。 |
-| Agent i・LINE AI / トーク | Gallery viewer | ON | Chat gallery viewer の LINE AI image edit button を表示しません。 |
-| Agent i・LINE AI / 設定 | Main Settings | ON | LINE 設定の Agent i または LINE AI services を表示しません。 |
-| 表示を消す / 下部タブ | VOOM | OFF | 下部タブから VOOM を取り除きます。 |
-| 表示を消す / 下部タブ | ショッピング | OFF | 下部タブからショッピングを取り除きます。 |
-| 表示を消す / 下部タブ | ニュース | OFF | 下部タブからニュースを取り除きます。 |
-| 表示を消す / 下部タブ | ウォレット | OFF | 下部タブからウォレットを取り除きます。 |
-| 表示を消す / 下部タブ | アプリ | OFF | 下部タブからアプリを取り除きます。 |
-| 表示を消す / トーク一覧の上部 | AI Friends | OFF | トーク一覧上部にある AI Friends のアイコンを表示しません。 |
-| 表示を消す / トーク一覧の上部 | カレンダー | OFF | トーク一覧上部にあるカレンダーのアイコンを表示しません。トークの ＋ menuのカレンダーとは別枠です。 |
-| 表示を消す / トーク一覧の上部 | オープンチャット | OFF | トーク一覧上部にあるオープンチャットのアイコンを表示しません。 |
-| 表示を消す / トークの ＋ メニュー | カレンダー | OFF | Chat の追加menuからCalendarを取り除きます。 |
-| 表示を消す / トークの ＋ メニュー | LINE ギフト | OFF | Chat の追加menuからLINE GIFTを取り除きます。 |
-| 表示を消す / トークの ＋ メニュー | LINE Pay | OFF | Chat の追加menuからLINE Payを取り除きます。 |
-| 表示を消す / ホーム | おすすめ | OFF | Home のおすすめ枠を表示しません。 |
-| 表示を消す / ホーム | 話題 | OFF | Home の話題とトレンド枠を表示しません。 |
-| 表示を消す / ホーム | 投稿カード | OFF | Home 下部の VOOM 投稿カードを表示しません。アカウント名や友だち追加の見出し行を含めてカードごと消します。おすすめと話題とは別枠で、投稿カードを描く3種類の module をまとめて対象にします。 |
-| 表示を消す / ホーム | 特集枠 | OFF | Home の特集グリッドを表示しません。見出し行と並んだ動画カードをまとめて消します。おすすめ、話題、投稿カードとは別枠です。Home の抑制設定がすべて ON のときは、フィード既定ページの読み込み表示も併せて消します。 |
-| 表示を消す / ホーム | 最近の履歴 | OFF | Home 上部にある最近使用したサービスの枠を表示しません。隣のサービス枠は残します。 |
-| 既読 | 既読をつけずに読む | OFF | トーク一覧の長押しmenuに項目を追加し、そこから開いたトークは開いている間だけ既読の送信を止めます。ローカルの既読反映も止めるため、トーク一覧の行と下部タブの未読バッジは消えません。トークを閉じると抑制は解除され、その後に通常の操作で開くと既読になります。 |
-| 既読 | 自動既読の停止 | OFF | 通常チャットの自動既読送信を止めます。手動既読操作だけを一回送信します。 |
-| 一般 | Premium 誘導の抑制 | OFF | 送信取消時に表示される LINE Premium の案内を表示しません。 |
-| 一般 | Premium 設定行の抑制 | OFF | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
-| 一般 | 外部ブラウザ | OFF | 通常チャット本文の http と https の外部リンクだけを端末のブラウザで開きます。LINE、ログイン、決済のリンクは元のままです。 |
-| 一般 | 通知の受信 | ON | 通知の登録（Firebase Installations）で Google へ送る署名情報を、公式 LINE の証明書 SHA-1 に置き換えます。再署名した LINE でも、アプリを閉じている間に通知が届くようにするためのものです。 |
-| 一般 | MicroG-RE でトークをバックアップする | ON | トークのバックアップと復元で使う Google ドライブの認証を、MicroG-RE 経由で行います。再署名した LINE でもバックアップと復元ができるようにするためのものです。MicroG-RE が入っていない端末では LINE 本来の経路のままで、バックアップ時に MicroG-RE の導入を案内する通知を出します。 |
+| 広告 | Smart Channel の広告を表示しない | ON | トーク一覧上部の Smart Channel を表示しません。 |
+| 広告 | ホーム内の広告を表示しない | ON | ホームの広告枠とフィード内の広告カードを表示しません。 |
+| Agent i・LINE AI | ホーム上部の Agent i を表示しない | ON | |
+| Agent i・LINE AI | ウォレット上部の Agent i を表示しない | ON | |
+| Agent i・LINE AI | トーク一覧の検索欄の Agent i を表示しない | ON | 検索欄がその分だけ広がります。 |
+| Agent i・LINE AI | チャット情報の Agent i を表示しない | ON | |
+| Agent i・LINE AI | チャット入力欄の Agent i を表示しない | ON | 入力欄の Agent i と AI の返信提案を表示しません。 |
+| Agent i・LINE AI | メッセージ長押しメニューの LINE AI を表示しない | ON | |
+| Agent i・LINE AI | 写真・動画表示画面の LINE AI を表示しない | ON | |
+| Agent i・LINE AI | 設定画面の Agent i を表示しない | ON | |
+| 表示を消す | VOOM / ショッピング / ニュース / ウォレット / アプリ を表示しない | OFF | 下部タブから取り除きます。 |
+| 表示を消す | AI Friends / カレンダー / オープンチャット を表示しない | OFF | トーク一覧上部のアイコンを表示しません。 |
+| 表示を消す | カレンダー / LINE ギフト / LINE Pay を表示しない | OFF | トークの ＋ メニューから取り除きます。 |
+| 表示を消す | おすすめ / 話題 / ホームの投稿カード / 特集枠 / 最近の履歴 を表示しない | OFF | ホームの各枠を表示しません。 |
+| 既読 | 既読をつけずに読むをメニューに追加 | OFF | トーク一覧の長押しメニューから開いたトークは、開いている間だけ既読をつけません。未読バッジも残ります。 |
+| 既読 | 通常チャットの自動既読を停止 | OFF | 通常のトークで自動の既読送信を止め、手動の既読操作のときだけ送ります。オープンチャットなどは対象外です。 |
+| 一般 | Premium の案内を表示しない | OFF | 送信取消時の LINE Premium の案内を表示しません。 |
+| 一般 | 設定のプレミアムを表示しない | OFF | LINE の設定画面のプレミアムの行を表示しません。 |
+| 一般 | リンクを外部ブラウザで開く | OFF | トーク本文の http / https のリンクを端末のブラウザで開きます。ログインや決済のリンクは元のままです。 |
+| 一般 | アプリを閉じていても通知を受け取る | ON | 下記を参照してください。 |
+| 一般 | MicroG-RE でトークをバックアップする | ON | 下記を参照してください。 |
 
-設定画面は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般` の5ページに分かれています。`Agent i・LINE AI` と `表示を消す` は、ページ内をさらに場所ごとの小見出しで区切ります。小見出しは、その中に表示できる項目が一つも残らない場合には描画しません。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
+広告、Premium、Agent i・LINE AI は表示を消すだけで、広告の配信、課金、LINE の通信は変更しません。
 
-初期値は新規インストールに適用される値です。すでに Linimal を使っている端末では、更新後も既存の設定がそのまま引き継がれ、まだ触っていない項目も更新前の初期値のまま動作します。
+### アプリを閉じていても通知を受け取る
 
-対象が一意に特定できなかった機能や、必須 patch が揃っていない機能は自動的に無効となり、設定画面でも操作できません。hook 側も LINE 本来の挙動のままになります。build に patch の記録が一件も無い機能は、設定画面に行自体が現れません。パッチの適用状況を一覧する画面はありません。パッチ情報そのものを読み取れない場合は、各ページに設定を変更できない旨を表示し、すべての機能が LINE 本来の挙動になります。
+パッチを当てた LINE は署名が変わるため、そのままではアプリを閉じている間に通知が届きません。この設定は、通知の登録時に Google へ送る署名情報を公式 LINE のものに置き換えます。特別な準備は不要です。
 
-Premium の抑制は案内表示と LINE 設定の行表示だけを対象とします。送信取消時の案内も設定のプレミアム行も presentation 層だけを抑制します。課金資格、購読 API、決済通信は変更しません。広告抑制も広告 request、response、database、expiration、trackerを変更しません。
+### MicroG-RE でトークをバックアップする
 
-Agent i と LINE AI は確認できたUI入口だけを場所別に抑制します。backend、subscription、billing、conversation data、common navigator、networkを変更しません。Commerce top navigation、Search、Home AI Matomeは到達可能な入口と確認できていないため対象外です。
+パッチを当てた LINE は、そのままでは Google ドライブへのバックアップと復元ができません。この設定は、その認証だけを [MicroG-RE](https://github.com/MorpheApp/MicroG-RE) 経由で行います。使うには次の準備が必要です。
 
-自動既読の停止は1対1、GROUP、ROOMの通常チャットが対象です。OpenChat、Service Chat、AI Characterは対象外です。
+1. [MicroG-RE の公式リリース](https://github.com/MorpheApp/MicroG-RE/releases)をインストールする。公式リリース以外（別の fork や自分でビルドしたもの）は使われません。
+2. MicroG-RE に、LINE のバックアップに使う Google アカウントを追加する。
 
-通知の受信は、Firebase Installations が付ける `X-Android-Cert` ヘッダーの値だけを置き換えます。Google Play services、LINE の認証、その他の通信は変更しません。Google に対してアプリの署名を公式版と偽って申告する処理のため、Firebase や LINE の利用規約に抵触する可能性があり、Google 側の検証が変われば効かなくなります。OFF にすると、アプリを閉じている間は通知が届かないことがあります。判断の経緯は [ADR 0002](docs/adr/0002-fis-certificate-header.md) を参照してください。
+MicroG-RE がない状態でバックアップしようとすると、導入を案内する通知が表示されます。
 
-MicroG-RE でトークをバックアップする機能は、Google ドライブ連携の token 要求（`GoogleAuthUtil` の `GetToken`）だけを [MicroG-RE](https://github.com/MorpheApp/MicroG-RE)（`app.revanced.android.gms`）へ向け、manifest の meta-data で公式 LINE の証明書 SHA-1 を申告します。通知、位置情報など他の Google Play services の機能、LINE の認証、Drive との通信内容は変更しません。使うには次の準備が必要です。
+> [!WARNING]
+> 通知とバックアップの 2 つの機能は、Google に対してアプリの署名を公式版と偽って申告します。Google や LINE の利用規約に抵触する可能性があり、Google アカウントへの影響も否定できません。また、Google 側や MicroG-RE の変更で使えなくなることがあります。
 
-1. [MicroG-RE の公式リリース](https://github.com/MorpheApp/MicroG-RE/releases)をインストールする。同じパッケージ名でも、公式リリースと異なる証明書で署名されたもの（別の fork や自分でビルドしたもの）は使いません。
-2. MicroG-RE に、LINE のバックアップに使うものと同じ Google アカウントを追加する。
+## 開発
 
-Google に対してアプリの署名を公式版と偽って申告する処理のため、Google や LINE の利用規約に抵触する可能性があり、Google アカウントへの影響も否定できません。Google 側の検証や MicroG-RE の仕様が変われば効かなくなります。OFF にすると、再署名した LINE ではバックアップと復元ができません。判断の経緯は [ADR 0003](docs/adr/0003-microg-re-google-auth.md) を参照してください。
-
-> [!NOTE]
-> 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。端末内のデータは引き継げないため、公式アプリで Google ドライブへバックアップしてから入れ替え、MicroG-RE 経由で復元してください。再署名版で作ったバックアップを公式アプリで復元できるかは確認していません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。
-
-## 必要環境
-
-- Java 17
-- Gradle Wrapper が依存関係を取得できるネットワーク環境
-- Morphe の GitHub Packages を読むための認証情報
-
-認証情報をプロジェクトへ保存しないでください。`gpr.user` と `gpr.key` は `~/.gradle/gradle.properties` に設定するか、`GITHUB_ACTOR` と `GITHUB_TOKEN` を環境変数で渡します。
-
-## ビルド
+ビルドには Java 17 と、Morphe の GitHub Packages を読むための認証情報が必要です。`~/.gradle/gradle.properties` に `gpr.user` と `gpr.key` を設定するか、環境変数 `GITHUB_ACTOR` と `GITHUB_TOKEN` で渡します。認証情報はリポジトリに置かないでください。
 
 ```sh
-./gradlew buildAndroid
+./gradlew test buildAndroid
 ```
 
-生成される Morphe パッチバンドルは `patches/build/libs/patches-*.mpp` に出力されます。runtime extension は `extensions/linimal.mpe` としてこのバンドルへ同梱されます。
-
-## ディレクトリ
-
-```text
-patches/             Morphe パッチ定義と fingerprint
-extensions/linimal/  LINE APK へ注入する runtime コード
-reference/           Reference APKM の公開可能なメタデータ
-line-apk/            ローカルの APKM 入力。Git 管理対象外
-docs/                互換性、検証、セキュリティ資料
-```
-
-## セキュリティ
-
-次の情報はリポジトリへ含めません。
-
-- 公式または変更済みの APK、APKM、APKS、XAPK
-- keystore、署名鍵、証明書の秘密情報
-- GitHub Packages の認証情報
-- LINE のアカウント情報、token、cookie、メッセージ、端末データ
-- 逆コンパイル結果や一時的な解析出力
-
-`line-apk/` は読み取り専用のローカル入力として扱います。Reference metadata と hash だけを `reference/` に保存します。
+パッチバンドルは `patches/build/libs/patches-*.mpp` に出力されます。APK、APKM、署名鍵、逆コンパイル結果はコミットしません。設計判断は [docs/adr](docs/adr)、解析は [docs/analysis](docs/analysis) にあります。
 
 ## ライセンス
 
-Linimal は [GNU General Public License v3.0](LICENSE) で提供します。Morphe の名称および商標に関する追加条件は [NOTICE](NOTICE) を参照してください。
+[GNU General Public License v3.0](LICENSE) で提供します。Morphe の名称と商標に関する追加条件は [NOTICE](NOTICE) を参照してください。
