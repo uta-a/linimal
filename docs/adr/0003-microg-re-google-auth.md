@@ -29,7 +29,7 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 3. `"com.google.android.gms"` は GMS client 全体の共有定数なので一括置換しない。GoogleAuthServiceClient を使うかの判定を false にして `GetToken` の経路へ回し、`GetToken` の bind 先だけを MicroG-RE に差し替える。FCM、FIS、位置情報など他の GMS、LINE の認証・LEGY、Drive REST の通信内容は変更しない。
 4. runtime 設定「MicroG-RE でトークをバックアップする」で切り替え、既定値は ON とする（利用者の判断）。MicroG-RE が未導入なら ON でも元の経路を使うため、既定で ON にしても MicroG-RE を入れない利用者の通信経路は変わらない（導入案内の通知だけが増える）。OFF、未初期化、例外時は hook が元の値を返す。
 5. MicroG-RE は、パッケージ名に加えて MorpheApp/MicroG-RE の公式リリースの署名証明書（SHA-256）で確かめる。同じパッケージ名の別アプリに token の要求やバックアップを渡さないためである。証明書が一致しなければ未導入と同じに扱う。
-6. 設定 ON で MicroG-RE が未導入のまま token が要求されたら、導入を案内する通知を 10 分に 1 回まで出す。タップ先は MicroG-RE のリリースページ（固定 URL）とする。
+6. 設定 ON で MicroG-RE が未導入のまま token が要求されたら、導入の案内を 10 分に 1 回まで出す。案内は通知とトーストの両方とする。新規インストール直後の復元では通知が許可されていないことが多いためである。通知のタップ先は MicroG-RE のリリースページ（固定 URL）とする。GoogleAuthServiceClient の判定は別のフラグとの `&&` の後ろにあり呼ばれないことがあるため、案内は判定と `GetToken` の bind の両方の hook から出す。
 7. fingerprint が一意に定まらない、差し替える register を確認できない、manifest の形が想定と違う場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する。定数が未設定なら DISABLED を記録する。
 
 ## 結果
@@ -47,6 +47,7 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 - 復元とバックアップがどちらも完了した。MicroG-RE は v3 lineage の root の SHA-1 で申告し、Google は `drive.appdata` の token を発行した。
 - bind 先の署名検査はなかった。MicroG-RE は上書きについて利用者の確認を求めなかった。
 - 公式 LINE 26.14.0 で作ったバックアップを PoC 版で復元できた。
+- MicroG-RE の証明書を誤った値にした版で、MicroG-RE がない状態を再現し、バックアップ時にトーストと通知の両方が出ることを確かめた。最初の実装は判定の hook からしか案内を出しておらず、判定が呼ばれずに案内が出なかった。
 - 申告する値を SDK 33 以上の signer の SHA-1（`6A2927D9…67BD`）にすると、token は発行され、バックアップの作成もできたが、復元は「インターネットに接続できません」で失敗した。lineage の root の SHA-1 に戻すと復元できた。申告する値は lineage の root とする。
 
 ## 未確認事項
@@ -56,6 +57,5 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 - Google 側の検証の変更で効かなくなる可能性。
 - 再署名版で作ったバックアップを公式 LINE で復元できるか。
 - SDK 32 以下の端末。
-- MicroG-RE が未導入のときの導入案内の通知（単体テストのみで、実機では未確認）。
 - `GoogleAuthUtil` を呼ぶのがバックアップ・復元の経路だけかどうか。他の経路があれば、そこでも token の要求が MicroG-RE へ向き、導入案内の通知が出る。
 - MicroG-RE が署名鍵を変えた場合。lineage でローテーションすれば照合は通るが、鍵を作り直すと未導入扱いになる。
