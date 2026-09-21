@@ -18,7 +18,7 @@ object Constants {
      * `apksigner verify --print-certs` の SHA-1 digest を写します。公開鍵の識別子であり秘密情報ではありません。
      * 空のあいだは push 通知の復旧 patch が LINE を書き換えず、機能は利用不可として記録されます。
      */
-    const val LINE_ORIGINAL_CERTIFICATE_SHA1 = ""
+    const val LINE_ORIGINAL_CERTIFICATE_SHA1 = "89396DC419292473972813922867E6973D6F5C50"
 
     val LINE_COMPATIBILITY = Compatibility(
         name = "LINE",
