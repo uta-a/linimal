@@ -106,6 +106,7 @@ v1 開発中は上記の reference version のみを対象とします。
 | 一般 | Premium 誘導の抑制 | OFF | 送信取消時に表示される LINE Premium の案内を表示しません。 |
 | 一般 | Premium 設定行の抑制 | OFF | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
 | 一般 | 外部ブラウザ | OFF | 通常チャット本文の http と https の外部リンクだけを端末のブラウザで開きます。LINE、ログイン、決済のリンクは元のままです。 |
+| 一般 | 通知の受信 | ON | 通知の登録（Firebase Installations）で Google へ送る署名情報を、公式 LINE の証明書 SHA-1 に置き換えます。再署名した LINE でも、アプリを閉じている間に通知が届くようにするためのものです。 |
 
 設定画面は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般` の5ページに分かれています。`Agent i・LINE AI` と `表示を消す` は、ページ内をさらに場所ごとの小見出しで区切ります。小見出しは、その中に表示できる項目が一つも残らない場合には描画しません。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
 
@@ -118,6 +119,8 @@ Premium の抑制は案内表示と LINE 設定の行表示だけを対象とし
 Agent i と LINE AI は確認できたUI入口だけを場所別に抑制します。backend、subscription、billing、conversation data、common navigator、networkを変更しません。Commerce top navigation、Search、Home AI Matomeは到達可能な入口と確認できていないため対象外です。
 
 自動既読の停止は1対1、GROUP、ROOMの通常チャットが対象です。OpenChat、Service Chat、AI Characterは対象外です。
+
+通知の受信は、Firebase Installations が付ける `X-Android-Cert` ヘッダーの値だけを置き換えます。Google Play services、LINE の認証、その他の通信は変更しません。Google に対してアプリの署名を公式版と偽って申告する処理のため、Firebase や LINE の利用規約に抵触する可能性があり、Google 側の検証が変われば効かなくなります。OFF にすると、アプリを閉じている間は通知が届かないことがあります。判断の経緯は [ADR 0002](docs/adr/0002-fis-certificate-header.md) を参照してください。
 
 > [!NOTE]
 > 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。公式アプリのデータも引き継げません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。

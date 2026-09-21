@@ -214,7 +214,11 @@ public final class FeatureCatalog {
                     "LINE の設定画面にある LINE Premium の行を表示しません。"),
             new Entry(LinimalFeature.EXTERNAL_BROWSER, SettingsPage.GENERAL,
                     "リンクを外部ブラウザで開く",
-                    "通常の http/https のみ外部ブラウザへ渡します。ログインや決済は元のまま開きます。")));
+                    "通常の http/https のみ外部ブラウザへ渡します。ログインや決済は元のまま開きます。"),
+            new Entry(LinimalFeature.PUSH_NOTIFICATIONS, SettingsPage.GENERAL,
+                    "アプリを閉じていても通知を受け取る",
+                    "通知の登録時に Google へ送る署名情報を公式 LINE のものに置き換えます。"
+                            + "OFF にすると、アプリを閉じている間は通知が届かないことがあります。")));
 
     private FeatureCatalog() {
     }

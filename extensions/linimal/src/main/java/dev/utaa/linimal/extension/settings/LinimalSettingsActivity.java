@@ -453,6 +453,9 @@ public final class LinimalSettingsActivity extends Activity {
         if (patchStatus == null) {
             return "パッチの適用状況を確認できないため、この機能は現在利用できません。";
         }
+        if (patchStatus == PatchStatus.DISABLED) {
+            return "この build では用意されていないため、この機能は利用できません。";
+        }
         return "パッチが完全に適用されていないため、この機能は現在利用できません。";
     }
 

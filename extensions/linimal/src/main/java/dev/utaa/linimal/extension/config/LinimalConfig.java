@@ -234,6 +234,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.EXTERNAL_BROWSER);
     }
 
+    public boolean isPushNotificationRestoreEnabled() {
+        return isEnabled(LinimalFeature.PUSH_NOTIFICATIONS);
+    }
+
     /**
      * 設定画面のための一括アクセス。機能 hook からは意味論的なメソッドを使い、
      * 任意の feature を扱うのは設定画面だけに限ります。

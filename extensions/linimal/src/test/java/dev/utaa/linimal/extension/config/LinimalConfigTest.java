@@ -30,6 +30,7 @@ public final class LinimalConfigTest {
             LinimalFeature.AGENT_I_CHAT_LIST_SEARCH,
             LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU,
             LinimalFeature.LINE_AI_GALLERY_VIEWER,
+            LinimalFeature.PUSH_NOTIFICATIONS,
             LinimalFeature.ADS,
             LinimalFeature.LINE_AI);
 
@@ -69,7 +70,8 @@ public final class LinimalConfigTest {
      * 挙動が無いため、migration は書き込まず、その時点の既定値をそのまま使わせます。
      */
     private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
-            LinimalFeature.HOME_RECENT_HISTORY);
+            LinimalFeature.HOME_RECENT_HISTORY,
+            LinimalFeature.PUSH_NOTIFICATIONS);
 
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {
@@ -96,11 +98,11 @@ public final class LinimalConfigTest {
     }
 
     /**
-     * 新規インストールで ON になるのは、広告と Agent i・LINE AI の抑制だけです。
+     * 新規インストールで ON になるのは、広告と Agent i・LINE AI の抑制、push 通知の復旧だけです。
      * ほかは LINE の元の挙動のままにし、利用者が設定画面で選びます。
      */
     @Test
-    public void freshInstallEnablesOnlyTheAdAndAgentISuppressions() {
+    public void freshInstallEnablesOnlyTheAdAgentIAndPushNotificationDefaults() {
         InMemoryBackend backend = new InMemoryBackend();
         LinimalConfig config = configFor(backend);
 

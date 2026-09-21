@@ -1,0 +1,42 @@
+# ADR 0002: push 通知の登録で公式証明書の SHA-1 を送る
+
+- 状態: 採用
+- 日付: 2026-09-21
+- 関連: [ADR 0001](0001-reference-and-signing-policy.md) 決定 4、[互換性](../compatibility/line-26.11.0-arm64-v8a.md)
+
+## 背景
+
+再署名した LINE では、アプリを閉じている間に push 通知が届かない。LINE に同梱された Firebase Installations (FIS) SDK は、アプリ自身の署名から SHA-1 を計算して `X-Android-Cert` ヘッダーに載せる。Google 側の API key は公式 LINE の証明書にしか許可されていないため、FIS の登録が `BAD CONFIG` で拒否され、FCM token を取得できない。
+
+ADR 0001 は「再署名は公式署名または integrity 検査を回避する目的ではない」とし、互換性文書は署名検査が主要機能を妨げた場合に「回避を暗黙に追加せず go/no-go とする」としている。通知は主要機能であり、この問題はその go/no-go の判断に当たる。
+
+検討した選択肢:
+
+| 方式 | 評価 |
+| --- | --- |
+| LSPatch の signature bypass | アプリのプロセス内だけを偽装する。LSPatch を使う LINE 向けモジュールでも、アプリを閉じていると通知が届かない問題が未解決のまま報告されている。見込みが低い |
+| MicroG-RE（GmsCore support） | GMS への参照をすべて MicroG-RE へ向け、元のパッケージ名と署名を meta-data で申告する。利用者に別アプリの導入と Google アカウントの追加を求め、MicroG-RE 側が任意のアプリに対応しているかも確認できていない。Linimal だけでは完結しない |
+| root の Mount install | 署名が変わらないため問題自体が起きない。root が前提で、Linimal の配布形態とは別物 |
+| FIS の `X-Android-Cert` だけを置き換える | 変更は LINE 内の 1 メソッドの 1 引数で済み、端末本体の Google Play services だけで動く。第三者の Morphe パッチ集が同じ方式を採っている |
+
+## 決定
+
+1. 再署名で失われた push 通知の登録を戻す目的に限り、FIS が送る `X-Android-Cert` の値を公式 LINE の証明書 SHA-1 に置き換えることを認める。ADR 0001 決定 4 の例外として扱う。
+2. 対象は FIS の接続生成メソッドにある `addRequestProperty("X-Android-Cert", value)` の value だけとする。GMS、`PackageManager` の署名情報、Remote Config など FIS 以外の Firebase client、LINE の認証・LEGY・その他の通信は変更しない。
+3. 送る値は公開鍵の識別子である証明書 SHA-1 に限る。元の署名鍵は取得・保存・利用しない（ADR 0001 決定 4 のとおり）。
+4. 値は patch 側の定数 `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1` の 1 か所で管理し、reference APKM に対する `apksigner verify --print-certs` の出力から写す。定数が空、または形式が不正なら patch は LINE を変更せず、patch status に `DISABLED` を記録する。
+5. runtime 設定「アプリを閉じていても通知を受け取る」で切り替え、既定値は ON とする。OFF、未初期化、例外時は hook が実際の値をそのまま返す。
+6. 次のいずれかに当たる場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する: fingerprint が一意に定まらない、キーの register が `X-Android-Cert` のまま呼び出しに渡ることを確認できない、値が String を返す呼び出しの結果でない、キーと値を作ってから呼び出すまでの区間に分岐先か例外 handler の先頭がある。
+
+## 結果
+
+- 再署名版でも、アプリを閉じている間の通知を公式版と同じ経路（端末本体の Google Play services と FCM）で受け取れる見込みになる。実機で確認するまでは見込みにとどまる。
+- アプリの身元の申告を Google の API key 制限に対して偽ることになる。Firebase や LINE の利用規約に抵触する可能性があり、Google が検証を強めれば効かなくなる。README にその旨を明記する。
+- 公式証明書は v3 の鍵ローテーションで 2 つある（SDK 24–32 と SDK 33 以上）。まず lineage の root を送る。SDK 33 以上の端末で登録が拒否される場合は、端末の SDK で値を選ぶよう見直す。
+
+## 未確認事項
+
+- `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1` の値。reference APKM がある環境で取得する。
+- LINE 26.11.0 の DEX で fingerprint が一件だけ一致し、Remote Config の client が一致しないこと。
+- Linimal の初期化より前に FIS の登録が走った場合の挙動。設定が未初期化のあいだ hook は実際の値を返すため、最初の登録が失敗してから再試行で成功する可能性がある。
+- 実機で、アプリを閉じた状態の通知、通知のタップ、ログイン状態の維持、公式版との差がないこと。SDK 32 以下と 33 以上の両方で確認する。

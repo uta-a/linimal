@@ -54,7 +54,8 @@ public enum LinimalFeature {
     MINI("linimal.mini"),
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),
-    CHAT_LIST_HEADER_OPEN_CHAT("linimal.chat-list-header-open-chat");
+    CHAT_LIST_HEADER_OPEN_CHAT("linimal.chat-list-header-open-chat"),
+    PUSH_NOTIFICATIONS("linimal.push-notifications");
 
     private final String featureId;
 

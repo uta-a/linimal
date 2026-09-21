@@ -8,8 +8,8 @@ public final class LinimalDefaults {
     }
 
     /**
-     * 既定で有効にするのは広告の非表示と、Agent i・LINE AI の入口の非表示だけです。
-     * それ以外は LINE の元の挙動を初期状態とし、利用者が設定画面で選びます。
+     * 既定で有効にするのは広告の非表示、Agent i・LINE AI の入口の非表示、再署名で失われる
+     * push 通知の復旧だけです。それ以外は LINE の元の挙動を初期状態とし、利用者が設定画面で選びます。
      */
     static boolean isEnabled(LinimalFeature feature) {
         switch (feature) {
@@ -23,6 +23,7 @@ public final class LinimalDefaults {
             case AGENT_I_CHAT_LIST_SEARCH:
             case LINE_AI_MESSAGE_CONTEXT_MENU:
             case LINE_AI_GALLERY_VIEWER:
+            case PUSH_NOTIFICATIONS:
             // v1 aliases are routed to their v2 replacement keys by LinimalConfigSchema.
             case ADS:
             case LINE_AI:

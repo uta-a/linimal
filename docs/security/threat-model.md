@@ -20,4 +20,6 @@
 
 この gate は APKM の同一性を確認するもので、パッチ後の LINE の認証/integrity 挙動、端末 installability、機能の安全性を保証しません。`apksigner` と SDK 自体は開発環境の信頼境界であり、CI では既知の SDK build-tools を明示的に指定します。
 
+パッチ側では、再署名で失われた push 通知の登録を戻すため、Firebase Installations が送る `X-Android-Cert` の値だけを公式証明書の SHA-1 に置き換える（[ADR 0002](../adr/0002-fis-certificate-header.md)）。送るのは公開鍵の識別子だけで、元の署名鍵は扱わない。これはアプリの身元を Google の API key 制限に対して偽る処理であり、利用規約上のリスクと、Google 側の検証変更で効かなくなるリスクが残る。
+
 preflight に URL、message content、credential、keystore、private key を渡したり保存したりしてはいけません。エラー出力は入力不一致を示す最小限の情報だけに限定します。
