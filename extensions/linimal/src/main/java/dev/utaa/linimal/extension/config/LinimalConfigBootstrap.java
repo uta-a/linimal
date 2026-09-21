@@ -11,4 +11,9 @@ public final class LinimalConfigBootstrap {
     public static void initialize(Context context) {
         LinimalConfig.initialize(context);
     }
+
+    /** まだ初期化を試みていなければ初期化します。Application 初期化より前に動く hook 向けです。 */
+    public static void initializeIfNeeded(Context context) {
+        LinimalConfig.initializeIfNeeded(context);
+    }
 }

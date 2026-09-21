@@ -1,6 +1,9 @@
 package dev.utaa.linimal.extension.features.push;
 
+import android.content.Context;
+
 import dev.utaa.linimal.extension.config.LinimalConfig;
+import dev.utaa.linimal.extension.config.LinimalConfigBootstrap;
 
 /**
  * LINE に同梱された Firebase Installations (FIS) の登録リクエストで、{@code X-Android-Cert}
@@ -19,16 +22,49 @@ public final class FirebaseInstallationsHooks {
 
     /**
      * FIS の {@code addRequestProperty("X-Android-Cert", value)} の直前で呼ばれます。
-     * 設定 OFF、未初期化、元の証明書が未設定、例外のいずれでも実際の値をそのまま返します。
+     *
+     * <p>Firebase は ContentProvider から LINE の Application 初期化より前に動き出すため、設定がまだ
+     * 初期化されていなければ、ここで初期化してから判定します。設定 OFF、初期化できない、元の証明書が
+     * 未設定、例外のいずれでも実際の値をそのまま返します。</p>
      */
     public static String certificateHeader(String actual) {
+        return certificateHeader(actual, FirebaseInstallationsHooks::initializeConfigIfNeeded);
+    }
+
+    static String certificateHeader(String actual, Runnable ensureConfigInitialized) {
         try {
+            ensureConfigInitialized.run();
             return certificateHeaderWith(
                     LinimalConfig.get().isPushNotificationRestoreEnabled(),
                     originalCertificateSha1(),
                     actual);
         } catch (Throwable ignored) {
             return actual;
+        }
+    }
+
+    private static void initializeConfigIfNeeded() {
+        if (LinimalConfig.isInitializationAttempted()) {
+            return;
+        }
+        Context application = currentApplication();
+        if (application != null) {
+            LinimalConfigBootstrap.initializeIfNeeded(application);
+        }
+    }
+
+    /**
+     * プロセスの Application を返します。ContentProvider の生成時点でも Application は作られていますが、
+     * LINE の初期化 hook はまだ呼ばれていないため、ここから取ります。取れなければ null です。
+     */
+    private static Context currentApplication() {
+        try {
+            Object application = Class.forName("android.app.ActivityThread")
+                    .getMethod("currentApplication")
+                    .invoke(null);
+            return application instanceof Context ? (Context) application : null;
+        } catch (Throwable ignored) {
+            return null;
         }
     }
 

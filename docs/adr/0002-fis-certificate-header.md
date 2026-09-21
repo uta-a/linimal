@@ -25,7 +25,7 @@ ADR 0001 は「再署名は公式署名または integrity 検査を回避する
 2. 対象は FIS の接続生成メソッドにある `addRequestProperty("X-Android-Cert", value)` の value だけとする。GMS、`PackageManager` の署名情報、Remote Config など FIS 以外の Firebase client、LINE の認証・LEGY・その他の通信は変更しない。
 3. 送る値は公開鍵の識別子である証明書 SHA-1 に限る。元の署名鍵は取得・保存・利用しない（ADR 0001 決定 4 のとおり）。
 4. 値は patch 側の定数 `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1` の 1 か所で管理し、reference APKM に対する `apksigner verify --print-certs` の出力から写す。定数が空、または形式が不正なら patch は LINE を変更せず、patch status に `DISABLED` を記録する。
-5. runtime 設定「アプリを閉じていても通知を受け取る」で切り替え、既定値は ON とする。OFF、未初期化、例外時は hook が実際の値をそのまま返す。
+5. runtime 設定「アプリを閉じていても通知を受け取る」で切り替え、既定値は ON とする。Firebase は ContentProvider から LINE の Application 初期化より前に動き出すため、hook は設定が未初期化ならその場で初期化してから判定する（2026-09-22 改訂）。OFF、初期化できない、例外時は hook が実際の値をそのまま返す。
 6. 次のいずれかに当たる場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する: fingerprint が一意に定まらない、キーの register が `X-Android-Cert` のまま呼び出しに渡ることを確認できない、値の register が接続やキーと同じ、キーの `const-string` の直後から呼び出しまでに分岐先か例外 handler の先頭がある。値の出どころは問わない。元の呼び出しが値を String として受け取るため、verifier が呼び出しの時点で String か null であることを保証する。LINE 26.11.0 では値が SHA-1・null・例外時の null の 3 経路からキーの `const-string` で合流するため、当初の「値が String を返す呼び出しの結果であること」「キーと値を作ってからの区間に合流点がないこと」という条件では適用できなかった（2026-09-22 改訂）。
 
 ## 結果
@@ -42,9 +42,11 @@ SDK 36 の端末（Google Play services あり）で、Linimal を当てた LINE
 - 一時的な診断ログで、起動時に hook が呼ばれ、設定 ON で値を公式証明書の SHA-1（v3 lineage の root）に置き換えたことを確認した。
 - 最近のアプリ一覧からスワイプして LINE のプロセスを終了させ、別のアカウントからメッセージを送ると、端末本体の Google Play services が LINE 宛ての FCM メッセージを受け取り、`FirebaseInstanceIdReceiver` で LINE のプロセスが起動した。通知が表示され、タップでトークが開いた。修正前の APK では、LINE 宛ての配信は 1 件もなかった。
 - SDK 33 以上の端末でも、lineage の root の SHA-1 で登録が通った。
+- 新規インストールの直後など、FIS の登録が Linimal の設定の初期化より先に走ると、hook は元の値を送り、登録が拒否されていた（診断ログで `health=ERROR` を 3 回確認）。同じプロセス内での再試行はなかった。決定 5 を改訂し、hook がその場で設定を初期化するようにした。ただし改訂後の実機確認では、Linimal の通常の初期化が先に終わっており、その場での初期化が働く場面そのものはまだ観測していない。
+- SDK 33 以上の signer の SHA-1（`6A2927D9…67BD`）でも、FIS の登録と通知は通った。ただし同じ値で MicroG-RE 経由のトークの復元が失敗した（ADR 0003）ため、定数は lineage の root のままとする。
 
 ## 未確認事項
 
-- Linimal の初期化より前に FIS の登録が走った場合の挙動。設定が未初期化のあいだ hook は実際の値を返すため、最初の登録が失敗してから再試行で成功する可能性がある。
+- hook がその場で設定を初期化する経路の実機での動作（単体テストのみ）。
 - ログイン状態の長期的な維持と、公式版との差がないこと。
 - SDK 32 以下の端末。

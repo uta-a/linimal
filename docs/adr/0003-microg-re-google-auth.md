@@ -47,6 +47,7 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 - 復元とバックアップがどちらも完了した。MicroG-RE は v3 lineage の root の SHA-1 で申告し、Google は `drive.appdata` の token を発行した。
 - bind 先の署名検査はなかった。MicroG-RE は上書きについて利用者の確認を求めなかった。
 - 公式 LINE 26.14.0 で作ったバックアップを PoC 版で復元できた。
+- 申告する値を SDK 33 以上の signer の SHA-1（`6A2927D9…67BD`）にすると、token は発行され、バックアップの作成もできたが、復元は「インターネットに接続できません」で失敗した。lineage の root の SHA-1 に戻すと復元できた。申告する値は lineage の root とする。
 
 ## 未確認事項
 
