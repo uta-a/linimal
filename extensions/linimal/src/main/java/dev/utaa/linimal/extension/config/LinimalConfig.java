@@ -16,6 +16,8 @@ import dev.utaa.linimal.extension.status.PatchStatusRepository;
  */
 public final class LinimalConfig {
     private static volatile LinimalConfig shared = unavailable();
+    /** このプロセスで初期化を試みたかどうか。失敗して fail-open になった場合も true です。 */
+    private static volatile boolean initializationAttempted;
 
     private final LinimalConfigStore store;
     /** patch status に基づく機能ごとの利用可否。読み取れない場合はすべて利用不可です。 */
@@ -38,6 +40,7 @@ public final class LinimalConfig {
 
     /** internal bootstrap boundary からプロセスローカルな config instance を初期化します。 */
     static synchronized void initialize(android.content.Context context) {
+        initializationAttempted = true;
         try {
             // patch status は起動時に一度だけ読み、以降は同じ結果を使い続けます。
             PatchStatusReadResult patchStatusResult = readPatchStatus(context);
@@ -59,6 +62,21 @@ public final class LinimalConfig {
         } catch (RuntimeException exception) {
             return null;
         }
+    }
+
+    /**
+     * まだ初期化を試みていない場合だけ初期化します。LINE の Application 初期化より前に動く hook
+     * （ContentProvider から始まる Firebase など）が、設定を読む前に呼びます。
+     */
+    static synchronized void initializeIfNeeded(android.content.Context context) {
+        if (!initializationAttempted) {
+            initialize(context);
+        }
+    }
+
+    /** このプロセスで初期化を試みたかどうかを返します。 */
+    public static boolean isInitializationAttempted() {
+        return initializationAttempted;
     }
 
     /** プロセスローカルな設定を返します。初期化前は fail-open です。 */

@@ -20,6 +20,23 @@ public final class FirebaseInstallationsHooksTest {
         assertNull(FirebaseInstallationsHooks.certificateHeader(null));
     }
 
+    /** 設定を読む前に、未初期化なら初期化を試みます。 */
+    @Test
+    public void configurationIsInitializedBeforeTheDecision() {
+        boolean[] initialized = {false};
+
+        FirebaseInstallationsHooks.certificateHeader(ACTUAL, () -> initialized[0] = true);
+
+        assertTrue(initialized[0]);
+    }
+
+    @Test
+    public void failedInitializationKeepsTheActualCertificate() {
+        assertSame(ACTUAL, FirebaseInstallationsHooks.certificateHeader(ACTUAL, () -> {
+            throw new IllegalStateException("storage unavailable");
+        }));
+    }
+
     @Test
     public void enabledSettingSendsTheOriginalCertificate() {
         assertEquals(ORIGINAL, FirebaseInstallationsHooks.certificateHeaderWith(true, ORIGINAL, ACTUAL));
