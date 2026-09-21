@@ -37,11 +37,19 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 - MicroG-RE は申告された署名を検証しない。meta-data を書けるのはパッチ適用者だけ、という前提が信頼境界になる。
 - 利用者は Linimal 以外の第三者アプリ（MicroG-RE）を信頼して導入する必要がある。
 
+## PoC の結果（2026-09-22）
+
+実験用パッチ（`patches/.../features/googleauth/GoogleAuthMicrogRoutingPatch.kt`）で、SDK 36 の端末で次を確認した。詳細は[解析](../analysis/google-drive-backup-auth.md)。
+
+- バックアップは Google Sign-In を使わず、`GoogleAuthUtil` の token 要求だけを使う。差し替えたのは、GoogleAuthServiceClient を使うかの判定（MicroG-RE があれば false）と、`GetToken` の bind 先の 2 か所。
+- 復元とバックアップがどちらも完了した。MicroG-RE は v3 lineage の root の SHA-1 で申告し、Google は `drive.appdata` の token を発行した。
+- bind 先の署名検査はなかった。MicroG-RE は上書きについて利用者の確認を求めなかった。
+- 公式 LINE 26.14.0 で作ったバックアップを PoC 版で復元できた。
+
 ## 未確認事項
 
-- 認証だけを MicroG-RE へ向け、他を端末本体の Google Play services のままにしても、GMS client が両立するか。
-- GMS client 側の bind 先の署名検査が MicroG-RE を弾くか。
-- MicroG-RE がパッケージの上書きについて利用者の確認を求めるか（manifest に `AskPackageOverrideActivity` がある）。
-- Google 側に署名以外の検査（DroidGuard など）があるか。
-- v3 lineage の root と SDK 33 以上の signer のどちらの SHA-1 が OAuth client に登録されているか。
+- 認証だけを MicroG-RE へ向け、他を端末本体の Google Play services のままにした状態の長期的な両立。
+- token の更新と、MicroG-RE がアクセス許可を求める場合の表示。
+- Google 側の検証の変更で効かなくなる可能性。
 - 再署名版で作ったバックアップを公式 LINE で復元できるか。
+- SDK 32 以下の端末。
