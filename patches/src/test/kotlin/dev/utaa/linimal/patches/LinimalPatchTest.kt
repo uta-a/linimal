@@ -28,6 +28,9 @@ import dev.utaa.linimal.patches.features.lineai.lineAiGalleryViewerPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiMessageContextMenuPatch
 import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
 import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
+import dev.utaa.linimal.patches.features.googleauth.googleAuthMicrogManifestPatch
+import dev.utaa.linimal.patches.features.googleauth.googleAuthTokenRoutingPatch
+import dev.utaa.linimal.patches.features.push.fisCertificateHeaderPatch
 import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptManualCallerPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePatch
@@ -72,7 +75,13 @@ class LinimalPatchTest {
     @Test
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertEquals(setOf(chatListHeaderButtonsPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(googleAuthTokenRoutingPatch), noOpProbePatch.dependencies)
+        assertEquals(
+            setOf(fisCertificateHeaderPatch, googleAuthMicrogManifestPatch),
+            googleAuthTokenRoutingPatch.dependencies,
+        )
+        assertEquals(setOf(patchStatusResourcePatch), googleAuthMicrogManifestPatch.dependencies)
+        assertEquals(setOf(chatListHeaderButtonsPatch), fisCertificateHeaderPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptLocalReadBlockPatch), chatListHeaderButtonsPatch.dependencies)
         assertEquals(
             setOf(readWithoutReceiptMarkAsReadBlockPatch),

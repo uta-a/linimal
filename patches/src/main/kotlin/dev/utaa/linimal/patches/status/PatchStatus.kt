@@ -39,6 +39,8 @@ enum class FeatureId(val value: String) {
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),
     CHAT_LIST_HEADER_OPEN_CHAT("linimal.chat-list-header-open-chat"),
+    PUSH_NOTIFICATIONS("linimal.push-notifications"),
+    GOOGLE_DRIVE_BACKUP("linimal.google-drive-backup"),
     PROBE("linimal.probe"),
     LINIMAL("linimal.core"),
 }
@@ -169,6 +171,9 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.chat-list-header-open-chat",
         FeatureId.CHAT_LIST_HEADER_OPEN_CHAT,
     ),
+    FIS_CERTIFICATE_HEADER("linimal.patch.fis-certificate-header", FeatureId.PUSH_NOTIFICATIONS),
+    GOOGLE_AUTH_MICROG_MANIFEST("linimal.patch.google-auth-microg-manifest", FeatureId.GOOGLE_DRIVE_BACKUP),
+    GOOGLE_AUTH_TOKEN_ROUTING("linimal.patch.google-auth-token-routing", FeatureId.GOOGLE_DRIVE_BACKUP),
     NO_OP_PROBE("linimal.patch.no-op-probe", FeatureId.PROBE),
     LINIMAL("linimal.patch.linimal", FeatureId.LINIMAL),
 }

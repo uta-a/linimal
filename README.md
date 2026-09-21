@@ -106,6 +106,8 @@ v1 開発中は上記の reference version のみを対象とします。
 | 一般 | Premium 誘導の抑制 | OFF | 送信取消時に表示される LINE Premium の案内を表示しません。 |
 | 一般 | Premium 設定行の抑制 | OFF | LINE 設定のプレミアム行を表示しません。LYPプレミアムとLINEプレミアムの地域 variant 2件が対象で、行ごと消えて下が詰まります。 |
 | 一般 | 外部ブラウザ | OFF | 通常チャット本文の http と https の外部リンクだけを端末のブラウザで開きます。LINE、ログイン、決済のリンクは元のままです。 |
+| 一般 | 通知の受信 | ON | 通知の登録（Firebase Installations）で Google へ送る署名情報を、公式 LINE の証明書 SHA-1 に置き換えます。再署名した LINE でも、アプリを閉じている間に通知が届くようにするためのものです。 |
+| 一般 | MicroG-RE でトークをバックアップする | ON | トークのバックアップと復元で使う Google ドライブの認証を、MicroG-RE 経由で行います。再署名した LINE でもバックアップと復元ができるようにするためのものです。MicroG-RE が入っていない端末では LINE 本来の経路のままで、バックアップ時に MicroG-RE の導入を案内する通知を出します。 |
 
 設定画面は `広告`、`Agent i・LINE AI`、`表示を消す`、`既読`、`一般` の5ページに分かれています。`Agent i・LINE AI` と `表示を消す` は、ページ内をさらに場所ごとの小見出しで区切ります。小見出しは、その中に表示できる項目が一つも残らない場合には描画しません。各ページはスクロールでき、戻る操作と画面回転後のページ復元に対応します。
 
@@ -119,8 +121,17 @@ Agent i と LINE AI は確認できたUI入口だけを場所別に抑制しま�
 
 自動既読の停止は1対1、GROUP、ROOMの通常チャットが対象です。OpenChat、Service Chat、AI Characterは対象外です。
 
+通知の受信は、Firebase Installations が付ける `X-Android-Cert` ヘッダーの値だけを置き換えます。Google Play services、LINE の認証、その他の通信は変更しません。Google に対してアプリの署名を公式版と偽って申告する処理のため、Firebase や LINE の利用規約に抵触する可能性があり、Google 側の検証が変われば効かなくなります。OFF にすると、アプリを閉じている間は通知が届かないことがあります。判断の経緯は [ADR 0002](docs/adr/0002-fis-certificate-header.md) を参照してください。
+
+MicroG-RE でトークをバックアップする機能は、Google ドライブ連携の token 要求（`GoogleAuthUtil` の `GetToken`）だけを [MicroG-RE](https://github.com/MorpheApp/MicroG-RE)（`app.revanced.android.gms`）へ向け、manifest の meta-data で公式 LINE の証明書 SHA-1 を申告します。通知、位置情報など他の Google Play services の機能、LINE の認証、Drive との通信内容は変更しません。使うには次の準備が必要です。
+
+1. [MicroG-RE の公式リリース](https://github.com/MorpheApp/MicroG-RE/releases)をインストールする。同じパッケージ名でも、公式リリースと異なる証明書で署名されたもの（別の fork や自分でビルドしたもの）は使いません。
+2. MicroG-RE に、LINE のバックアップに使うものと同じ Google アカウントを追加する。
+
+Google に対してアプリの署名を公式版と偽って申告する処理のため、Google や LINE の利用規約に抵触する可能性があり、Google アカウントへの影響も否定できません。Google 側の検証や MicroG-RE の仕様が変われば効かなくなります。OFF にすると、再署名した LINE ではバックアップと復元ができません。判断の経緯は [ADR 0003](docs/adr/0003-microg-re-google-auth.md) を参照してください。
+
 > [!NOTE]
-> 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。公式アプリのデータも引き継げません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。
+> 再署名した LINE は公式版とは別の署名になるため、公式アプリへ上書きインストールできません。端末内のデータは引き継げないため、公式アプリで Google ドライブへバックアップしてから入れ替え、MicroG-RE 経由で復元してください。再署名版で作ったバックアップを公式アプリで復元できるかは確認していません。検証には本番アカウントではなく、データ消失を許容できる端末とテストアカウントを使用してください。
 
 ## 必要環境
 

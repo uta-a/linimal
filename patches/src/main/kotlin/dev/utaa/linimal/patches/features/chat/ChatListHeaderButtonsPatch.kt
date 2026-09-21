@@ -100,7 +100,7 @@ val chatListHeaderButtonsPatch = bytecodePatch(
             PatchAvailability.UNAVAILABLE
         }
     }
-    // 機能パッチは単一の直列チェーンを成し、この patch の後段に noOpProbePatch が続きます。
+    // 機能パッチは単一の直列チェーンを成し、この patch の後段に fisCertificateHeaderPatch が続きます。
     dependsOn(readWithoutReceiptLocalReadBlockPatch)
 
     execute {

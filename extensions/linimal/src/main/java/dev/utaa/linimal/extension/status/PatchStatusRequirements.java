@@ -26,6 +26,9 @@ final class PatchStatusRequirements {
         requirements.put("linimal.premium", ids("linimal.patch.premium-unsend"));
         requirements.put("linimal.premium-settings-row", ids("linimal.patch.premium-settings-row"));
         requirements.put("linimal.external-browser", ids("linimal.patch.external-browser-chat-text-link"));
+        requirements.put("linimal.push-notifications", ids("linimal.patch.fis-certificate-header"));
+        requirements.put("linimal.google-drive-backup",
+                ids("linimal.patch.google-auth-microg-manifest", "linimal.patch.google-auth-token-routing"));
         requirements.put("linimal.agent-i-home-header", ids("linimal.patch.agent-i-home-header"));
         requirements.put("linimal.agent-i-chat-information",
                 ids("linimal.patch.agent-i-chat-information-entry"));
