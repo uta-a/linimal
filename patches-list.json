@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "patches": [
     {
       "name": "Linimal",
@@ -241,8 +241,99 @@
       "options": []
     },
     {
+      "name": "MicroG-RE でトークをバックアップする",
+      "description": "Google ドライブ連携の token 要求を、実行時設定で MicroG-RE へ向けられるようにします。",
+      "default": true,
+      "dependencies": [
+        "BytecodePatch",
+        "ResourcePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM_REQUIRED",
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": {
+                "ARM64_V8A": 261100124
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "MicroG-RE でトークをバックアップする（manifest）",
+      "description": "MicroG-RE に公式 LINE の証明書を申告する meta-data を追加します。",
+      "default": true,
+      "dependencies": [
+        "RawResourcePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM_REQUIRED",
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": {
+                "ARM64_V8A": 261100124
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Smart Channel の広告",
       "description": "トーク一覧の Smart Channel にある広告を、実行時設定で非表示にできるようにします。",
+      "default": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM_REQUIRED",
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": {
+                "ARM64_V8A": 261100124
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "アプリを閉じていても通知を受け取る",
+      "description": "Firebase Installations の登録で送る署名情報を、実行時設定で公式 LINE のものに置き換えられるようにします。",
       "default": true,
       "dependencies": [
         "BytecodePatch"
