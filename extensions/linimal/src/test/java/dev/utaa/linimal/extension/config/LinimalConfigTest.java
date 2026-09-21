@@ -31,6 +31,7 @@ public final class LinimalConfigTest {
             LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU,
             LinimalFeature.LINE_AI_GALLERY_VIEWER,
             LinimalFeature.PUSH_NOTIFICATIONS,
+            LinimalFeature.GOOGLE_DRIVE_BACKUP,
             LinimalFeature.ADS,
             LinimalFeature.LINE_AI);
 
@@ -71,7 +72,8 @@ public final class LinimalConfigTest {
      */
     private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
             LinimalFeature.HOME_RECENT_HISTORY,
-            LinimalFeature.PUSH_NOTIFICATIONS);
+            LinimalFeature.PUSH_NOTIFICATIONS,
+            LinimalFeature.GOOGLE_DRIVE_BACKUP);
 
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {

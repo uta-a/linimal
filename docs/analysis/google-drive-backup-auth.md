@@ -47,7 +47,7 @@ MicroG-RE がその値を `client_sig` として Google に送り、token が発
 
 ## PoC の実機検証（2026-09-22）
 
-実験用パッチ（`GoogleAuthMicrogRoutingPatch.kt`）を当てた LINE 26.11.0 を、SDK 36 の端末に入れて確認した。
+実験用パッチ（現在の `GoogleAuthTokenRoutingPatch.kt` の前身）を当てた LINE 26.11.0 を、SDK 36 の端末に入れて確認した。
 
 - ログイン後の復元と、その後の Google ドライブへのバックアップがどちらも完了した。
 - logcat で、MicroG-RE の `GmsAuthManagerSvc` が LINE から `drive.appdata` の token 要求を受けたこと、`SpoofUtils` が署名を

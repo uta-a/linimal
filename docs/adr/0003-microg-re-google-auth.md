@@ -1,6 +1,6 @@
 # ADR 0003: Google ドライブ連携の認証を MicroG-RE へ向ける
 
-- 状態: 提案（PoC の実機検証の結果で採否を決める）
+- 状態: 採用（2026-09-22、PoC の実機検証を経て）
 - 日付: 2026-09-22
 - 関連: [ADR 0001](0001-reference-and-signing-policy.md) 決定 4、[ADR 0002](0002-fis-certificate-header.md)、[解析](../analysis/google-drive-backup-auth.md)
 
@@ -22,24 +22,26 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 | root の Mount install | 署名が変わらないため問題自体が起きない。Linimal の配布形態とは別物 |
 | 非対応とする | 変更はないが、再署名版ではバックアップできない |
 
-## 決定（案）
+## 決定
 
-1. 再署名で失われた Google ドライブ連携を戻す目的に限り、Google Sign-In と `GetToken` の要求だけを MicroG-RE へ向ける。ADR 0001 決定 4 と、認証を変更しないという制約の例外として扱う。
-2. LINE の manifest に `app.revanced.android.gms.SPOOFED_PACKAGE_SIGNATURE` を追加し、値は `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1`（ADR 0002 と共有）を小文字にしたものとする。パッケージ名は変えないので `SPOOFED_PACKAGE_NAME` は追加しない。
-3. `"com.google.android.gms"` は GMS client 全体の共有定数なので一括置換しない。解析で特定した認証の呼び出し箇所だけ、パッケージ名と action を extension の hook の戻り値に差し替える。FCM、FIS、位置情報など他の GMS、LINE の認証・LEGY、Drive REST の通信内容は変更しない。
-4. runtime 設定で切り替える。OFF、未初期化、MicroG-RE が未導入、例外時は hook が元の値（`com.google.android.gms` と元の action）を返す。
-5. fingerprint が一意に定まらない、差し替える register の値を確認できない場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する。
+1. 再署名で失われた Google ドライブ連携を戻す目的に限り、`GoogleAuthUtil` の token 要求だけを MicroG-RE へ向ける。ADR 0001 決定 4 と、認証を変更しないという制約の例外として扱う。バックアップは Google Sign-In を使わないため、Sign-In の経路は変更しない。
+2. LINE の manifest に `app.revanced.android.gms.SPOOFED_PACKAGE_SIGNATURE` と、MicroG-RE の `<queries>` を追加する。値は `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1`（ADR 0002 と共有）を小文字にしたものとする。パッケージ名は変えないので `SPOOFED_PACKAGE_NAME` は追加しない。
+3. `"com.google.android.gms"` は GMS client 全体の共有定数なので一括置換しない。GoogleAuthServiceClient を使うかの判定を false にして `GetToken` の経路へ回し、`GetToken` の bind 先だけを MicroG-RE に差し替える。FCM、FIS、位置情報など他の GMS、LINE の認証・LEGY、Drive REST の通信内容は変更しない。
+4. runtime 設定「MicroG-RE でトークをバックアップする」で切り替え、既定値は ON とする（利用者の判断）。MicroG-RE が未導入なら ON でも元の経路を使うため、既定で ON にしても MicroG-RE を入れない利用者の通信経路は変わらない（導入案内の通知だけが増える）。OFF、未初期化、例外時は hook が元の値を返す。
+5. MicroG-RE は、パッケージ名に加えて MorpheApp/MicroG-RE の公式リリースの署名証明書（SHA-256）で確かめる。同じパッケージ名の別アプリに token の要求やバックアップを渡さないためである。証明書が一致しなければ未導入と同じに扱う。
+6. 設定 ON で MicroG-RE が未導入のまま token が要求されたら、導入を案内する通知を 10 分に 1 回まで出す。タップ先は MicroG-RE のリリースページ（固定 URL）とする。
+7. fingerprint が一意に定まらない、差し替える register を確認できない、manifest の形が想定と違う場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する。定数が未設定なら DISABLED を記録する。
 
-## 結果（見込み）
+## 結果
 
-- MicroG-RE を導入し、MicroG-RE に Google アカウントを追加した利用者は、再署名版でも Google ドライブへのバックアップと復元ができる見込みになる。実機で確認するまでは見込みにとどまる。
+- MicroG-RE を導入し、MicroG-RE に Google アカウントを追加した利用者は、再署名版でも Google ドライブへのバックアップと復元ができる（下記の PoC で確認）。
 - アプリの身元を Google の OAuth client の照合に対して偽ることになる。ADR 0002 より踏み込んだ偽装で、Google や LINE の利用規約に抵触する可能性があり、Google アカウントへの影響も否定できない。README にその旨を明記する。
 - MicroG-RE は申告された署名を検証しない。meta-data を書けるのはパッチ適用者だけ、という前提が信頼境界になる。
 - 利用者は Linimal 以外の第三者アプリ（MicroG-RE）を信頼して導入する必要がある。
 
 ## PoC の結果（2026-09-22）
 
-実験用パッチ（`patches/.../features/googleauth/GoogleAuthMicrogRoutingPatch.kt`）で、SDK 36 の端末で次を確認した。詳細は[解析](../analysis/google-drive-backup-auth.md)。
+実験用パッチ（現在の `patches/.../features/googleauth/GoogleAuthTokenRoutingPatch.kt` の前身）で、SDK 36 の端末で次を確認した。詳細は[解析](../analysis/google-drive-backup-auth.md)。
 
 - バックアップは Google Sign-In を使わず、`GoogleAuthUtil` の token 要求だけを使う。差し替えたのは、GoogleAuthServiceClient を使うかの判定（MicroG-RE があれば false）と、`GetToken` の bind 先の 2 か所。
 - 復元とバックアップがどちらも完了した。MicroG-RE は v3 lineage の root の SHA-1 で申告し、Google は `drive.appdata` の token を発行した。
@@ -53,3 +55,6 @@ MicroG-RE（`app.revanced.android.gms`、microG GmsCore の fork）は、呼び�
 - Google 側の検証の変更で効かなくなる可能性。
 - 再署名版で作ったバックアップを公式 LINE で復元できるか。
 - SDK 32 以下の端末。
+- MicroG-RE が未導入のときの導入案内の通知（単体テストのみで、実機では未確認）。
+- `GoogleAuthUtil` を呼ぶのがバックアップ・復元の経路だけかどうか。他の経路があれば、そこでも token の要求が MicroG-RE へ向き、導入案内の通知が出る。
+- MicroG-RE が署名鍵を変えた場合。lineage でローテーションすれば照合は通るが、鍵を作り直すと未導入扱いになる。

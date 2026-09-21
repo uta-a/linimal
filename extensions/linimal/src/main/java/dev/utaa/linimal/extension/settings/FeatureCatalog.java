@@ -218,7 +218,12 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.PUSH_NOTIFICATIONS, SettingsPage.GENERAL,
                     "アプリを閉じていても通知を受け取る",
                     "通知の登録時に Google へ送る署名情報を公式 LINE のものに置き換えます。"
-                            + "OFF にすると、アプリを閉じている間は通知が届かないことがあります。")));
+                            + "OFF にすると、アプリを閉じている間は通知が届かないことがあります。"),
+            new Entry(LinimalFeature.GOOGLE_DRIVE_BACKUP, SettingsPage.GENERAL,
+                    "MicroG-RE でトークをバックアップする",
+                    "Google ドライブへのバックアップと復元の認証を MicroG-RE 経由で行います。"
+                            + "MicroG-RE を導入し、LINE と同じ Google アカウントを MicroG-RE に追加してください。"
+                            + "MicroG-RE がないときは導入を案内する通知を出します。")));
 
     private FeatureCatalog() {
     }

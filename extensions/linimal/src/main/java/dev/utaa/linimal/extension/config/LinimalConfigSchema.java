@@ -46,6 +46,7 @@ final class LinimalConfigSchema {
     static final String READ_RECEIPT_MODE_KEY = "linimal.privacy.read_receipts.mode";
     static final String EXTERNAL_BROWSER_ENABLED_KEY = "linimal.browser.external";
     static final String PUSH_NOTIFICATIONS_ENABLED_KEY = "linimal.notifications.push_registration";
+    static final String GOOGLE_DRIVE_BACKUP_ENABLED_KEY = "linimal.backup.microg_google_auth";
 
     private LinimalConfigSchema() {
     }
@@ -116,6 +117,8 @@ final class LinimalConfigSchema {
                 return EXTERNAL_BROWSER_ENABLED_KEY;
             case PUSH_NOTIFICATIONS:
                 return PUSH_NOTIFICATIONS_ENABLED_KEY;
+            case GOOGLE_DRIVE_BACKUP:
+                return GOOGLE_DRIVE_BACKUP_ENABLED_KEY;
             default:
                 throw new AssertionError("Unhandled feature: " + feature);
         }

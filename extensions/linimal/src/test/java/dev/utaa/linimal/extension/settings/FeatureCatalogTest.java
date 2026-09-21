@@ -158,7 +158,7 @@ public final class FeatureCatalogTest {
     }
 
     @Test
-    public void generalPageKeepsThePremiumBrowserAndNotificationEntriesWithoutSections() {
+    public void generalPageKeepsThePremiumBrowserNotificationAndBackupEntriesWithoutSections() {
         List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
                 SettingsPage.GENERAL, allCatalogFeatureIds());
 
@@ -167,7 +167,8 @@ public final class FeatureCatalogTest {
                 "linimal.premium",
                 "linimal.premium-settings-row",
                 "linimal.external-browser",
-                "linimal.push-notifications");
+                "linimal.push-notifications",
+                "linimal.google-drive-backup");
         assertEquals("設定のプレミアムを表示しない", groups.get(0).getEntries().get(1).getTitle());
     }
 
