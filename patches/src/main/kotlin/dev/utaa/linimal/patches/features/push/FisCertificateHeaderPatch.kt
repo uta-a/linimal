@@ -27,7 +27,6 @@ import dev.utaa.linimal.patches.util.VOID
 import dev.utaa.linimal.patches.util.branchTargetAddresses
 import dev.utaa.linimal.patches.util.exceptionHandlerAddresses
 import dev.utaa.linimal.patches.util.instructionAddress
-import dev.utaa.linimal.patches.util.instructionWritesRegister
 import dev.utaa.linimal.patches.util.registerSurvivesBetween
 
 internal const val CERTIFICATE_HEADER = "X-Android-Cert"
@@ -143,10 +142,11 @@ val fisCertificateHeaderPatch = bytecodePatch(
             """.trimIndent(),
         )
         // 置き換えは hook に任せ、設定 OFF・未初期化・例外時は元の値が同じ register に戻ります。
+        // 値の register が v16 以上でも invalid register にならないよう、range で呼びます。
         match.method.addInstructions(
             injection.insertionIndex,
             """
-                invoke-static { v${injection.valueRegister} }, $CERTIFICATE_HEADER_HOOK
+                invoke-static/range { v${injection.valueRegister} .. v${injection.valueRegister} }, $CERTIFICATE_HEADER_HOOK
                 move-result-object v${injection.valueRegister}
             """.trimIndent(),
         )
@@ -172,12 +172,15 @@ internal fun fisCertificateNotConfiguredRecord() = PatchStatusRecord(
 
 /**
  * `const-string vK, "X-Android-Cert"` の register がそのまま `addRequestProperty` のキーに渡り、
- * 値の register が接続やキーと別であることを確認します。値は直前の String を返す呼び出しの
- * `move-result-object` で作られたものに限ります。
+ * 値の register が接続やキーと別であることを確認します。
  *
- * キーと値を作ってから呼び出すまでの区間に、分岐先や例外 handler の先頭が 1 つでもあれば拒否します。
+ * 値の出どころは問いません。LINE 26.11.0 の FIS では、値は SHA-1・null・例外時の null の 3 経路から
+ * キーの `const-string` で合流します。元の呼び出しが値を String として受け取るため、verifier が
+ * 呼び出しの時点で String か null であることを保証し、hook の戻り値を同じ register に戻しても型は変わりません。
+ *
+ * キーの命令の直後から呼び出しまで（両端を含む）に、分岐先や例外 handler の先頭が 1 つでもあれば拒否します。
  * 途中から合流する経路では、キーが `X-Android-Cert` である保証がなく、呼び出し自体が分岐先なら
- * その経路だけ hook を飛び越すためです。
+ * その経路だけ hook を飛び越すためです。キーの命令そのものが合流点であるのは構いません。
  */
 internal fun certificateHeaderInjection(
     instructions: List<Instruction>,
@@ -190,15 +193,6 @@ internal fun certificateHeaderInjection(
     val keyRegister = (keyLoad as? OneRegisterInstruction)?.registerA
     val call = instructions.getOrNull(addRequestPropertyIndex) as? FiveRegisterInstruction
     val callReference = (call as? ReferenceInstruction)?.reference as? MethodReference
-    val valueDefinitionIndex = call?.let { valueCall ->
-        (addRequestPropertyIndex - 1 downTo 0).firstOrNull { index ->
-            instructionWritesRegister(instructions[index], valueCall.registerE)
-        }
-    }
-    val valueResult = valueDefinitionIndex?.let { instructions[it] }
-    val valueSource = valueDefinitionIndex?.let { instructions.getOrNull(it - 1) }
-    val valueSourceReference = (valueSource as? ReferenceInstruction)?.reference as? MethodReference
-    val guardedStart = minOf(headerKeyIndex, valueDefinitionIndex ?: headerKeyIndex) + 1
 
     if (
         headerKeyIndex >= addRequestPropertyIndex ||
@@ -214,11 +208,7 @@ internal fun certificateHeaderInjection(
         call.registerE == call.registerC ||
         call.registerE == call.registerD ||
         !registerSurvivesBetween(instructions, keyRegister, headerKeyIndex, addRequestPropertyIndex) ||
-        valueDefinitionIndex == null ||
-        valueResult?.opcode != Opcode.MOVE_RESULT_OBJECT ||
-        valueSourceReference?.returnType != STRING ||
-        valueSource?.opcode !in invokeOpcodes ||
-        hasIncomingEdge(instructions, guardedStart, addRequestPropertyIndex, handlerAddresses)
+        hasIncomingEdge(instructions, headerKeyIndex + 1, addRequestPropertyIndex, handlerAddresses)
     ) {
         return null
     }
@@ -228,19 +218,6 @@ internal fun certificateHeaderInjection(
         valueRegister = call.registerE,
     )
 }
-
-private val invokeOpcodes = setOf(
-    Opcode.INVOKE_VIRTUAL,
-    Opcode.INVOKE_DIRECT,
-    Opcode.INVOKE_STATIC,
-    Opcode.INVOKE_INTERFACE,
-    Opcode.INVOKE_SUPER,
-    Opcode.INVOKE_VIRTUAL_RANGE,
-    Opcode.INVOKE_DIRECT_RANGE,
-    Opcode.INVOKE_STATIC_RANGE,
-    Opcode.INVOKE_INTERFACE_RANGE,
-    Opcode.INVOKE_SUPER_RANGE,
-)
 
 /** [fromIndex] から [toIndex] まで（両端を含む）のどれかが、分岐先か例外 handler の先頭かどうか。 */
 private fun hasIncomingEdge(

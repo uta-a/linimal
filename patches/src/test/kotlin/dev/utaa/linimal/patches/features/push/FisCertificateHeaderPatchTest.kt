@@ -3,8 +3,10 @@ package dev.utaa.linimal.patches.features.push
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction10t
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11n
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21c
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction21t
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction31c
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
@@ -134,14 +136,53 @@ class FisCertificateHeaderPatchTest {
         assertNull(certificateHeaderInjection(instructions, headerKeyIndex = 0, addRequestPropertyIndex = 3))
     }
 
-    /** 値が計算結果でなく定数なら、置き換えてよい証明書の値だと確かめられません。 */
+    /**
+     * 値の出どころは問いません。元の `addRequestProperty(String, String)` が値を String として受け取るため、
+     * verifier が呼び出しの時点で String か null であることを保証し、hook の戻り値を同じ register に戻せます。
+     */
     @Test
-    fun `a value that is not a String call result is rejected`() {
+    fun `a value from any source is replaced`() {
         val instructions = listOf(constString(1, CERTIFICATE_HEADER)) +
             constString(2, "constant") +
             addRequestProperty(connection = 0, key = 1, value = 2)
 
-        assertNull(certificateHeaderInjection(instructions, headerKeyIndex = 0, addRequestPropertyIndex = 2))
+        assertEquals(
+            CertificateHeaderInjection(insertionIndex = 2, valueRegister = 2),
+            certificateHeaderInjection(instructions, headerKeyIndex = 0, addRequestPropertyIndex = 2),
+        )
+    }
+
+    /**
+     * LINE 26.11.0 の `ct.c.c` と同じ形。値は SHA-1、null、`NameNotFoundException` の handler の 3 経路から、
+     * キーの `const-string` で合流します。合流点がキーの命令そのものなら、どの経路も hook を通ります。
+     */
+    @Test
+    fun `a key load that merges the value paths is accepted`() {
+        val instructions = listOf(
+            ImmutableInstruction11n(Opcode.CONST_4, 3, 0), // @0: 値の既定は null
+            ImmutableInstruction21t(Opcode.IF_NEZ, 0, 3), // @1: → @4（SHA-1 を作る経路）
+            ImmutableInstruction10t(Opcode.GOTO, 8), // @3: → @11（null のまま合流）
+        ) + fingerprintHash(3) + // @4, @7
+            listOf(
+                ImmutableInstruction35c( // @8: NameNotFoundException の handler の先頭
+                    Opcode.INVOKE_VIRTUAL,
+                    1,
+                    1, 0, 0, 0, 0,
+                    ImmutableMethodReference("Landroid/content/Context;", "getPackageName", emptyList<String>(), string),
+                ),
+                constString(0, CERTIFICATE_HEADER), // @11: 合流点
+            ) +
+            addRequestProperty(connection = 4, key = 0, value = 3) // @13
+
+        assertEquals(
+            CertificateHeaderInjection(insertionIndex = 7, valueRegister = 3),
+            certificateHeaderInjection(
+                instructions,
+                headerKeyIndex = 6,
+                addRequestPropertyIndex = 7,
+                handlerAddresses = setOf(8),
+            ),
+        )
     }
 
     @Test

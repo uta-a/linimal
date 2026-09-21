@@ -26,7 +26,7 @@ ADR 0001 は「再署名は公式署名または integrity 検査を回避する
 3. 送る値は公開鍵の識別子である証明書 SHA-1 に限る。元の署名鍵は取得・保存・利用しない（ADR 0001 決定 4 のとおり）。
 4. 値は patch 側の定数 `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1` の 1 か所で管理し、reference APKM に対する `apksigner verify --print-certs` の出力から写す。定数が空、または形式が不正なら patch は LINE を変更せず、patch status に `DISABLED` を記録する。
 5. runtime 設定「アプリを閉じていても通知を受け取る」で切り替え、既定値は ON とする。OFF、未初期化、例外時は hook が実際の値をそのまま返す。
-6. 次のいずれかに当たる場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する: fingerprint が一意に定まらない、キーの register が `X-Android-Cert` のまま呼び出しに渡ることを確認できない、値が String を返す呼び出しの結果でない、キーと値を作ってから呼び出すまでの区間に分岐先か例外 handler の先頭がある。
+6. 次のいずれかに当たる場合は変更せず、ERROR / TARGET_NOT_FOUND を記録する: fingerprint が一意に定まらない、キーの register が `X-Android-Cert` のまま呼び出しに渡ることを確認できない、値の register が接続やキーと同じ、キーの `const-string` の直後から呼び出しまでに分岐先か例外 handler の先頭がある。値の出どころは問わない。元の呼び出しが値を String として受け取るため、verifier が呼び出しの時点で String か null であることを保証する。LINE 26.11.0 では値が SHA-1・null・例外時の null の 3 経路からキーの `const-string` で合流するため、当初の「値が String を返す呼び出しの結果であること」「キーと値を作ってからの区間に合流点がないこと」という条件では適用できなかった（2026-09-22 改訂）。
 
 ## 結果
 
