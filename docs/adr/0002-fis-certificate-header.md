@@ -30,13 +30,21 @@ ADR 0001 は「再署名は公式署名または integrity 検査を回避する
 
 ## 結果
 
-- 再署名版でも、アプリを閉じている間の通知を公式版と同じ経路（端末本体の Google Play services と FCM）で受け取れる見込みになる。実機で確認するまでは見込みにとどまる。
+- 再署名版でも、アプリを閉じている間の通知を公式版と同じ経路（端末本体の Google Play services と FCM）で受け取れる。SDK 36 の端末で確認した（下記）。
 - アプリの身元の申告を Google の API key 制限に対して偽ることになる。Firebase や LINE の利用規約に抵触する可能性があり、Google が検証を強めれば効かなくなる。README にその旨を明記する。
 - 公式証明書は v3 の鍵ローテーションで 2 つある（SDK 24–32 と SDK 33 以上）。まず lineage の root を送る。SDK 33 以上の端末で登録が拒否される場合は、端末の SDK で値を選ぶよう見直す。
 
+## 実機検証（2026-09-22）
+
+SDK 36 の端末（Google Play services あり）で、Linimal を当てた LINE 26.11.0 を確認した。
+
+- 当初の実装は、安全確認が LINE 26.11.0 の命令の形に合わず、`FisCertificateHeaderShapeMismatch` で書き換えていなかった。決定 6 を改訂して適用できるようにした。
+- 一時的な診断ログで、起動時に hook が呼ばれ、設定 ON で値を公式証明書の SHA-1（v3 lineage の root）に置き換えたことを確認した。
+- 最近のアプリ一覧からスワイプして LINE のプロセスを終了させ、別のアカウントからメッセージを送ると、端末本体の Google Play services が LINE 宛ての FCM メッセージを受け取り、`FirebaseInstanceIdReceiver` で LINE のプロセスが起動した。通知が表示され、タップでトークが開いた。修正前の APK では、LINE 宛ての配信は 1 件もなかった。
+- SDK 33 以上の端末でも、lineage の root の SHA-1 で登録が通った。
+
 ## 未確認事項
 
-- `Constants.LINE_ORIGINAL_CERTIFICATE_SHA1` の値。reference APKM がある環境で取得する。
-- LINE 26.11.0 の DEX で fingerprint が一件だけ一致し、Remote Config の client が一致しないこと。
 - Linimal の初期化より前に FIS の登録が走った場合の挙動。設定が未初期化のあいだ hook は実際の値を返すため、最初の登録が失敗してから再試行で成功する可能性がある。
-- 実機で、アプリを閉じた状態の通知、通知のタップ、ログイン状態の維持、公式版との差がないこと。SDK 32 以下と 33 以上の両方で確認する。
+- ログイン状態の長期的な維持と、公式版との差がないこと。
+- SDK 32 以下の端末。
