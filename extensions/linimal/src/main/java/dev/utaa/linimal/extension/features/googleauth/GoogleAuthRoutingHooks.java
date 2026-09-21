@@ -65,14 +65,24 @@ public final class GoogleAuthRoutingHooks {
         }
     }
 
-    /** {@code GoogleAuthUtil} が {@code GetToken} を bind する直前で呼ばれ、bind 先を返します。 */
+    /**
+     * {@code GoogleAuthUtil} が {@code GetToken} を bind する直前で呼ばれ、bind 先を返します。
+     *
+     * <p>LINE の判定は別のフラグとの {@code &&} の後ろにあり、フラグが false だと
+     * {@link #shouldSkipAuthServiceClient} は呼ばれません。そのため導入の案内はここからも出します。
+     * 案内は一定時間に 1 回までなので、両方から呼ばれても重複しません。</p>
+     */
     public static ComponentName authServiceComponent(Context context, ComponentName original) {
         try {
             if (original == null) {
                 return null;
             }
+            Routing routing = routingFor(context);
+            if (routing == Routing.MICROG_MISSING && isGmsGetToken(original)) {
+                MicrogInstallNotifier.notifyMissing(context);
+            }
             String routed = routedPackage(
-                    routingFor(context) == Routing.MICROG,
+                    routing == Routing.MICROG,
                     original.getPackageName(),
                     original.getClassName());
             if (routed.equals(original.getPackageName())) {
@@ -93,6 +103,10 @@ public final class GoogleAuthRoutingHooks {
             return Routing.ORIGINAL;
         }
         return presence.isTrustedInstalled(MICROG_PACKAGE) ? Routing.MICROG : Routing.MICROG_MISSING;
+    }
+
+    private static boolean isGmsGetToken(ComponentName component) {
+        return GMS_PACKAGE.equals(component.getPackageName()) && GET_TOKEN_CLASS.equals(component.getClassName());
     }
 
     /** 端末本体の Google Play services の {@code GetToken} だけを MicroG-RE の同名 component に向けます。 */

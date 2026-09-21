@@ -8,19 +8,25 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 
 /**
- * 「MicroG-RE でトークをバックアップする」が ON なのに MicroG-RE がないとき、導入を案内する通知を出します。
+ * 「MicroG-RE でトークをバックアップする」が ON なのに MicroG-RE がないとき、導入を案内します。
  *
- * <p>1 回のバックアップ・復元で token の要求は何度か走るため、通知は {@link #MIN_INTERVAL_MILLIS} に
- * 1 回までにします。通知をタップすると MicroG-RE のリリースページをブラウザで開きます。
- * 通知が許可されていない端末では何も表示されません。</p>
+ * <p>通知とトーストの両方を出します。新規インストール直後の復元では通知がまだ許可されていないことが
+ * 多く、通知だけでは気付けないためです。通知をタップすると MicroG-RE のリリースページをブラウザで開きます。
+ * 1 回のバックアップ・復元で token の要求は何度か走るため、案内は {@link #MIN_INTERVAL_MILLIS} に
+ * 1 回までにします。</p>
  */
 final class MicrogInstallNotifier {
     static final long MIN_INTERVAL_MILLIS = 10 * 60 * 1000L;
     static final String RELEASES_URL = "https://github.com/MorpheApp/MicroG-RE/releases/latest";
     private static final String CHANNEL_ID = "linimal_microg_install";
     private static final int NOTIFICATION_ID = 0x4c4d4731;
+    static final String TOAST_TEXT = "トークのバックアップと復元には MicroG-RE が必要です。"
+            + "MicroG-RE を入れ、LINE と同じ Google アカウントを追加してください。";
 
     private static final Object LOCK = new Object();
     private static long lastNotifiedAt = Long.MIN_VALUE;
@@ -39,7 +45,29 @@ final class MicrogInstallNotifier {
             }
             lastNotifiedAt = now;
         }
-        post(context.getApplicationContext() != null ? context.getApplicationContext() : context);
+        Context application = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        // どちらか一方が失敗しても、もう一方は出します。
+        try {
+            post(application);
+        } catch (Throwable ignored) {
+            // 通知を出せなくても、トーストで案内します。
+        }
+        try {
+            showToast(application);
+        } catch (Throwable ignored) {
+            // トーストを出せなくても、LINE の処理には影響させません。
+        }
+    }
+
+    /** token の要求は background thread から来るため、main thread でトーストを出します。 */
+    private static void showToast(Context context) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Toast.makeText(context, TOAST_TEXT, Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {
+                // 表示できない状態でも LINE の処理には影響させません。
+            }
+        });
     }
 
     /** 前回から {@link #MIN_INTERVAL_MILLIS} 以上経っていれば通知します。時計が戻った場合も通知します。 */
