@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import dev.utaa.linimal.extension.features.readwithoutreceipt.ReadWithoutReceiptHooks;
+
 public final class LinimalConfigTest {
     /** 現在の既定値で ON になる機能です。alias は置き換え先と同じ値になります。 */
     private static final Set<LinimalFeature> DEFAULT_ON_FEATURES = EnumSet.of(
@@ -767,6 +769,60 @@ public final class LinimalConfigTest {
                 ReadReceiptMode.MANUAL,
                 configFor(backend, availableFeatureIds(ReadReceiptMode.FEATURE_ID))
                         .getReadReceiptMode());
+    }
+
+    @Test
+    public void disablingUnreadSuppressionClearsItsSessionBeforeItCanBeReenabled() throws Exception {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+        try {
+            markUnreadSession();
+            assertTrue(isUnreadSessionBlocked(config));
+
+            config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, false);
+            config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+
+            assertFalse(isUnreadSessionBlocked(config));
+        } finally {
+            ReadWithoutReceiptHooks.clearSuppression();
+        }
+    }
+
+    @Test
+    public void unreadSessionDoesNotReturnAfterAStorageFailureRecovers() throws Exception {
+        FailingWriteBackend backend = new FailingWriteBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+        backend.values.put(LinimalConfigSchema.READ_WITHOUT_RECEIPT_ENABLED_KEY, true);
+        LinimalConfig config = configFor(backend);
+        try {
+            markUnreadSession();
+            assertTrue(isUnreadSessionBlocked(config));
+
+            config.setSuppressionEnabled(LinimalFeature.PREMIUM, true);
+            assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+            config.reload();
+
+            assertEquals(LinimalConfigHealth.OK, config.getRuntimeHealth());
+            assertFalse(isUnreadSessionBlocked(config));
+        } finally {
+            ReadWithoutReceiptHooks.clearSuppression();
+        }
+    }
+
+    /** Android の時計だけを避け、設定の書込みと実際の抑制状態を一緒に検証します。 */
+    private static void markUnreadSession() throws Exception {
+        java.lang.reflect.Method mark = ReadWithoutReceiptHooks.class.getDeclaredMethod(
+                "markSuppressedAt", String.class, long.class);
+        mark.setAccessible(true);
+        mark.invoke(null, "chat-1", 10_000L);
+    }
+
+    private static boolean isUnreadSessionBlocked(LinimalConfig config) throws Exception {
+        java.lang.reflect.Method check = ReadWithoutReceiptHooks.class.getDeclaredMethod(
+                "shouldBlockGivenEnabled", String.class, long.class, boolean.class);
+        check.setAccessible(true);
+        return (Boolean) check.invoke(null, "chat-1", 10_001L, config.isReadWithoutReceiptEnabled());
     }
 
     private static InMemoryBackend v1Backend() {

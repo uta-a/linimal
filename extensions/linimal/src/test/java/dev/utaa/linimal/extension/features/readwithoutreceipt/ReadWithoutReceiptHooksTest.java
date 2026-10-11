@@ -8,159 +8,209 @@ import org.junit.After;
 import org.junit.Test;
 
 public final class ReadWithoutReceiptHooksTest {
+    private static final long EXPIRED = ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1L;
+
     @After
     public void resetState() {
         ReadWithoutReceiptHooks.resetForTesting();
     }
 
-    @Test
-    public void withoutAnyMarkedChatEverythingFailsOpen() {
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, true));
+    private static boolean blocks(String chatId, long now) {
+        return ReadWithoutReceiptHooks.shouldBlockGivenEnabled(chatId, now, true);
+    }
+
+    private static void create(Object activity, String chatId, long token, long now, boolean registered) {
+        ReadWithoutReceiptHooks.onChatCreatedObserved(activity, chatId, token, now,
+                true, registered, ReadWithoutReceiptHooks.currentSuppression());
     }
 
     @Test
-    public void aMarkedChatIsBlockedWhileEnabled() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, true));
+    public void pendingBlocksOnlyTheSelectedChatAndExpiresPermanently() {
+        assertFalse(blocks("chat-1", 0L));
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        assertTrue(blocks("chat-1", EXPIRED - 1L));
+        assertFalse(blocks("chat-2", 0L));
+        assertFalse(blocks(null, 0L));
+        assertFalse(blocks("chat-1", EXPIRED));
+        assertFalse(blocks("chat-1", 0L));
     }
 
     @Test
-    public void aDifferentChatIsNeverBlocked() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", 0L, true));
+    public void confirmedSessionHasNoThirtyMinuteTimeout() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(new Object(), "chat-1", 0L, 1L, true);
+        assertTrue(blocks("chat-1", EXPIRED * 10));
     }
 
     @Test
-    public void disablingTheFeatureFailsOpenEvenForTheMarkedChat() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, false));
+    public void expiredPendingCannotBecomeConfirmed() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(new Object(), "chat-1", 0L, EXPIRED, true);
+        assertFalse(blocks("chat-1", 0L));
     }
 
     @Test
-    public void aNullChatIdIsNeverBlocked() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled(null, 0L, true));
+    public void failedCallbackRegistrationDoesNotPromoteOrRetainPending() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(new Object(), "chat-1", 0L, 1L, false);
+        assertFalse(blocks("chat-1", 1L));
+        assertFalse(blocks("chat-1", EXPIRED));
     }
 
     @Test
-    public void openingANewChatReplacesTheOldSuppression() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-        ReadWithoutReceiptHooks.markSuppressed("chat-2");
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, true));
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", 0L, true));
+    public void normalReentryIntoTheSameChatEndsTheOldSession() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(new Object(), "chat-1", 0L, 1L, true);
+        create(new Object(), "chat-1", 0L, 2L, true);
+        assertFalse(blocks("chat-1", 2L));
     }
 
     @Test
-    public void suppressionExpiresAfterTheTimeout() {
-        long markedAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
-
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled(
-                "chat-1", markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS, true));
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled(
-                "chat-1", markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1, true));
+    public void enteringAnotherChatEndsTheOldSession() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(new Object(), "chat-1", 0L, 1L, true);
+        create(new Object(), "chat-2", 0L, 2L, true);
+        assertFalse(blocks("chat-1", 2L));
+        assertFalse(blocks("chat-2", 2L));
     }
 
     @Test
-    public void anExpiredSuppressionDoesNotReviveOnASecondCheck() {
-        long markedAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
-        long expiredAt = markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1;
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", expiredAt, true));
-        // 期限切れの抑制は消えているため、時刻を巻き戻しても復活しません。
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, true));
+    public void oldPendingTimeoutCannotClearPromotedSession() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.Suppression pending = ReadWithoutReceiptHooks.currentSuppression();
+        create(new Object(), "chat-1", 0L, 1L, true);
+        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", EXPIRED, pending));
+        assertTrue(blocks("chat-1", EXPIRED));
     }
 
     @Test
-    public void markingANullChatIdLeavesTheExistingSuppressionUntouched() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-        ReadWithoutReceiptHooks.markSuppressed(null);
-
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", 0L, true));
+    public void oldTimeoutCannotClearNewPendingForTheSameOrAnotherChat() {
+        for (String nextChat : new String[] {"chat-1", "chat-2"}) {
+            ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+            ReadWithoutReceiptHooks.Suppression pending = ReadWithoutReceiptHooks.currentSuppression();
+            ReadWithoutReceiptHooks.markSuppressedAt(nextChat, EXPIRED);
+            assertEquals("chat-1".equals(nextChat),
+                    ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", EXPIRED, pending));
+            assertTrue(blocks(nextChat, EXPIRED));
+        }
     }
 
     @Test
-    public void theRealEntryPointFailsOpenWithoutConfiguration() {
-        // この単体テストでは LinimalConfig を初期化しないため、runtime の初期値は fail-open です。
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
+    public void oldCreateSnapshotCannotClearNewSession() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.Suppression old = ReadWithoutReceiptHooks.currentSuppression();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", 1L);
+        create(new Object(), "chat-2", 0L, 2L, true);
+        ReadWithoutReceiptHooks.onChatCreatedObserved(new Object(), "chat-1", 0L, EXPIRED,
+                true, true, old);
+        assertTrue(blocks("chat-2", EXPIRED));
+    }
 
+    @Test
+    public void disabledPendingAndConfirmedNeverReviveAfterReenable() {
+        for (boolean confirmed : new boolean[] {false, true}) {
+            ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+            if (confirmed) {
+                create(new Object(), "chat-1", 0L, 1L, true);
+            }
+            assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenEnabled(null, 2L, false));
+            assertFalse(blocks("chat-1", 2L));
+        }
+    }
+
+    @Test
+    public void disabledCreateClearsStateWithoutReadingTheRequest() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.onChatCreatedRequestObserved(new Object(), new ThrowingRequest(), 0L,
+                1L, false, true, ReadWithoutReceiptHooks.currentSuppression());
+        assertFalse(blocks("chat-1", 1L));
+    }
+
+    @Test
+    public void publicClearDiscardsPendingAndConfirmed() {
+        for (boolean confirmed : new boolean[] {false, true}) {
+            ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+            if (confirmed) {
+                create(new Object(), "chat-1", 0L, 1L, true);
+            }
+            ReadWithoutReceiptHooks.clearSuppression();
+            assertFalse(blocks("chat-1", 1L));
+        }
+    }
+
+    @Test
+    public void validatedGetterConfirmsWithoutDependingOnLineTypes() {
+        Object activity = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.onChatCreatedRequestObserved(activity, new Request(), 0L, 1L,
+                true, true, ReadWithoutReceiptHooks.currentSuppression());
+        assertTrue(blocks("chat-1", EXPIRED));
+        assertTrue(ReadWithoutReceiptHooks.sessionTokenFor(activity) > 0L);
+    }
+
+    @Test
+    public void missingInvalidAndThrowingGettersFailOpenAndDiscardTheReservation() {
+        for (Object request : new Object[] {null, new Object(), new InvalidRequest(), new ThrowingRequest()}) {
+            ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+            ReadWithoutReceiptHooks.onChatCreatedRequestObserved(new Object(), request, 0L, 1L,
+                    true, true, ReadWithoutReceiptHooks.currentSuppression());
+            assertFalse(blocks("chat-1", 1L));
+        }
+    }
+
+    @Test
+    public void staleGetterFailureCannotDiscardNewSession() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.Suppression old = ReadWithoutReceiptHooks.currentSuppression();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", 1L);
+        create(new Object(), "chat-2", 0L, 2L, true);
+        ReadWithoutReceiptHooks.onChatCreatedRequestObserved(new Object(), new ThrowingRequest(), 0L,
+                2L, true, true, old);
+        assertTrue(blocks("chat-2", EXPIRED));
+    }
+
+    @Test
+    public void uninitializedReadEntryFailsOpenAndDiscardsExistingState() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
         assertFalse(ReadWithoutReceiptHooks.shouldBlockMarkAsRead("chat-1"));
+        assertFalse(blocks("chat-1", 1L));
     }
 
     @Test
-    public void theRealEntryPointNeverThrowsForANullChatId() {
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockMarkAsRead(null));
+    public void uninitializedCreateEntryFailsOpenAndDiscardsExistingState() {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        ReadWithoutReceiptHooks.onChatCreated(null, null);
+        assertFalse(blocks("chat-1", 1L));
     }
 
     @Test
-    public void aNewSuppressionIsNotExpiredByTheAgeOfThePreviousOne() {
-        long staleAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", staleAt);
-        // 前回の登録から timeout を大きく超えた時点で、別のトークを開き直します。
-        long freshAt = staleAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS * 3;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", freshAt);
-
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", freshAt, true));
-        // トーク ID と時刻は 1 instance に閉じており、「新しいトーク ID + 古い時刻」は観測できません。
-        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
-        assertEquals("chat-2", observed.chatId);
-        assertEquals(freshAt, observed.atMillis);
+    public void tokensIncreaseEvenAfterClearingAndResettingState() {
+        Object activity = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(activity, "chat-1", 0L, 1L, true);
+        long oldToken = ReadWithoutReceiptHooks.sessionTokenFor(activity);
+        ReadWithoutReceiptHooks.resetForTesting();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
+        create(activity, "chat-1", 0L, 1L, true);
+        assertTrue(ReadWithoutReceiptHooks.sessionTokenFor(activity) > oldToken);
+        assertEquals(0L, ReadWithoutReceiptHooks.sessionTokenFor(new Object()));
     }
 
-    @Test
-    public void anObservedSuppressionIsJudgedWithItsOwnTimestamp() {
-        long staleAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", staleAt);
-        ReadWithoutReceiptHooks.Suppression stale = ReadWithoutReceiptHooks.currentSuppression();
-
-        long freshAt = staleAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS * 3;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", freshAt);
-        ReadWithoutReceiptHooks.Suppression fresh = ReadWithoutReceiptHooks.currentSuppression();
-
-        // 同じトーク・同じ現在時刻でも、判定はそれぞれが観測した instance の時刻だけを見ます。
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", freshAt, stale));
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", freshAt, fresh));
+    public static final class Request {
+        public String getChatId() {
+            return "chat-1";
+        }
     }
 
-    @Test
-    public void expiringAnObservedSuppressionKeepsALaterSuppressionForAnotherChat() {
-        long markedAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
-        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
-
-        // 観測から期限切れの消去までの間に、別スレッドが新しい抑制を登録した状況です。
-        long expiredAt = markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-2", expiredAt);
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", expiredAt, observed));
-        // 消してよいのは観測した instance だけで、後から登録された抑制は残ります。
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-2", expiredAt, true));
+    public static final class InvalidRequest {
+        public Object getChatId() {
+            return "chat-1";
+        }
     }
 
-    @Test
-    public void expiringAnObservedSuppressionKeepsALaterSuppressionForTheSameChat() {
-        long markedAt = 10_000L;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", markedAt);
-        ReadWithoutReceiptHooks.Suppression observed = ReadWithoutReceiptHooks.currentSuppression();
-
-        // 同じトークを開き直した場合も、古い観測に基づく消去は新しい抑制へ影響しません。
-        long expiredAt = markedAt + ReadWithoutReceiptHooks.SUPPRESSION_TIMEOUT_MILLIS + 1;
-        ReadWithoutReceiptHooks.markSuppressedAt("chat-1", expiredAt);
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", expiredAt, observed));
-        assertTrue(ReadWithoutReceiptHooks.shouldBlockGivenEnabled("chat-1", expiredAt, true));
-    }
-
-    @Test
-    public void anAbsentObservationIsNeverBlocked() {
-        ReadWithoutReceiptHooks.markSuppressed("chat-1");
-
-        assertFalse(ReadWithoutReceiptHooks.shouldBlockGivenObserved("chat-1", 0L, null));
+    public static final class ThrowingRequest {
+        public String getChatId() {
+            throw new IllegalStateException("request の読み取り失敗");
+        }
     }
 }

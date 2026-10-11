@@ -168,6 +168,30 @@ Home下部に残っていた `GcsAdModuleController` の動画広告を、既存
 
 プレミアム設定行は実機で LYP variant のみ表示されるため、LINE variant は未確認である。
 
+## 2026-10-10 「既読をつけずに読む」の閲覧セッション修正
+
+一時 pause と30分経過で解除していた抑制を、検証済みトーク Activity の閲覧セッションへ移した。
+対象APKで `chatHistoryRequest`、公開 `getChatId`、standard / CLEAR_TOP の起動経路を確認した。
+
+| チェック | 結果 |
+| --- | --- |
+| Gradle 全テスト・`buildAndroid` | Pass。キャッシュ済み依存を使った `--offline --no-daemon` 実行 |
+| JVM smoke: pause / resume、確定後30分超 | Pass。どちらも `shouldBlock=true` |
+| JVM smoke: token による構成変更移管、古い destroy | Pass。新しい所有者の抑制を維持 |
+| JVM smoke: 終了後の通常再入室、未確認予約の期限、OFF→ON | Pass。どれも `shouldBlock=false` |
+| exact APKM への Morphe Desktop CLI 1.14.0 適用・rebuild | Pass。署名せず一時APKとして生成 |
+| embedded Patch Status | 53件すべて `OK`、expected と actual が一致。session patch は `2/2` |
+| トーク画面の生成DEX | `super.onCreate` → `onChatCreated` → `SDK_INT` の順。registers=16、hook は range で `v14 .. v15` を渡す |
+| 全14 DEX の `dexdump -f` / `d8 --min-api 32` | Pass |
+| 実機の相手側既読・ローカル未読バッジ・Android lifecycle 配送 | 未実施。ADB 接続端末なし |
+
+最初の統合適用は新session patchだけ `ERROR` だった。Fingerprint の filters が命令順に評価されるのに、
+`chatUiComponentProvider` を `getIntent` / `getExtras` より先に並べたことが原因だった。
+対象DEXで確認した順序へ修正し、再適用で `OK 2/2` と実際の hook 注入を確認した。
+Morphe の「Applied」ログだけでは成功扱いせず、embedded status と生成DEXも確認した。
+
+APK・抽出DEX・解析用コードは一時ディレクトリだけに置き、検証後に削除した。
+
 ## 実機成立性ゲート
 
 | ケース | 公式版リファレンス | Linimal統合APK | 結果 |

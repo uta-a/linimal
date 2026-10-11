@@ -1,5 +1,6 @@
 package dev.utaa.linimal.extension.config;
 
+import dev.utaa.linimal.extension.features.readwithoutreceipt.ReadWithoutReceiptHooks;
 import dev.utaa.linimal.extension.status.PatchStatusReadResult;
 import dev.utaa.linimal.extension.status.PatchStatusRepository;
 
@@ -52,6 +53,7 @@ public final class LinimalConfig {
             shared = config;
         } catch (RuntimeException exception) {
             shared = unavailable();
+            ReadWithoutReceiptHooks.clearSuppression();
         }
     }
 
@@ -93,6 +95,10 @@ public final class LinimalConfig {
         try {
             snapshot = store.readSnapshot();
             health = LinimalConfigHealth.OK;
+            // OFF や適用不可へ切り替わった閲覧セッションは、再度 ON にしても復活させません。
+            if (!isReadWithoutReceiptEnabled()) {
+                ReadWithoutReceiptHooks.clearSuppression();
+            }
         } catch (RuntimeException exception) {
             failOpen();
         }
@@ -314,5 +320,6 @@ public final class LinimalConfig {
     private void failOpen() {
         snapshot = ConfigSnapshot.originalBehavior();
         health = LinimalConfigHealth.ERROR;
+        ReadWithoutReceiptHooks.clearSuppression();
     }
 }

@@ -46,6 +46,28 @@ public final class PatchStatusAvailabilityTest {
         assertFalse(PatchStatusAvailability.of(null).isAvailable("linimal.premium"));
     }
 
+    @Test
+    public void unreadSuppressionRequiresTheSessionBoundaryPatch() {
+        String featureId = "linimal.read-without-receipt";
+        String existing = patch("linimal.patch.read-without-receipt-menu-label-resource",
+                featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-compose-menu-row",
+                        featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-mark-as-read-block",
+                        featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-local-read-block",
+                        featureId, "OK", 1, 1);
+
+        assertFalse(PatchStatusAvailability.of(read(
+                "{\"schemaVersion\":1,\"patches\":[" + existing + "]}"))
+                .isAvailable(featureId));
+        assertTrue(PatchStatusAvailability.of(read(
+                "{\"schemaVersion\":1,\"patches\":[" + existing + ","
+                        + patch("linimal.patch.read-without-receipt-session",
+                                featureId, "OK", 2, 2) + "]}"))
+                .isAvailable(featureId));
+    }
+
     private static PatchStatusReadResult read(String json) {
         return PatchStatusRepository.read(
                 new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));

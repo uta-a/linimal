@@ -78,11 +78,52 @@ DEX の文字列表にある `markAsReadToLocal-tqTIUe0` や `markAsRead-ZOqLxn8
 
 ## Linimal の注入
 
-- `readReceiptOutboundGatePatch`（自動既読の停止）… 同メソッドの命令 index 5、`Y` と chat-list
-  Runnable の合流点へ注入する。ローカル更新は元どおり実行したうえで RPC だけを止める。
+- `readReceiptOutboundGatePatch`（自動既読の停止）… 同メソッドの命令 index 6、`Y` と chat-list
+  Runnable の合流点の直後へ注入する。ローカル更新は元どおり実行したうえで RPC だけを止める。
 - `readWithoutReceiptLocalReadBlockPatch`（既読をつけずに読む）… 同メソッドの命令 0 へ注入し、
   対象トークだけ本体を実行せず return void する。ローカル更新と RPC がまとめて止まる。
 
 2 つは同じ `outboundGateFingerprint` を共有し、`dependsOn` のチェーン上で
 `readReceiptOutboundGatePatch` が先に走る。あちらは素の命令列を前提に index を数えるため、
 順序を入れ替えてはならない。
+
+## 「既読をつけずに読む」の閲覧セッション境界
+
+### 対象APKで確認した入室経路
+
+- `ChatHistoryActivityLaunchActivity` は Intent の Parcelable `chatHistoryRequest` を引き継ぎ、
+  `Llv7/n;->a(Intent, Z)V` が `ChatHistoryActivity` を起動する。
+- この起動の flags は `67108864`（`FLAG_ACTIVITY_CLEAR_TOP`）だけ。トーク画面の manifest は
+  `launchMode` を指定していない（standard）。`ChatHistoryActivity` と直近の基底
+  `Lbv7/b;` / `Lo38/c;` は `onNewIntent` を override しない。
+  standard と CLEAR_TOP の組合せでは、既存のトーク画面への通常再入室も新しい `onCreate` を通る。
+- `ChatHistoryActivity.onCreate(Bundle)V` は registers=16、`p0=v14`、`p1=v15`。
+  命令0は `invoke-super/range {p0 .. p1}`、命令1は `Build.VERSION.SDK_INT` の `sget`。
+  `chatDataComponentProvider`、`Activity.getIntent()`、`Intent.getExtras()`、
+  `chatUiComponentProvider` の順に参照が現れる。
+- Parcelable `Lcom/linecorp/line/chat/request/ChatHistoryRequest;` の公開
+  `getChatId()String` は `iget-object v0, v0, chatId:String` → `return-object v0`。
+  runtime はこの公開 getter を反射で呼び、LINE 型を extension のコンパイル依存に持ち込まない。
+
+`readWithoutReceiptSessionPatch` は onCreate と getter の両方を一意・安全と確認してから、
+super 直後に `ReadWithoutReceiptHooks.onChatCreated(Activity, Bundle)` を注入する。
+scratch register は使わず、`invoke-static/range {p0 .. p1}` で既存 parameter をそのまま渡す。
+挿入位置が分岐・switch・例外 handler の入口なら変更しない。必須 PatchId は
+`linimal.patch.read-without-receipt-session`、expected target count は2（画面入口と getter）。
+
+### 状態の寿命
+
+- メニュー操作で作る予約だけを `SystemClock.elapsedRealtime()` に基づく30分の期限で管理する。
+- 検証済みのトーク生成と lifecycle callback 登録に成功した予約は、Activity 所有の確定セッションにする。
+  前面 Activity を既読 worker から推測する旧方式は使わない。
+- pause/resume、終了ではない stop、別 Activity の画像表示は解除条件ではない。
+  確定セッションには時間経過による期限を適用しない。
+- 所有者の finishing stop または構成変更以外の destroy で解除する。
+  別のトーク画面の新規生成は、同じ chatId でも以前の確定セッションを終了する。
+- save callback が Linimal 専用 token を Bundle に保存し、構成変更の destroy で所有者を外す。
+  新画面は token・chatId・移管待ち状態が一致する場合だけ所有者を引き継ぐ。
+- snapshot/CAS と再利用しない token で、古い終了・期限切れ・復元通知が新しい状態を消さないようにする。
+  設定 OFF・適用不可・設定読取り/書込み失敗は予約と確定状態を破棄し、再有効化しても復活させない。
+
+Android の実際の lifecycle 配送と相手側の既読、ローカル未読バッジの成立性は実機確認が必要。
+JVM の状態遷移や DEX の静的検証だけで実機確認済みとは扱わない。

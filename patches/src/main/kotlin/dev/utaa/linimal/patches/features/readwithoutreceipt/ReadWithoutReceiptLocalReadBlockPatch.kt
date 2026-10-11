@@ -43,7 +43,7 @@ internal data class MainChatMarkAsReadShape(val chatIdRegister: Int)
  *
  * <p>対象の特定には「自動既読の停止」と同じ [outboundGateFingerprint] を共有します。fingerprint
  * を複製すると、片方だけ別のメソッドへ当たる余地が残るためです。あちらは同じメソッドの
- * 命令 index 5（local update と chat-list Runnable の合流点）へ注入するので、素の命令列を先に
+ * 命令 index 6（local update と chat-list Runnable の合流点の直後）へ注入するので、素の命令列を先に
  * 検証できるよう `readReceiptOutboundGatePatch` が先に走る位置へ本 patch を置いています。本 patch
  * 側は命令 0 の同一性を前提にせず、署名と register 割り当てだけを検証します。</p>
  *
