@@ -65,7 +65,7 @@ val readWithoutReceiptSessionPatch = bytecodePatch(
     execute {
         val activities = readWithoutReceiptSessionActivityFingerprint.matchAllOrNull().orEmpty()
         val getters = readWithoutReceiptSessionGetterFingerprint.matchAllOrNull().orEmpty()
-        val patchIds = listOf(PatchId.READ_WITHOUT_RECEIPT_SESSION)
+        val patchIds = listOf(PatchId.READ_WITHOUT_RECEIPT_SESSION, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_SESSION)
         val actual = activities.size + getters.size
         if (activities.size != 1 || getters.size != 1) {
             recordUnappliedFeatureStatus(patchIds, 2, actual, "ReadWithoutReceiptSessionTargetsNotUnique")

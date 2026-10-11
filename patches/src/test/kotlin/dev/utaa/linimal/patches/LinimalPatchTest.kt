@@ -41,6 +41,7 @@ import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptLo
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMenuLabelResourcePatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptSessionPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.notificationReadWithoutReceiptEntryPatch
 import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
 import dev.utaa.linimal.patches.settings.settingsEntryPatch
 import dev.utaa.linimal.patches.status.patchStatusResourcePatch
@@ -83,7 +84,8 @@ class LinimalPatchTest {
         )
         assertEquals(setOf(patchStatusResourcePatch), googleAuthMicrogManifestPatch.dependencies)
         assertEquals(setOf(chatListHeaderButtonsPatch), fisCertificateHeaderPatch.dependencies)
-        assertEquals(setOf(readWithoutReceiptSessionPatch), chatListHeaderButtonsPatch.dependencies)
+        assertEquals(setOf(notificationReadWithoutReceiptEntryPatch), chatListHeaderButtonsPatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptSessionPatch), notificationReadWithoutReceiptEntryPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptLocalReadBlockPatch), readWithoutReceiptSessionPatch.dependencies)
         assertEquals(
             setOf(readWithoutReceiptMarkAsReadBlockPatch),

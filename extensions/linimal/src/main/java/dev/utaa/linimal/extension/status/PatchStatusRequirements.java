@@ -76,6 +76,11 @@ final class PatchStatusRequirements {
                 "linimal.patch.read-without-receipt-mark-as-read-block",
                 "linimal.patch.read-without-receipt-local-read-block",
                 "linimal.patch.read-without-receipt-session"));
+        requirements.put("linimal.chat.notification-read-without-receipt", ids(
+                "linimal.patch.notification-read-without-receipt-entry",
+                "linimal.patch.notification-read-without-receipt-mark-as-read-block",
+                "linimal.patch.notification-read-without-receipt-local-read-block",
+                "linimal.patch.notification-read-without-receipt-session"));
         requirements.put("linimal.chat-list-header-ai-friends",
                 ids("linimal.patch.chat-list-header-ai-friends"));
         requirements.put("linimal.chat-list-header-calendar",

@@ -14,7 +14,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
-import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptSessionPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.notificationReadWithoutReceiptEntryPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
@@ -101,7 +101,7 @@ val chatListHeaderButtonsPatch = bytecodePatch(
         }
     }
     // 機能パッチは単一の直列チェーンを成し、この patch の後段に fisCertificateHeaderPatch が続きます。
-    dependsOn(readWithoutReceiptSessionPatch)
+    dependsOn(notificationReadWithoutReceiptEntryPatch)
 
     execute {
         val buttonEnumTypes = chatListHeaderButtonEnumFingerprint.matchAllOrNull().orEmpty()

@@ -98,7 +98,7 @@ val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch(
                 .distinct()
                 .size
             recordFeatureStatus(
-                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
+                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
                 expectedTargetCount = 1,
                 actualTargetCount = ambiguousOwnerTypeCount,
                 reason = "ReadWithoutReceiptRpcArgWriterNotUnique",
@@ -109,7 +109,7 @@ val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch(
         val callSiteMatches = newInstanceOfFingerprint(argWriterOwnerType).matchAllOrNull().orEmpty()
         if (callSiteMatches.size != 1) {
             recordFeatureStatus(
-                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
+                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
                 expectedTargetCount = 1,
                 actualTargetCount = callSiteMatches.size,
                 reason = "ReadWithoutReceiptRpcCallSiteNotUnique",
@@ -121,7 +121,7 @@ val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch(
         val shape = legacyTalkServiceRpcShape(match.originalMethod, argWriterOwnerType)
         if (shape == null) {
             recordUnsafeFeatureStatus(
-                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
+                listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
                 expectedTargetCount = 1,
                 actualTargetCount = 1,
                 reason = "ReadWithoutReceiptRpcInstructionShapeMismatch",
@@ -142,7 +142,7 @@ val readWithoutReceiptMarkAsReadBlockPatch = bytecodePatch(
         )
 
         recordFeatureStatus(
-            listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
+            listOf(PatchId.READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK),
             expectedTargetCount = 1,
             actualTargetCount = 1,
             reason = "ReadWithoutReceiptRpcEntryBlocked",

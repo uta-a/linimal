@@ -95,10 +95,9 @@ public final class LinimalConfig {
         try {
             snapshot = store.readSnapshot();
             health = LinimalConfigHealth.OK;
-            // OFF や適用不可へ切り替わった閲覧セッションは、再度 ON にしても復活させません。
-            if (!isReadWithoutReceiptEnabled()) {
-                ReadWithoutReceiptHooks.clearSuppression();
-            }
+            // OFF や適用不可になった入口のセッションは、再度 ON にしても復活させません。
+            ReadWithoutReceiptHooks.clearDisabledSuppression(
+                    isReadWithoutReceiptEnabled(), isNotificationReadWithoutReceiptEnabled());
         } catch (RuntimeException exception) {
             failOpen();
         }
@@ -219,6 +218,10 @@ public final class LinimalConfig {
 
     public boolean isReadWithoutReceiptEnabled() {
         return isEnabled(LinimalFeature.READ_WITHOUT_RECEIPT);
+    }
+
+    public boolean isNotificationReadWithoutReceiptEnabled() {
+        return isEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT);
     }
 
     public boolean isChatListHeaderAiFriendsSuppressionEnabled() {

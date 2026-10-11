@@ -113,7 +113,7 @@ scratch register は使わず、`invoke-static/range {p0 .. p1}` で既存 param
 
 ### 状態の寿命
 
-- メニュー操作で作る予約だけを `SystemClock.elapsedRealtime()` に基づく30分の期限で管理する。
+- メニュー操作または通知からの起動で作る予約だけを `SystemClock.elapsedRealtime()` に基づく30分の期限で管理する。
 - 検証済みのトーク生成と lifecycle callback 登録に成功した予約は、Activity 所有の確定セッションにする。
   前面 Activity を既読 worker から推測する旧方式は使わない。
 - pause/resume、終了ではない stop、別 Activity の画像表示は解除条件ではない。
@@ -127,3 +127,38 @@ scratch register は使わず、`invoke-static/range {p0 .. p1}` で既存 param
 
 Android の実際の lifecycle 配送と相手側の既読、ローカル未読バッジの成立性は実機確認が必要。
 JVM の状態遷移や DEX の静的検証だけで実機確認済みとは扱わない。
+
+## 通知タップからの既読なし入室（2026-10-12）
+
+対象APKの `ChatHistoryMessageNotificationContentIntentReceiver$a` は、メッセージ通知用
+PendingIntent の作成時にトーク request の `BackNavigationArgs.isFromNotification` を true にする。
+通知の tap は通常 `PendingIntent.getActivity` で `ChatHistoryActivityLaunchActivity` を開く。
+別の broadcast 経路でも receiver は内包 Intent を取り出して Activity を起動するだけで、
+通知の返信・既読処理を行う `LineAccessServiceForNotification` とは入口が異なる。
+
+起動 dispatcher `Llv7/n;->a(Intent, Z)V` は `shouldLaunchMainActivity`、
+`shouldLaunchChatHistoryActivityOnly`、`ShouldRequestCatHistoryActivityLaunch`、
+`CHAT_LIST_MOVE_ALL_TAB` の組合せで一意に同定する。対象APKでは registers=10、p1=v8。
+先頭は p1 の `Object.getClass()`。入口に `invoke-static/range {p1 .. p1}` で
+`NotificationReadWithoutReceiptHooks.onChatLaunch(Intent)` を注入し、
+MainActivity 経由・直接起動の分岐に入る前に予約する。元の dispatch は変更しない。
+
+通知 marker の反射契約は以下をすべて検証してから注入する。
+
+- 公開 `ChatHistoryRequest.getBackNavigation()` が this.backNavigation をそのまま返す。
+- `BackNavigationArgs(isFromNotification=` を持つ model が Object を直接継承し、
+  公開・非 static の boolean field が1つだけである。
+- `ChatHistoryRequest.writeToParcel` の `isFromNotification` キー直後でその field を読み、
+  `BaseBundle.putBoolean(String, Z)` の value 引数として保存している。
+
+難読化された field 名を runtime に固定しない。取得した field は cache し、
+marker が一意でなければ元の処理を続ける。PendingIntent 作成時には予約しない。
+通知の設定はメニュー設定から独立した初期 OFF の boolean。
+通知専用 feature に entry・送信抑制・ローカル抑制・閲覧セッションの4つの status を記録し、
+どれかが未適用なら機能を無効にする。後ろ3つは既存の安全な注入を共有する。
+
+セッションは通知/メニューの入口を保持し、対応する設定だけで有効性を判定する。
+片方を OFF にしてももう片方のセッションは解除しないが、OFF にした入口の状態は破棄する。
+通常入室、終了、構成変更、未確定予約の失効は既存のセッション境界を使用する。
+Square/OpenChat 等の別既読経路はこの機能の対象外。
+実機の通知配送・相手側既読・未読バッジは未確認。

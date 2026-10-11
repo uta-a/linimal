@@ -71,7 +71,7 @@ val readWithoutReceiptLocalReadBlockPatch = bytecodePatch(
         val matches = outboundGateFingerprint.matchAllOrNull().orEmpty()
         if (matches.size != 1) {
             recordFeatureStatus(
-                listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
+                listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
                 expectedTargetCount = 1,
                 actualTargetCount = matches.size,
                 reason = "ReadWithoutReceiptMarkAsReadNotUnique",
@@ -83,7 +83,7 @@ val readWithoutReceiptLocalReadBlockPatch = bytecodePatch(
         val shape = mainChatMarkAsReadShape(match.originalMethod)
         if (shape == null) {
             recordUnsafeFeatureStatus(
-                listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
+                listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
                 expectedTargetCount = 1,
                 actualTargetCount = 1,
                 reason = "ReadWithoutReceiptMarkAsReadRegisterShapeMismatch",
@@ -104,7 +104,7 @@ val readWithoutReceiptLocalReadBlockPatch = bytecodePatch(
         )
 
         recordFeatureStatus(
-            listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
+            listOf(PatchId.READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK, PatchId.NOTIFICATION_READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK),
             expectedTargetCount = 1,
             actualTargetCount = 1,
             reason = "ReadWithoutReceiptLocalReadBlocked",

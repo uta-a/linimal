@@ -22,13 +22,16 @@ public final class ReadWithoutReceiptHooks {
     /** 不変 snapshot。owner がない confirmed は構成変更による移管待ちです。 */
     static final class Suppression {
         final String chatId;
+        final boolean fromNotification;
         final long atMillis;
         final long token;
         final boolean confirmed;
         final WeakReference<Object> owner;
 
-        Suppression(String chatId, long atMillis, long token, boolean confirmed, Object owner) {
+        Suppression(String chatId, long atMillis, long token, boolean confirmed, Object owner,
+                boolean fromNotification) {
             this.chatId = chatId;
+            this.fromNotification = fromNotification;
             this.atMillis = atMillis;
             this.token = token;
             this.confirmed = confirmed;
@@ -36,7 +39,7 @@ public final class ReadWithoutReceiptHooks {
         }
 
         Suppression withOwner(Object activity) {
-            return new Suppression(chatId, atMillis, token, true, activity);
+            return new Suppression(chatId, atMillis, token, true, activity, fromNotification);
         }
 
         boolean owns(Object activity) {
@@ -62,7 +65,33 @@ public final class ReadWithoutReceiptHooks {
 
     static void markSuppressedAt(String chatId, long atMillis) {
         if (chatId != null) {
-            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null));
+            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, false));
+        }
+    }
+
+    static void markNotificationSuppressedAt(String chatId, long atMillis) {
+        if (chatId != null && !chatId.isEmpty()) {
+            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, true));
+        }
+    }
+
+    private static boolean isSuppressionEnabled(Suppression observed) {
+        LinimalConfig config = LinimalConfig.get();
+        return observed != null && (observed.fromNotification
+                ? config.isNotificationReadWithoutReceiptEnabled() : config.isReadWithoutReceiptEnabled());
+    }
+
+    /** 片方の設定が ON でも、OFF にされた入口の状態は復活させません。 */
+    public static void clearDisabledSuppression(boolean manualEnabled, boolean notificationEnabled) {
+        Suppression observed = currentSuppression();
+        if (observed != null && !(observed.fromNotification ? notificationEnabled : manualEnabled)) {
+            SUPPRESSION.compareAndSet(observed, null);
+        }
+    }
+
+    static void clearNotificationObserved(Suppression observed) {
+        if (observed != null && observed.fromNotification) {
+            SUPPRESSION.compareAndSet(observed, null);
         }
     }
 
@@ -70,8 +99,8 @@ public final class ReadWithoutReceiptHooks {
     public static void onChatCreated(Activity activity, Bundle savedState) {
         Suppression observed = currentSuppression();
         try {
-            if (!LinimalConfig.get().isReadWithoutReceiptEnabled()) {
-                clearSuppression();
+            if (!isSuppressionEnabled(observed)) {
+                SUPPRESSION.compareAndSet(observed, null);
                 return;
             }
             Bundle extras = activity.getIntent().getExtras();
@@ -143,8 +172,9 @@ public final class ReadWithoutReceiptHooks {
     /** ローカル未読反映と送信 RPC の両方で使う入口です。 */
     public static boolean shouldBlockMarkAsRead(String chatId) {
         try {
-            return shouldBlockGivenEnabled(chatId, SystemClock.elapsedRealtime(),
-                    LinimalConfig.get().isReadWithoutReceiptEnabled());
+            LinimalConfig config = LinimalConfig.get();
+            return shouldBlockGivenSources(chatId, SystemClock.elapsedRealtime(), currentSuppression(),
+                    config.isReadWithoutReceiptEnabled(), config.isNotificationReadWithoutReceiptEnabled());
         } catch (Throwable ignored) {
             clearSuppression();
             return false;
@@ -160,10 +190,22 @@ public final class ReadWithoutReceiptHooks {
     }
 
     static boolean shouldBlockGivenObserved(String chatId, long nowMillis, Suppression observed) {
+        return shouldBlockGivenSources(chatId, nowMillis, observed, true, true);
+    }
+
+    static boolean shouldBlockGivenSources(String chatId, long nowMillis, Suppression observed,
+            boolean manualEnabled, boolean notificationEnabled) {
         while (observed != null) {
             Suppression current = SUPPRESSION.get();
             if (current != observed) {
                 observed = current;
+                continue;
+            }
+            if (!(observed.fromNotification ? notificationEnabled : manualEnabled)) {
+                if (SUPPRESSION.compareAndSet(observed, null)) {
+                    return false;
+                }
+                observed = SUPPRESSION.get();
                 continue;
             }
             if (chatId == null || !observed.chatId.equals(chatId)) {

@@ -74,6 +74,7 @@ public final class LinimalConfigTest {
      */
     private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
             LinimalFeature.HOME_RECENT_HISTORY,
+            LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT,
             LinimalFeature.PUSH_NOTIFICATIONS,
             LinimalFeature.GOOGLE_DRIVE_BACKUP);
 
@@ -98,6 +99,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
         assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
         assertFalse(config.isHomeFeaturedCollectionsSuppressionEnabled());
+        assertFalse(config.isNotificationReadWithoutReceiptEnabled());
         assertEquals(ReadReceiptMode.NORMAL, config.getReadReceiptMode());
     }
 
@@ -138,6 +140,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isChatLineGiftSuppressionEnabled());
         assertFalse(config.isChatLinePaySuppressionEnabled());
         assertFalse(config.isReadWithoutReceiptEnabled());
+        assertFalse(config.isNotificationReadWithoutReceiptEnabled());
         assertFalse(config.isChatListHeaderAiFriendsSuppressionEnabled());
         assertFalse(config.isChatListHeaderCalendarSuppressionEnabled());
         assertFalse(config.isChatListHeaderOpenChatSuppressionEnabled());
@@ -756,6 +759,55 @@ public final class LinimalConfigTest {
     }
 
     @Test
+    public void notificationUnreadSuppressionPersistsIndependentlyOfTheMenuSetting() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        assertFalse(config.isNotificationReadWithoutReceiptEnabled());
+
+        config.setSuppressionEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, true);
+        assertEquals(true, backend.values.get(
+                LinimalConfigSchema.NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY));
+        config = configFor(backend);
+        assertTrue(config.isNotificationReadWithoutReceiptEnabled());
+        assertFalse(config.isReadWithoutReceiptEnabled());
+
+        config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+        config = configFor(backend);
+        assertTrue(config.isNotificationReadWithoutReceiptEnabled());
+        assertTrue(config.isReadWithoutReceiptEnabled());
+
+        config.setSuppressionEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, false);
+        assertEquals(false, backend.values.get(
+                LinimalConfigSchema.NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY));
+        config = configFor(backend);
+        assertFalse(config.isNotificationReadWithoutReceiptEnabled());
+        assertTrue(config.isReadWithoutReceiptEnabled());
+    }
+
+    @Test
+    public void notificationUnreadSuppressionUsesItsOwnAvailabilityWithoutLosingSavedValues() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+        config.setSuppressionEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, true);
+
+        config = configFor(backend, availableFeatures(LinimalFeature.READ_WITHOUT_RECEIPT));
+        assertTrue(config.isReadWithoutReceiptEnabled());
+        assertFalse(config.isNotificationReadWithoutReceiptEnabled());
+        assertEquals(true, backend.values.get(
+                LinimalConfigSchema.NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY));
+
+        config = configFor(backend,
+                availableFeatures(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT));
+        assertFalse(config.isReadWithoutReceiptEnabled());
+        assertTrue(config.isNotificationReadWithoutReceiptEnabled());
+
+        config = configFor(backend);
+        assertTrue(config.isReadWithoutReceiptEnabled());
+        assertTrue(config.isNotificationReadWithoutReceiptEnabled());
+    }
+
+    @Test
     public void readReceiptModeFollowsItsOwnPatchStatus() {
         InMemoryBackend backend = new InMemoryBackend();
         backend.values.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, "manual");
@@ -781,6 +833,27 @@ public final class LinimalConfigTest {
             assertTrue(isUnreadSessionBlocked(config));
 
             config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, false);
+            config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+
+            assertFalse(isUnreadSessionBlocked(config));
+        } finally {
+            ReadWithoutReceiptHooks.clearSuppression();
+        }
+    }
+
+    @Test
+    public void disablingMenuUnreadSuppressionClearsItsSessionWhileNotificationsRemainEnabled()
+            throws Exception {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+        config.setSuppressionEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, true);
+        try {
+            markUnreadSession();
+            assertTrue(isUnreadSessionBlocked(config));
+
+            config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, false);
+            assertTrue(config.isNotificationReadWithoutReceiptEnabled());
             config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
 
             assertFalse(isUnreadSessionBlocked(config));

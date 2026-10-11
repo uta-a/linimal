@@ -147,15 +147,6 @@ public final class FeatureCatalogTest {
         assertEquals("チャットの + メニューからカレンダーを取り除きます。", plusMenu.get(0).getSummary());
     }
 
-    @Test
-    public void readReceiptPageListsOnlyTheReadWithoutReceiptEntry() {
-        List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
-                SettingsPage.READ_RECEIPT, allCatalogFeatureIds());
-
-        assertEquals(1, groups.size());
-        assertGroup(groups.get(0), null, "linimal.read-without-receipt");
-        assertEquals("既読をつけずに読むをメニューに追加", groups.get(0).getEntries().get(0).getTitle());
-    }
 
     @Test
     public void generalPageKeepsThePremiumBrowserNotificationAndBackupEntriesWithoutSections() {

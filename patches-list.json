@@ -1260,6 +1260,36 @@
         }
       ],
       "options": []
+    },
+    {
+      "name": "通知から既読をつけずに開く",
+      "description": "メッセージ通知からのトーク起動時だけ既読をつけない閲覧セッションを予約します。",
+      "default": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM_REQUIRED",
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.11.0",
+              "versionCodes": {
+                "ARM64_V8A": 261100124
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
     }
   ]
 }

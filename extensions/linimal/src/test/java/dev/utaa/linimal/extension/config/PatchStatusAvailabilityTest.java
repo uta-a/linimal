@@ -68,6 +68,44 @@ public final class PatchStatusAvailabilityTest {
                 .isAvailable(featureId));
     }
 
+    @Test
+    public void notificationUnreadSuppressionRequiresOnlyItsEntryAndSharedReadPaths() {
+        String featureId = LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId();
+        String[] patchIds = {
+                "linimal.patch.notification-read-without-receipt-entry",
+                "linimal.patch.notification-read-without-receipt-mark-as-read-block",
+                "linimal.patch.notification-read-without-receipt-local-read-block",
+                "linimal.patch.notification-read-without-receipt-session"
+        };
+        // メニューや navigation の patch を含めず、通知入口と実際の既読経路だけで利用可能です。
+        assertTrue(notificationAvailability(patchIds, -1, false).isAvailable(featureId));
+        for (int index = 0; index < patchIds.length; index++) {
+            assertFalse(patchIds[index],
+                    notificationAvailability(patchIds, index, false).isAvailable(featureId));
+            assertFalse(patchIds[index],
+                    notificationAvailability(patchIds, index, true).isAvailable(featureId));
+        }
+    }
+
+    private static FeatureAvailability notificationAvailability(
+            String[] patchIds, int unavailableIndex, boolean partial) {
+        StringBuilder patches = new StringBuilder();
+        for (int index = 0; index < patchIds.length; index++) {
+            if (index == unavailableIndex && !partial) {
+                continue;
+            }
+            if (patches.length() > 0) {
+                patches.append(',');
+            }
+            boolean applied = index != unavailableIndex;
+            patches.append(patch(patchIds[index],
+                    LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId(),
+                    applied ? "OK" : "PARTIAL", 1, applied ? 1 : 0));
+        }
+        return PatchStatusAvailability.of(read(
+                "{\"schemaVersion\":1,\"patches\":[" + patches + "]}"));
+    }
+
     private static PatchStatusReadResult read(String json) {
         return PatchStatusRepository.read(
                 new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));

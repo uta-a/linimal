@@ -192,6 +192,33 @@ Morphe の「Applied」ログだけでは成功扱いせず、embedded status �
 
 APK・抽出DEX・解析用コードは一時ディレクトリだけに置き、検証後に削除した。
 
+## 2026-10-12 通知から既読をつけずに開く
+
+独立した初期 OFF の設定を既読ページへ追加した。
+通知 request の marker を起動 dispatch 時に確認し、メニュー設定 OFF でも既読なしセッションを開始する。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| Java17 / offline の `test buildAndroid :patches:generatePatchesList` | Pass |
+| 通知のみ ON、通常入室、30分超の閲覧、構成変更、OFF→ON、終了の JVM smoke | Pass |
+| 対象26.11.0 APKM の unsigned Morphe 統合適用 | Pass |
+| embedded patch-status | 57件すべて OK。通知 entry 4/4、送信1/1、ローカル1/1、session2/2 |
+| 全14 DEX の `dexdump -f` / `d8 --min-api 32` | Pass |
+| 実機の設定表示・独立ON/OFF・再入場時の保存 | Pass。XIG07 / Android16（SDK36）、通知のみONを確認 |
+| 同一署名での上書きinstall・ログイン状態維持・ART verify | Pass。データ消去なし、`cmd package compile -f -m verify` 成功 |
+| 実際のメッセージ通知tap・一時背景移行後の復帰 | Pass。対象トークのメッセージ表示、同一process維持 |
+| 通知から閲覧して閉じた後のローカル未読 | Pass。トーク一覧の対象行に未読数1を確認 |
+| 通知から閲覧したときの相手側既読・通知バッジ | Pass。ユーザーが送信側の既読なし・通知バッジ正常を確認 |
+| 閉じた後の通常再入室での解除 | Pass。対象行の未読数が消え、送信側にも既読が付いたことをユーザーが確認 |
+
+Gradle の実行JDK26では Android JdkImageTransform が失敗したため、repository 指定のJava17で実行した。
+既読ページの1行だけという旧カタログテストは表示内容の固定なので削除し、
+設定の独立保存・必須patch不足・入口別失効・通常再入室などの動作を検証した。
+一時APK・DEX・逆コンパイル結果・smoke scriptは検証後に削除した。
+
+実機確認後は既存設定（メニューON、通知OFF、自動既読停止OFF）へ戻した。
+同一processのログ上で `FATAL EXCEPTION` / `VerifyError` は0件。
+
 ## 実機成立性ゲート
 
 | ケース | 公式版リファレンス | Linimal統合APK | 結果 |

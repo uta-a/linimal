@@ -51,6 +51,7 @@ public enum LinimalFeature {
     HOME_RECENT_HISTORY("linimal.home-recent-history"),
     PREMIUM_SETTINGS_ROW("linimal.premium-settings-row"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
+    NOTIFICATION_READ_WITHOUT_RECEIPT("linimal.chat.notification-read-without-receipt"),
     MINI("linimal.mini"),
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),

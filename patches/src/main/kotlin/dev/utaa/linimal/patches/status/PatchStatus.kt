@@ -36,6 +36,7 @@ enum class FeatureId(val value: String) {
     EXTERNAL_BROWSER("linimal.external-browser"),
     READ_RECEIPTS_MAIN_CHAT("linimal.read-receipts-main-chat"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
+    NOTIFICATION_READ_WITHOUT_RECEIPT("linimal.chat.notification-read-without-receipt"),
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),
     CHAT_LIST_HEADER_OPEN_CHAT("linimal.chat-list-header-open-chat"),
@@ -162,6 +163,22 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     READ_WITHOUT_RECEIPT_SESSION(
         "linimal.patch.read-without-receipt-session",
         FeatureId.READ_WITHOUT_RECEIPT,
+    ),
+    NOTIFICATION_READ_WITHOUT_RECEIPT_ENTRY(
+        "linimal.patch.notification-read-without-receipt-entry",
+        FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
+    ),
+    NOTIFICATION_READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK(
+        "linimal.patch.notification-read-without-receipt-mark-as-read-block",
+        FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
+    ),
+    NOTIFICATION_READ_WITHOUT_RECEIPT_LOCAL_READ_BLOCK(
+        "linimal.patch.notification-read-without-receipt-local-read-block",
+        FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
+    ),
+    NOTIFICATION_READ_WITHOUT_RECEIPT_SESSION(
+        "linimal.patch.notification-read-without-receipt-session",
+        FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
     ),
     CHAT_LIST_HEADER_AI_FRIENDS(
         "linimal.patch.chat-list-header-ai-friends",
