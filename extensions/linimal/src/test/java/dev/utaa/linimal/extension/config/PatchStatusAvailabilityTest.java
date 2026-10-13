@@ -56,7 +56,8 @@ public final class PatchStatusAvailabilityTest {
                 + patch("linimal.patch.read-without-receipt-mark-as-read-block",
                         featureId, "OK", 1, 1) + ","
                 + patch("linimal.patch.read-without-receipt-local-read-block",
-                        featureId, "OK", 1, 1);
+                        featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-send", featureId, "OK", 1, 1);
 
         assertFalse(PatchStatusAvailability.of(read(
                 "{\"schemaVersion\":1,\"patches\":[" + existing + "]}"))
@@ -75,7 +76,8 @@ public final class PatchStatusAvailabilityTest {
                 "linimal.patch.notification-read-without-receipt-entry",
                 "linimal.patch.notification-read-without-receipt-mark-as-read-block",
                 "linimal.patch.notification-read-without-receipt-local-read-block",
-                "linimal.patch.notification-read-without-receipt-session"
+                "linimal.patch.notification-read-without-receipt-session",
+                "linimal.patch.notification-read-without-receipt-send"
         };
         // メニューや navigation の patch を含めず、通知入口と実際の既読経路だけで利用可能です。
         assertTrue(notificationAvailability(patchIds, -1, false).isAvailable(featureId));

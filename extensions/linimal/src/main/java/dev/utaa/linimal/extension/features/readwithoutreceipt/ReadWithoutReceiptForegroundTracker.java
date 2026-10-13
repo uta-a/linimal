@@ -5,7 +5,7 @@ import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
 
-/** 前面の推測はせず、確定済みセッションの終了と構成変更だけを観測します。 */
+/** 前面の推測はせず、確定済みセッションの案内・終了・構成変更だけを観測します。 */
 final class ReadWithoutReceiptForegroundTracker {
     private static final Registration REGISTRATION = new Registration();
 
@@ -66,6 +66,8 @@ final class ReadWithoutReceiptForegroundTracker {
     }
 
     static final class Callbacks implements Application.ActivityLifecycleCallbacks {
+        private final ReadWithoutReceiptNotice notice = new ReadWithoutReceiptNotice();
+
         @Override
         public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
             // onCreate の注入入口でのみ request と saved token を検証します。
@@ -78,10 +80,12 @@ final class ReadWithoutReceiptForegroundTracker {
         @Override
         public void onActivityResumed(Activity activity) {
             // pause/resume は閲覧セッションを終了しません。
+            notice.onResumed(activity);
         }
 
         @Override
         public void onActivityPaused(Activity activity) {
+            notice.onHidden(activity);
         }
 
         @Override
@@ -108,6 +112,7 @@ final class ReadWithoutReceiptForegroundTracker {
 
         @Override
         public void onActivityDestroyed(Activity activity) {
+            notice.onHidden(activity);
             try {
                 noteDestroyed(activity, activity.isChangingConfigurations());
             } catch (Throwable ignored) {

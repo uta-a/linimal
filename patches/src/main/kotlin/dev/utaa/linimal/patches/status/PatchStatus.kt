@@ -164,6 +164,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.read-without-receipt-session",
         FeatureId.READ_WITHOUT_RECEIPT,
     ),
+    READ_WITHOUT_RECEIPT_SEND(
+        "linimal.patch.read-without-receipt-send",
+        FeatureId.READ_WITHOUT_RECEIPT,
+    ),
     NOTIFICATION_READ_WITHOUT_RECEIPT_ENTRY(
         "linimal.patch.notification-read-without-receipt-entry",
         FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
@@ -178,6 +182,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     ),
     NOTIFICATION_READ_WITHOUT_RECEIPT_SESSION(
         "linimal.patch.notification-read-without-receipt-session",
+        FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
+    ),
+    NOTIFICATION_READ_WITHOUT_RECEIPT_SEND(
+        "linimal.patch.notification-read-without-receipt-send",
         FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
     ),
     CHAT_LIST_HEADER_AI_FRIENDS(

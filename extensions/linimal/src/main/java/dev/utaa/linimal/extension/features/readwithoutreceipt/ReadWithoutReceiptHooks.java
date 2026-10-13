@@ -19,7 +19,7 @@ public final class ReadWithoutReceiptHooks {
     private static final AtomicLong NEXT_TOKEN = new AtomicLong();
     private static final AtomicReference<Suppression> SUPPRESSION = new AtomicReference<>();
 
-    /** 不変 snapshot。owner がない confirmed は構成変更による移管待ちです。 */
+    /** セッション所有者の不変 snapshot。既読観測は同じ token の SendState にだけ保存します。 */
     static final class Suppression {
         final String chatId;
         final boolean fromNotification;
@@ -27,19 +27,21 @@ public final class ReadWithoutReceiptHooks {
         final long token;
         final boolean confirmed;
         final WeakReference<Object> owner;
+        final ReadWithoutReceiptSendHooks.SendState sendState;
 
         Suppression(String chatId, long atMillis, long token, boolean confirmed, Object owner,
-                boolean fromNotification) {
+                boolean fromNotification, ReadWithoutReceiptSendHooks.SendState sendState) {
             this.chatId = chatId;
             this.fromNotification = fromNotification;
             this.atMillis = atMillis;
             this.token = token;
             this.confirmed = confirmed;
             this.owner = owner == null ? null : new WeakReference<>(owner);
+            this.sendState = sendState;
         }
 
         Suppression withOwner(Object activity) {
-            return new Suppression(chatId, atMillis, token, true, activity, fromNotification);
+            return new Suppression(chatId, atMillis, token, true, activity, fromNotification, sendState);
         }
 
         boolean owns(Object activity) {
@@ -65,13 +67,15 @@ public final class ReadWithoutReceiptHooks {
 
     static void markSuppressedAt(String chatId, long atMillis) {
         if (chatId != null) {
-            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, false));
+            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, false,
+                    new ReadWithoutReceiptSendHooks.SendState()));
         }
     }
 
     static void markNotificationSuppressedAt(String chatId, long atMillis) {
         if (chatId != null && !chatId.isEmpty()) {
-            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, true));
+            SUPPRESSION.set(new Suppression(chatId, atMillis, NEXT_TOKEN.incrementAndGet(), false, null, true,
+                    new ReadWithoutReceiptSendHooks.SendState()));
         }
     }
 
@@ -220,6 +224,21 @@ public final class ReadWithoutReceiptHooks {
                 continue;
             }
             return true;
+        }
+        return false;
+    }
+
+    /** 送信が投入されたトークの確定セッションだけを終了します。予約や別トークには触れません。 */
+    static boolean endSuppressionForSentMessage(String chatId, Suppression observed) {
+        if (observed == null || !observed.confirmed || chatId == null || !observed.chatId.equals(chatId)) {
+            return false;
+        }
+        Suppression current = currentSuppression();
+        while (current != null && current.confirmed && current.token == observed.token) {
+            if (SUPPRESSION.compareAndSet(current, null)) {
+                return true;
+            }
+            current = currentSuppression();
         }
         return false;
     }

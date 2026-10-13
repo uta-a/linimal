@@ -105,6 +105,15 @@ public final class ReadReceiptHooks {
         PREPARED_SUPPLIER.remove();
     }
 
+    /** 既読なしセッションでの送信操作だけ、直後の既読反映を一回許可します。worker 終了時に必ず破棄します。 */
+    public static void prepareSentMessageRead(String chatId) {
+        if (chatId == null) {
+            PREPARED_SUPPLIER.remove();
+        } else {
+            PREPARED_SUPPLIER.set(chatId);
+        }
+    }
+
     private static void removeClearedOrMatchingSuppliers(Object supplier) {
         Iterator<ManualSupplier> iterator = MANUAL_SUPPLIERS.iterator();
         while (iterator.hasNext()) {

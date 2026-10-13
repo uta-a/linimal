@@ -162,3 +162,85 @@ marker が一意でなければ元の処理を続ける。PendingIntent 作成�
 通常入室、終了、構成変更、未確定予約の失効は既存のセッション境界を使用する。
 Square/OpenChat 等の別既読経路はこの機能の対象外。
 実機の通知配送・相手側既読・未読バッジは未確認。
+
+## 既読なし閲覧中のメッセージ送信と入室案内（2026-10-13）
+
+### 送信を観測する境界
+
+対象 APK の `Lb81/d;` はチャット UI の送信 adapter。テキスト、スタンプ、画像、
+動画、音声、ファイル、位置情報などを `Ld98/b1;` の派生 request に変換し、
+`Ld98/w0;->a(Ld98/b1;Lb81/o;)V` に渡す13箇所を持つ。
+その先は既存 executor に `Ld98/m1;` を投入する。ここは送信キューへの投入であり、
+サーバの送信成功を意味しない。ネットワーク、送信 payload、再送処理は変更しない。
+
+`readWithoutReceiptSendPatch` は `Text(text=`、`, targetChatId=`、
+`, chatMessageSendSilentMode=` で request model を一意に特定する。
+model の superclass にある唯一の抽象 `()String` getter と、text model の単純な
+field getter を確認する。adapter は text request の生成と `TO_BE_SENT_SILENTLY`
+field の参照を組み合わせて同定する。難読化されたクラス・メソッド名は条件にしない。
+
+13箇所すべてで、戻り値なしの投入呼び出しの直後が `return-void` であり、
+分岐・switch・例外 handler の入口ではないことを確認してから注入する。
+元の request register を range invoke で渡し、scratch register や payload は変更しない。
+generated static bridge が request の対象 chatId を取得して runtime hook に渡す。
+入力の取り消し、無効な送信要求、投入呼び出しの例外はこの hook を通らない。
+
+### 実際の既読反映
+
+`outboundGateFingerprint` が同定した `d(J, String, Z)` の先頭、
+ローカル未読維持 gate より前で `recordReadAttempt(Object, J, String)` を呼ぶ。
+this・既読位置の wide pair・chatId の連続する4 registerを range invoke でそのまま渡す。
+runtime は、抑制中の確定セッションに executor と正の既読位置を保存する。
+既読位置は後退させず、executor はセッションの終了とともに解放する。
+新しい executor の生成や接続 listener の追加、DB の再検索はしない。
+
+LINE 側には公開 instance bridge `linimalMarkReadAfterSend(J, String)` を生成し、
+保存した既読位置で既存の `d(J, String, true)` を呼ぶ。
+ローカル未読解除・既読位置更新・RPC と LINE の再送経路を再利用する。
+
+最初の実装では `(String)Rx Single` factory での登録に限定していた。
+実機では `d` の既読処理が到達しても factory 由来の reader がないことを
+一時診断ログで確認した。送信時に executor がないため処理が終了していた。
+この factory 依存と、送信後に `(String)J` で DB を再検索する旧 bridge は削除した。
+
+runtime は送信投入と既読観測の両方が揃った確定セッションだけを、一度だけ worker に渡す。
+送信が最初の既読観測より早い場合も、後続の既読観測から反映を開始する。
+worker で設定の有効性と token/CAS を再確認して抑制を終了し、bridge を反射で呼ぶ。
+別トーク、未確定予約、新しい token への古い通知、二重送信は状態を消さない。
+構成変更で token が同じなら、既読観測と送信状態を引き継ぐ。
+「通常チャットの自動既読を停止」も ON の場合は、この既読反映に限って同じ worker 上で
+一回だけ許可する。worker 終了時は許可を必ず破棄し、その後の既読は既存設定に従う。
+「送信しても既読を有効にしない」は初期 OFF の共通オプション。
+ON の送信は `SendState` の送信済み・実行予約状態を進めないため、
+後続の既読観測でも抑制を解除しない。OFF に戻した後の次の送信は保存した既読位置を反映できる。
+送信操作時点の設定を使い、通常入室には作用しない。
+
+保存キーは `linimal.chat.keep_unread_after_send`、schema は4。
+v3→v4 は既存キーを変更せず、新キーが未設定の場合だけ false を保存する。
+既に有効な boolean 値があれば保持し、不正な型・保存失敗では fail-open にする。
+このオプションは既存のメニュー／通知 feature のどちらかが完全適用なら利用可能で、
+独立の FeatureId / PatchId は追加しない。設定画面には既読表示と閲覧・返信の不一致によるリスクを明記する。
+
+メニュー／通知の両 feature に必須 `send` PatchId を追加した。
+expected target count は15（UI 投入13箇所、request 契約、実際の既読入口）。
+同定や命令形状の検証に失敗したときは DEX を変更せず、両 feature を適用不可にする。
+
+### 入室案内
+
+確定セッションの既読が無効な間、decor の上部に
+「現在、既読は無効です。メッセージを送信すると既読になります」と表示し続ける。
+新設定 ON の場合は「現在、既読は無効です。送信しても既読はつきません」に切り替える。
+描画前にも現在の設定に合わせて文言を更新する。
+ステータスバー／cutout inset と既存の配色、アクセシビリティ live region を使う。
+時間による消去と表示済み token の抑制は廃止した。
+pause/destroy では view を取り除き、同じ token の復帰や構成変更後も既読無効なら再表示する。
+送信によるセッション解除後の描画では取り除き、通常入室・未確定予約には表示しない。
+
+修正版の対象 APKM 統合適用は `send` 両方が15/15・OK、全59 status が OK。
+実機のログイン維持・案内の表示と消去・受信中の既読抑制・返信前の未読数1を確認した。
+ユーザーが初版の送信後も既読が付かないと報告したため、上記の登録入口を修正し、
+同一署名で更新して ART verify と既読なし入室を確認した。
+修正版では、テキスト返信後の相手側既読をユーザーが確認した。
+対象トークの未読バッジも消え、別トークの未読1は維持された。
+通知入室・他の送信形式との組合せは個別には実機確認していない。
+

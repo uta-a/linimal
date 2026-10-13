@@ -203,11 +203,11 @@ public final class FeatureCatalog {
 
             new Entry(LinimalFeature.READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
                     "既読をつけずに読むをメニューに追加",
-                    "トーク一覧の長押しメニューに追加します。そこから開いたトークは、開いている間だけ既読の送信を止め、"
-                            + "トーク一覧と下部タブの未読バッジも消しません。閉じたあと通常の操作で開くと既読になります。"),
+                    "トーク一覧の長押しメニューに追加します。そこから開いたトークは未読を維持し、"
+                            + "上部に案内を表示します。送信後の既読は下の設定で選べます。"),
             new Entry(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
                     "通知から既読をつけずに開く",
-                    "メッセージ通知をタップして開いたトークで、閉じるまで既読をつけません。"),
+                    "メッセージ通知から開いたトークは未読を維持し、上部に案内を表示します。送信後の既読は下の設定で選べます。"),
 
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",

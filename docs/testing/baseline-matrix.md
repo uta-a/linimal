@@ -219,6 +219,93 @@ Gradle の実行JDK26では Android JdkImageTransform が失敗したため、re
 実機確認後は既存設定（メニューON、通知OFF、自動既読停止OFF）へ戻した。
 同一processのログ上で `FATAL EXCEPTION` / `VerifyError` は0件。
 
+## 2026-10-13 既読なし閲覧中の送信と入室案内
+
+設定を増やさず、メニュー／通知から既読なしで開いたトークでも、
+チャット UI がメッセージを送信キューへ投入したときに抑制を終了して既読を反映する。
+入室時はチャット上部に一時的な案内を重ねる。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| Java17 の `--no-daemon test buildAndroid` | Pass |
+| メニュー／通知セッションの送信後解除、別トーク・予約・古い snapshot の拒否 | JVM regression Pass |
+| 自動既読停止との一回限りの許可・対象 chatId の一致・終了時の破棄 | JVM regression Pass |
+| キュー投入を迂回する分岐への誤注入拒否・request register 維持 | patch regression Pass |
+| 対象26.11.0 APKM の Morphe 統合適用 | Pass。初版は両 `send` が16/16、実機修正版は15/15・全59件OK |
+| Android エミュレーター上の全14 DEX の `dex2oat64 --compiler-filter=verify` | Pass |
+| 一時 Activity 上の入室案内 | Pass。上部表示、通常入室では非表示、約5秒後の消去をスクリーンショット確認 |
+| 一時 Activity 上の送信時 runtime 動作 | Pass。抑制解除・worker 上の bridge 呼び出し・案内消去を確認 |
+| XIG07 / Android16 への同一署名上書き更新 | Pass。署名 SHA-256 一致、`adb install -r` 成功。データ消去なし |
+| 実機の ART 全DEX verify | Pass。`cmd package compile -f -m verify` 成功 |
+| 実機のログイン状態・既読なし入室時の案内 | Pass。トーク一覧へ復帰し、「Linimal」トークの長押し入室でダーク配色の上部案内を確認 |
+| 実機の案内消去・トーク画面維持 | Pass。案内の自動消去後もトークを表示。LINE process 維持、crash buffer の LINE 例外0件 |
+| 実機で閲覧中に受信したメッセージの既読抑制 | Pass。受信 `hi` の表示を確認し、送信側に既読なしとユーザーが確認 |
+| 返信前のローカル未読維持 | Pass。退室後も対象トークの未読数1を確認。既読なしで再入室した |
+| 実機の送信後の既読・未読解除 | 修正版 Pass。テキスト返信後の相手側既読をユーザーが確認。対象トークの未読バッジ消去と、下部タブの未読数2→1（別トークの1のみ残る）も確認 |
+| 既読観測と送信の順序、既読位置の後退防止、構成変更時の引継ぎ | 修正版の JVM regression Pass |
+| wide 既読位置と高位 parameter register の維持 | 修正版の patch regression Pass |
+
+一時 Activity の送信 bridge は観測用の代替であり、LINE の通信成功を検証したものではない。
+自動既読停止との優先関係を確認するため、その smoke の asset に限って patch-status を
+完全適用 fixture にした。実際の統合 APK は変更していない。
+Morphe CLI 1.18.1 の unsigned APK では `read-receipts-main-chat-manual-caller` が
+`ReadReceiptManualCallerStateMachineMismatch` の ERROR を記録した。
+一方、従来の実機更新に使用していた CLI 1.14.0 で同じバンドルから生成した署名付き APK は、
+全59件が OK・expected/actual 一致となった。この APK を既存署名鍵で実機へ更新した。
+既存の manual-caller パッチ本体は今回変更していない。
+
+初版の実機では、抑制する既読入口へ到達しても factory 由来の reader がないことを
+一時診断ログ `read-attempt factory-reader=false` で確認した。
+Rx supplier の作成時にしか executor を登録していなかったため、送信時に既読処理を起動できなかった。
+修正版は、実際に抑制する `d(J, String, Z)` の入口で executor と既読位置をセッションへ保存する。
+送信が既読観測より早い場合も後続の観測から一回だけ反映し、送信後の DB 再検索はしない。
+一時診断 hook とログは削除済み。全テスト・ビルド・signed APK 生成・実機 ART verify は Pass。
+修正版の実機テキスト返信後、ユーザーが送信側の既読反映を確認した。
+トーク一覧では対象トークの未読バッジが消え、別トークの未読1だけが維持された。
+同一 process が継続し、crash buffer の LINE 例外は0件。
+今回の実機送信確認はテキストと長押し入室の組合せであり、
+スタンプ・画像・通知入室との組合せは個別の実機確認を行っていない。
+
+## 2026-10-13 既読無効の案内を常時表示
+
+約5秒の消去 timer と表示済み token の判定を廃止し、
+抑制が有効な閲覧セッションの間は案内を表示し続ける。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| `--no-daemon buildAndroid`・同一署名更新・実機 ART verify | Pass。全59 patch-status OK |
+| 実機で8秒以上経過後の上部案内 | Pass。以前の消去時間を越えて表示が維持される |
+| 別アプリから同じトークへ復帰 | Pass。既読無効セッションを維持し、案内を再表示 |
+| 案内下の戻るボタン・退室時の消去 | Pass。タッチ操作を遮らず、トーク一覧では非表示 |
+| 通常操作による再入室 | Pass。既読無効セッションではないため案内を表示しない |
+
+## 2026-10-13 送信後も既読を無効にする設定
+
+既読ページに「送信しても既読を有効にしない」を追加した。初期値は OFF。
+メニュー・通知からの既読なし閲覧に共通で作用し、通常入室は変更しない。
+設定画面には、閲覧・返信しても相手側が未読表示のままとなり、
+誤解やトラブルにつながる可能性と未読バッジが残ることを明記した。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| `--no-daemon test buildAndroid :patches:generatePatchesList` | Pass |
+| 新規インストールの OFF・v3→v4 の既存設定維持・保存と再読込 | JVM regression Pass |
+| 新キーの不正型・書込み失敗・既読なし feature が未適用の fail-open | JVM regression Pass |
+| ON の送信では既読反映を予約しない・OFF 後の次の送信で反映 | JVM regression Pass |
+| 対象 APKM への署名付き統合適用 | Pass。リリース v0.6.0 のバンドルでも Morphe Desktop 1.14.0 で全59 patch-status OK、expected / actual 一致を確認 |
+| エミュレーター上の実際の Linimal 設定画面 | Pass。初期 OFF とリスク説明をスクリーンショット確認 |
+| Android 上の ON→設定再入場→OFF の保持と runtime hook | Pass。ON は抑制維持、OFF は worker で既読 bridge を呼び抑制解除 |
+| 上部案内の設定連動 | Pass。ON は「送信しても既読はつきません」を維持し、OFF の送信で案内を消去 |
+| 新設定の実機上書き更新・ART verify | 2026-10-14 Pass。XIG07 に同一署名 APK を `install -r` で適用し、`cmd package compile -f -m verify` 成功 |
+| 実機の初期 OFF・リスク説明・既存設定維持 | 2026-10-14 Pass。実際の既読ページでスクリーンショット確認。既存のメニュー・通知設定は ON のまま、新設定だけ OFF |
+| 実機の設定再入場による ON/OFF 保存確認 | 2026-10-14 Pass。ON と OFF の両方を再入場後に確認し、終了時は OFF に戻した |
+| 新設定 ON の実際の LINE 送信と相手側既読 | 未確認。確認のための外部メッセージは送信していない |
+
+Android runtime の送信 bridge は一時 Activity の観測用代替であり、
+この新設定 ON/OFF について LINE のネットワーク送信を実機検証したものではない。
+新規 FeatureId / PatchId は追加せず、既存のメニュー／通知 feature の適用状況で操作可否を決める。
+schema4 の移行は新キーが未設定の場合だけ false を書き、他の値を変更しない。
+
 ## 実機成立性ゲート
 
 | ケース | 公式版リファレンス | Linimal統合APK | 結果 |

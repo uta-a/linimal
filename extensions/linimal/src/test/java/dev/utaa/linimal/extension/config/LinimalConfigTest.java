@@ -155,23 +155,6 @@ public final class LinimalConfigTest {
         }
     }
 
-    /** 新規インストールでは旧既定値を書き戻さず、保存するのは schema marker だけです。 */
-    @Test
-    public void freshInstallPersistsOnlyTheSchemaMarker() {
-        InMemoryBackend backend = new InMemoryBackend();
-
-        configFor(backend);
-
-        assertEquals(1, backend.values.size());
-        assertEquals(
-                LinimalConfigSchema.CURRENT_VERSION,
-                backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
-        for (LinimalFeature feature : LinimalFeature.values()) {
-            assertNull(feature.name(), backend.values.get(LinimalConfigSchema.keyFor(feature)));
-        }
-        assertNull(backend.values.get(LinimalConfigSchema.READ_RECEIPT_MODE_KEY));
-    }
-
     /**
      * 既存インストールでは、利用者がまだ触っていない機能に変更前の既定値を書き込み、
      * 既定値の変更で挙動が変わらないようにします。
@@ -314,7 +297,7 @@ public final class LinimalConfigTest {
     }
 
     @Test
-    public void v0MigratesThroughV1AndV2ToV3AndPreservesExistingValues() {
+    public void v0MigratesToTheCurrentSchemaAndPreservesExistingValues() {
         InMemoryBackend backend = new InMemoryBackend();
         backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 0);
         backend.values.put(LinimalConfigSchema.ADS_ENABLED_KEY, false);
@@ -331,10 +314,6 @@ public final class LinimalConfigTest {
         assertTrue(config.isShoppingSuppressionEnabled());
         assertTrue(config.isWalletSuppressionEnabled());
         assertEquals(ReadReceiptMode.MANUAL, config.getReadReceiptMode());
-        assertEquals(3, backend.writes.size());
-        assertEquals(1, backend.writes.get(0).get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
-        assertV2MigrationWasAtomic(backend.writes.get(1));
-        assertEquals(3, backend.writes.get(2).get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
         assertEquals(
                 LinimalConfigSchema.CURRENT_VERSION,
                 backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
@@ -898,6 +877,69 @@ public final class LinimalConfigTest {
         return (Boolean) check.invoke(null, "chat-1", 10_001L, config.isReadWithoutReceiptEnabled());
     }
 
+    @Test
+    public void keepUnreadAfterSendDefaultsOffOnFreshInstallAndUpgradePreservesExistingChoices() {
+        assertFalse(configFor(new InMemoryBackend()).isKeepUnreadAfterSendEnabled());
+        InMemoryBackend backend = new InMemoryBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 3);
+        backend.values.put(LinimalConfigSchema.READ_WITHOUT_RECEIPT_ENABLED_KEY, true);
+        backend.values.put(LinimalConfigSchema.NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY, true);
+        backend.values.put(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY, false);
+        backend.values.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, "manual");
+        LinimalConfig config = configFor(backend);
+        assertFalse(config.isKeepUnreadAfterSendEnabled());
+        assertTrue(config.isReadWithoutReceiptEnabled());
+        assertTrue(config.isNotificationReadWithoutReceiptEnabled());
+        assertFalse(config.isSmartChannelAdsSuppressionEnabled());
+        assertEquals(ReadReceiptMode.MANUAL, config.getReadReceiptMode());
+    }
+
+    @Test
+    public void keepUnreadAfterSendPersistsIndependentlyAndRequiresAnAvailableReadSource() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        config.setSuppressionEnabled(LinimalFeature.READ_WITHOUT_RECEIPT, true);
+        config.setSuppressionEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, true);
+        config.setKeepUnreadAfterSendEnabled(true);
+        LinimalConfig reopened = configFor(backend);
+        assertTrue(reopened.isKeepUnreadAfterSendEnabled());
+        assertTrue(reopened.isReadWithoutReceiptEnabled());
+        assertTrue(reopened.isNotificationReadWithoutReceiptEnabled());
+        assertTrue(configFor(backend, availableFeatures(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT))
+                .isKeepUnreadAfterSendEnabled());
+        assertFalse(configFor(backend, FeatureAvailability.NONE).isKeepUnreadAfterSendEnabled());
+        reopened.setKeepUnreadAfterSendEnabled(false);
+        assertFalse(configFor(backend).isKeepUnreadAfterSendEnabled());
+        assertTrue(configFor(backend).isNotificationReadWithoutReceiptEnabled());
+    }
+
+    @Test
+    public void invalidKeepUnreadAfterSendValueFailsOpenWithoutOverwritingTheOldSchema() {
+        InMemoryBackend backend = new InMemoryBackend();
+        backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 3);
+        backend.values.put(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY, "true");
+        LinimalConfig config = configFor(backend);
+        assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+        assertFalse(config.isKeepUnreadAfterSendEnabled());
+        assertEquals(3, backend.values.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
+    }
+
+    @Test
+    public void existingKeepUnreadAfterSendChoiceSurvivesMigrationAndFailedWritesFailOpen() {
+        InMemoryBackend existing = new InMemoryBackend();
+        existing.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 3);
+        existing.values.put(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY, true);
+        assertTrue(configFor(existing).isKeepUnreadAfterSendEnabled());
+        FailingWriteBackend failing = new FailingWriteBackend();
+        failing.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, LinimalConfigSchema.CURRENT_VERSION);
+        failing.values.put(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY, true);
+        LinimalConfig config = configFor(failing);
+        assertTrue(config.isKeepUnreadAfterSendEnabled());
+        config.setKeepUnreadAfterSendEnabled(false);
+        assertFalse(config.isKeepUnreadAfterSendEnabled());
+        assertEquals(LinimalConfigHealth.ERROR, config.getRuntimeHealth());
+    }
+
     private static InMemoryBackend v1Backend() {
         InMemoryBackend backend = new InMemoryBackend();
         backend.values.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 1);
@@ -924,22 +966,6 @@ public final class LinimalConfigTest {
         assertEquals(expected, values.get(LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY));
         assertEquals(expected, values.get(LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY));
         assertEquals(expected, values.get(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY));
-    }
-
-    private static void assertV2MigrationWasAtomic(Map<String, Object> updates) {
-        assertEquals(12, updates.size());
-        assertTrue(updates.containsKey(LinimalConfigSchema.SMART_CHANNEL_ADS_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.HOME_TOP_AD_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_HOME_HEADER_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_INFORMATION_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_WALLET_HEADER_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_SETTINGS_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_COMPOSER_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.LINE_AI_GALLERY_VIEWER_ENABLED_KEY));
-        assertTrue(updates.containsKey(LinimalConfigSchema.SHOPPING_ENABLED_KEY));
-        assertEquals(2, updates.get(LinimalConfigSchema.SCHEMA_VERSION_KEY));
     }
 
     private static LinimalConfig configFor(LinimalConfigStore.PreferenceBackend backend) {

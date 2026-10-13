@@ -105,6 +105,19 @@ public final class ReadReceiptHooksTest {
     }
 
     @Test
+    public void sentMessageReadOverridesManualModeOnlyOnceForTheSameChat() {
+        ReadReceiptHooks.prepareSentMessageRead("chat-a");
+        assertFalse(ReadReceiptHooks.shouldSuppress(ReadReceiptMode.MANUAL, "chat-a"));
+        assertTrue(ReadReceiptHooks.shouldSuppress(ReadReceiptMode.MANUAL, "chat-a"));
+        ReadReceiptHooks.prepareSentMessageRead("chat-a");
+        assertTrue(ReadReceiptHooks.shouldSuppress(ReadReceiptMode.MANUAL, "chat-b"));
+        assertTrue(ReadReceiptHooks.shouldSuppress(ReadReceiptMode.MANUAL, "chat-a"));
+        ReadReceiptHooks.prepareSentMessageRead("chat-a");
+        ReadReceiptHooks.clearPreparedSupplier();
+        assertTrue(ReadReceiptHooks.shouldSuppress(ReadReceiptMode.MANUAL, "chat-a"));
+    }
+
+    @Test
     public void concurrentWorkersCannotExchangeManualAllowances() throws Exception {
         Object firstSupplier = new Object();
         Object secondSupplier = new Object();

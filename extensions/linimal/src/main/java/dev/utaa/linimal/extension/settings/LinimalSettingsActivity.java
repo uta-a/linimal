@@ -33,6 +33,7 @@ import dev.utaa.linimal.extension.config.LinimalConfig;
 import dev.utaa.linimal.extension.config.LinimalConfigBootstrap;
 import dev.utaa.linimal.extension.config.LinimalConfigHealth;
 import dev.utaa.linimal.extension.config.ReadReceiptMode;
+import dev.utaa.linimal.extension.config.LinimalFeature;
 import dev.utaa.linimal.extension.settings.ui.BackArrowDrawable;
 import dev.utaa.linimal.extension.settings.ui.ChevronDrawable;
 import dev.utaa.linimal.extension.settings.ui.LinimalPalette;
@@ -43,6 +44,10 @@ import dev.utaa.linimal.extension.status.PatchStatusReport;
 /** LINE の設定画面に合わせた見た目で、Linimal の設定と適用状況を表示します。 */
 public final class LinimalSettingsActivity extends Activity {
     private static final String STATE_PAGE_PATH = "linimal.settings.page_path";
+    private static final String KEEP_UNREAD_AFTER_SEND_TITLE = "送信しても既読を有効にしない";
+    private static final String KEEP_UNREAD_AFTER_SEND_SUMMARY =
+            "既読をつけずに開いたトークで、送信後も既読を無効にします。初期値は OFF です。通常の入室には作用しません。"
+                    + "\n注意：閲覧・返信しても相手側は未読表示のままになり、誤解やトラブルにつながる可能性があります。未読バッジも残ります。";
 
     /** 描画済みの Switch だけを持ち、画面再構築時に必ず破棄します。 */
     private final List<FeatureRow> featureRows = new ArrayList<>();
@@ -56,6 +61,9 @@ public final class LinimalSettingsActivity extends Activity {
     private PatchStatus readReceiptPatchStatus;
     private TextView readReceiptSummary;
     private Switch readReceiptToggle;
+    private boolean keepUnreadAfterSendPatchAvailable;
+    private TextView keepUnreadAfterSendSummary;
+    private Switch keepUnreadAfterSendToggle;
 
     private static final class FeatureRow {
         private final FeatureCatalog.Entry entry;
@@ -213,6 +221,9 @@ public final class LinimalSettingsActivity extends Activity {
         readReceiptPatchStatus = null;
         readReceiptSummary = null;
         readReceiptToggle = null;
+        keepUnreadAfterSendPatchAvailable = false;
+        keepUnreadAfterSendSummary = null;
+        keepUnreadAfterSendToggle = null;
     }
 
     private void addRootPage(LinearLayout parent) {
@@ -251,6 +262,7 @@ public final class LinimalSettingsActivity extends Activity {
         }
 
         if (page == SettingsPage.READ_RECEIPT) {
+            hasEntry |= addKeepUnreadAfterSendRow(parent, report);
             hasEntry |= addReadReceiptRow(parent, report);
         }
 
@@ -280,6 +292,32 @@ public final class LinimalSettingsActivity extends Activity {
         chevronParams.gravity = Gravity.CENTER_VERTICAL;
         chevronParams.leftMargin = dp(8);
         row.addView(chevron, chevronParams);
+    }
+
+    /** 既読なし閲覧の共通オプション。メニュー・通知のどちらかが適用済みなら変更できます。 */
+    private boolean addKeepUnreadAfterSendRow(LinearLayout parent, PatchStatusReport report) {
+        PatchStatus manual = report.getFeatureStatus(LinimalFeature.READ_WITHOUT_RECEIPT.getFeatureId());
+        PatchStatus notification = report.getFeatureStatus(
+                LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId());
+        if (manual == null && notification == null) {
+            return false;
+        }
+        keepUnreadAfterSendPatchAvailable = manual == PatchStatus.OK || notification == PatchStatus.OK;
+        LinearLayout row = createInteractiveRow(parent);
+        LinearLayout labels = createLabels(KEEP_UNREAD_AFTER_SEND_TITLE, KEEP_UNREAD_AFTER_SEND_SUMMARY);
+        keepUnreadAfterSendSummary = (TextView) labels.getChildAt(1);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        labelParams.gravity = Gravity.CENTER_VERTICAL;
+        row.addView(labels, labelParams);
+        keepUnreadAfterSendToggle = createSwitch(KEEP_UNREAD_AFTER_SEND_TITLE);
+        addToggle(row, keepUnreadAfterSendToggle);
+        row.setOnClickListener(view -> {
+            if (keepUnreadAfterSendToggle.isEnabled()) {
+                keepUnreadAfterSendToggle.toggle();
+            }
+        });
+        return true;
     }
 
     private boolean addReadReceiptRow(LinearLayout parent, PatchStatusReport report) {
@@ -417,7 +455,26 @@ public final class LinimalSettingsActivity extends Activity {
                 }
             });
         }
+        renderKeepUnreadAfterSendConfig(config, health);
         renderReadReceiptConfig(config, health);
+    }
+
+    private void renderKeepUnreadAfterSendConfig(LinimalConfig config, LinimalConfigHealth health) {
+        if (keepUnreadAfterSendToggle == null || keepUnreadAfterSendSummary == null) {
+            return;
+        }
+        boolean available = keepUnreadAfterSendPatchAvailable && health == LinimalConfigHealth.OK;
+        keepUnreadAfterSendSummary.setText(available ? KEEP_UNREAD_AFTER_SEND_SUMMARY
+                : KEEP_UNREAD_AFTER_SEND_SUMMARY + "\n既読なし閲覧のパッチまたは設定を確認できないため、変更できません。");
+        keepUnreadAfterSendSummary.setTextColor(available ? palette.secondaryText : palette.statusError);
+        keepUnreadAfterSendToggle.setOnCheckedChangeListener(null);
+        keepUnreadAfterSendToggle.setEnabled(available);
+        keepUnreadAfterSendToggle.setChecked(available && config.isKeepUnreadAfterSendEnabled());
+        applySwitchColors(keepUnreadAfterSendToggle, available);
+        keepUnreadAfterSendToggle.setOnCheckedChangeListener((button, checked) -> {
+            LinimalConfig.get().setKeepUnreadAfterSendEnabled(checked);
+            renderRuntimeConfig();
+        });
     }
 
     private void renderReadReceiptConfig(LinimalConfig config, LinimalConfigHealth health) {

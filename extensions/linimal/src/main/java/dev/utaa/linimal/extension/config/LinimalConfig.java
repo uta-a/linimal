@@ -224,6 +224,26 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT);
     }
 
+    /** 既読なし閲覧中の送信操作で、抑制を解除しない設定です。通常入室の既読には作用しません。 */
+    public boolean isKeepUnreadAfterSendEnabled() {
+        return snapshot.keepUnreadAfterSend()
+                && (availability.isAvailable(LinimalFeature.READ_WITHOUT_RECEIPT.getFeatureId())
+                || availability.isAvailable(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId()));
+    }
+
+    public void setKeepUnreadAfterSendEnabled(boolean enabled) {
+        if (store == null) {
+            failOpen();
+            return;
+        }
+        try {
+            store.writeKeepUnreadAfterSend(enabled);
+            reload();
+        } catch (RuntimeException exception) {
+            failOpen();
+        }
+    }
+
     public boolean isChatListHeaderAiFriendsSuppressionEnabled() {
         return isEnabled(LinimalFeature.CHAT_LIST_HEADER_AI_FRIENDS);
     }

@@ -2,7 +2,7 @@ package dev.utaa.linimal.extension.config;
 
 /** 内部で保存する schema の定義。キーは意図的に config package の外へ出しません。 */
 final class LinimalConfigSchema {
-    static final int CURRENT_VERSION = 3;
+    static final int CURRENT_VERSION = 4;
 
     static final String SCHEMA_VERSION_KEY = "linimal.schema.version";
 
@@ -42,6 +42,7 @@ final class LinimalConfigSchema {
     static final String READ_WITHOUT_RECEIPT_ENABLED_KEY = "linimal.chat.read_without_receipt";
     static final String NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY =
             "linimal.chat.notification_read_without_receipt";
+    static final String KEEP_UNREAD_AFTER_SEND_KEY = "linimal.chat.keep_unread_after_send";
     static final String CHAT_LIST_HEADER_AI_FRIENDS_ENABLED_KEY = "linimal.chat.header.ai_friends";
     static final String CHAT_LIST_HEADER_CALENDAR_ENABLED_KEY = "linimal.chat.header.calendar";
     static final String CHAT_LIST_HEADER_OPEN_CHAT_ENABLED_KEY = "linimal.chat.header.open_chat";

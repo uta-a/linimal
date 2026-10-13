@@ -54,7 +54,7 @@ public final class LinimalConfigStore {
             featureStates.put(feature, readBoolean(values, feature));
         }
         ReadReceiptMode readReceiptMode = readReadReceiptMode(values);
-        return new ConfigSnapshot(featureStates, readReceiptMode);
+        return new ConfigSnapshot(featureStates, readReceiptMode, readKeepUnreadAfterSend(values));
     }
 
     synchronized void writeFeature(LinimalFeature feature, boolean enabled) {
@@ -71,6 +71,13 @@ public final class LinimalConfigStore {
         ensureCurrentSchema(readAll());
         Map<String, Object> updates = new HashMap<>();
         updates.put(LinimalConfigSchema.READ_RECEIPT_MODE_KEY, mode.storedValue());
+        write(updates);
+    }
+
+    synchronized void writeKeepUnreadAfterSend(boolean enabled) {
+        ensureCurrentSchema(readAll());
+        Map<String, Object> updates = new HashMap<>();
+        updates.put(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY, enabled);
         write(updates);
     }
 
@@ -95,6 +102,9 @@ public final class LinimalConfigStore {
                     break;
                 case 2:
                     migrateV2ToV3(values);
+                    break;
+                case 3:
+                    migrateV3ToV4(values);
                     break;
                 default:
                     throw new ConfigStoreException("Unsupported configuration schema version");
@@ -265,6 +275,17 @@ public final class LinimalConfigStore {
         write(updates);
     }
 
+    /** 送信後も既読を無効にする新設定は、既存値を上書きせず、未設定の場合だけ OFF に固定します。 */
+    private void migrateV3ToV4(Map<String, ?> values) {
+        validateMigratableValues(values);
+        Map<String, Object> updates = new HashMap<>();
+        if (!values.containsKey(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY)) {
+            updates.put(LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY, false);
+        }
+        updates.put(LinimalConfigSchema.SCHEMA_VERSION_KEY, 4);
+        write(updates);
+    }
+
     /**
      * schema を進める前に、migration source、新しい destination、および既存の型付き値を検証します。
      * そのため不正な型は marker を更新する前に必ず fail-open になります。
@@ -282,6 +303,7 @@ public final class LinimalConfigStore {
             readBoolean(values, feature);
         }
         readReadReceiptMode(values);
+        readKeepUnreadAfterSend(values);
     }
 
     private int readSchemaVersion(Map<String, ?> values) {
@@ -319,6 +341,11 @@ public final class LinimalConfigStore {
             throw new ConfigStoreException("Invalid configuration value");
         }
         return (Boolean) value;
+    }
+
+    private boolean readKeepUnreadAfterSend(Map<String, ?> values) {
+        return readOptionalBoolean(values, LinimalConfigSchema.KEEP_UNREAD_AFTER_SEND_KEY,
+                LinimalDefaults.KEEP_UNREAD_AFTER_SEND);
     }
 
     private ReadReceiptMode readReadReceiptMode(Map<String, ?> values) {

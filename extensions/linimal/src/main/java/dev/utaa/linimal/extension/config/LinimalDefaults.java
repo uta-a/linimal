@@ -3,6 +3,7 @@ package dev.utaa.linimal.extension.config;
 /** Linimal の型付き設定における現在のデフォルト値。 */
 public final class LinimalDefaults {
     static final ReadReceiptMode READ_RECEIPT_MODE = ReadReceiptMode.NORMAL;
+    static final boolean KEEP_UNREAD_AFTER_SEND = false;
 
     private LinimalDefaults() {
     }

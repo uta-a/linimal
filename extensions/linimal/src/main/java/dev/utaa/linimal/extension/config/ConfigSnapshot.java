@@ -6,12 +6,15 @@ import java.util.EnumMap;
 final class ConfigSnapshot {
     private final EnumMap<LinimalFeature, Boolean> featureStates;
     private final ReadReceiptMode readReceiptMode;
+    private final boolean keepUnreadAfterSend;
 
     ConfigSnapshot(
             EnumMap<LinimalFeature, Boolean> featureStates,
-            ReadReceiptMode readReceiptMode) {
+            ReadReceiptMode readReceiptMode,
+            boolean keepUnreadAfterSend) {
         this.featureStates = new EnumMap<>(featureStates);
         this.readReceiptMode = readReceiptMode;
+        this.keepUnreadAfterSend = keepUnreadAfterSend;
     }
 
     static ConfigSnapshot originalBehavior() {
@@ -19,7 +22,7 @@ final class ConfigSnapshot {
         for (LinimalFeature feature : LinimalFeature.values()) {
             featureStates.put(feature, false);
         }
-        return new ConfigSnapshot(featureStates, ReadReceiptMode.NORMAL);
+        return new ConfigSnapshot(featureStates, ReadReceiptMode.NORMAL, false);
     }
 
     boolean isEnabled(LinimalFeature feature) {
@@ -28,5 +31,9 @@ final class ConfigSnapshot {
 
     ReadReceiptMode readReceiptMode() {
         return readReceiptMode;
+    }
+
+    boolean keepUnreadAfterSend() {
+        return keepUnreadAfterSend;
     }
 }
