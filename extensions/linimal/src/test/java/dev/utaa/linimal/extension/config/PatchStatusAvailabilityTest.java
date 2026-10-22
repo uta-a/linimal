@@ -57,7 +57,9 @@ public final class PatchStatusAvailabilityTest {
                         featureId, "OK", 1, 1) + ","
                 + patch("linimal.patch.read-without-receipt-local-read-block",
                         featureId, "OK", 1, 1) + ","
-                + patch("linimal.patch.read-without-receipt-send", featureId, "OK", 1, 1);
+                + patch("linimal.patch.read-without-receipt-send", featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-manual-read", featureId, "OK", 1, 1) + ","
+                + patch("linimal.patch.read-without-receipt-message-controls", featureId, "OK", 1, 1);
 
         assertFalse(PatchStatusAvailability.of(read(
                 "{\"schemaVersion\":1,\"patches\":[" + existing + "]}"))
@@ -70,6 +72,26 @@ public final class PatchStatusAvailabilityTest {
     }
 
     @Test
+    public void unreadSuppressionRequiresManualBridgeAndMessageControls() {
+        String featureId = LinimalFeature.READ_WITHOUT_RECEIPT.getFeatureId();
+        String[] patchIds = {
+                "linimal.patch.read-without-receipt-menu-label-resource",
+                "linimal.patch.read-without-receipt-compose-menu-row",
+                "linimal.patch.read-without-receipt-mark-as-read-block",
+                "linimal.patch.read-without-receipt-local-read-block",
+                "linimal.patch.read-without-receipt-session",
+                "linimal.patch.read-without-receipt-send",
+                "linimal.patch.read-without-receipt-manual-read",
+                "linimal.patch.read-without-receipt-message-controls"
+        };
+        assertTrue(featureAvailability(featureId, patchIds, -1, false).isAvailable(featureId));
+        for (int index = 6; index < patchIds.length; index++) {
+            assertFalse(featureAvailability(featureId, patchIds, index, false).isAvailable(featureId));
+            assertFalse(featureAvailability(featureId, patchIds, index, true).isAvailable(featureId));
+        }
+    }
+
+    @Test
     public void notificationUnreadSuppressionRequiresOnlyItsEntryAndSharedReadPaths() {
         String featureId = LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId();
         String[] patchIds = {
@@ -77,7 +99,9 @@ public final class PatchStatusAvailabilityTest {
                 "linimal.patch.notification-read-without-receipt-mark-as-read-block",
                 "linimal.patch.notification-read-without-receipt-local-read-block",
                 "linimal.patch.notification-read-without-receipt-session",
-                "linimal.patch.notification-read-without-receipt-send"
+                "linimal.patch.notification-read-without-receipt-send",
+                "linimal.patch.notification-read-without-receipt-manual-read",
+                "linimal.patch.notification-read-without-receipt-message-controls"
         };
         // メニューや navigation の patch を含めず、通知入口と実際の既読経路だけで利用可能です。
         assertTrue(notificationAvailability(patchIds, -1, false).isAvailable(featureId));
@@ -91,6 +115,12 @@ public final class PatchStatusAvailabilityTest {
 
     private static FeatureAvailability notificationAvailability(
             String[] patchIds, int unavailableIndex, boolean partial) {
+        return featureAvailability(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId(),
+                patchIds, unavailableIndex, partial);
+    }
+
+    private static FeatureAvailability featureAvailability(
+            String featureId, String[] patchIds, int unavailableIndex, boolean partial) {
         StringBuilder patches = new StringBuilder();
         for (int index = 0; index < patchIds.length; index++) {
             if (index == unavailableIndex && !partial) {
@@ -100,8 +130,7 @@ public final class PatchStatusAvailabilityTest {
                 patches.append(',');
             }
             boolean applied = index != unavailableIndex;
-            patches.append(patch(patchIds[index],
-                    LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT.getFeatureId(),
+            patches.append(patch(patchIds[index], featureId,
                     applied ? "OK" : "PARTIAL", 1, applied ? 1 : 0));
         }
         return PatchStatusAvailability.of(read(

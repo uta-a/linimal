@@ -306,6 +306,94 @@ Android runtime の送信 bridge は一時 Activity の観測用代替であり�
 新規 FeatureId / PatchId は追加せず、既存のメニュー／通知 feature の適用状況で操作可否を決める。
 schema4 の移行は新キーが未設定の場合だけ false を書き、他の値を変更しない。
 
+## 2026-10-22 メッセージ単位と現在のトーク全体の手動既読
+
+既読なしで開いた通常トークに、受信メッセージの「ここまで既読にする」と、
+上部案内の「このトークをすべて既読にする」を追加した。
+個別操作は指定位置以前の累積既読、全体操作は公式の位置検索と未読解除を使う。
+どちらも閲覧セッションを終了せず、後続の自動既読は抑制したままにする。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| Java17 / `--no-daemon --offline test buildAndroid` | Pass。キャッシュ済み依存を使用 |
+| 累積既読・非正位置拒否・処理中の重複拒否・失敗後の再操作 | JVM regression Pass |
+| 構成変更時の進捗保持・再入室時の破棄・chat/thread/token 限定・例外時の許可破棄 | JVM regression Pass |
+| 生成 bridge の wide register・range invoke・全体位置の最大値選択・catchall | patch regression Pass |
+| 必須 patch 欠落／PARTIAL 時の利用不可と依存鎖 | JVM / patch regression Pass |
+| 対象26.11.0 APKM の Morphe Desktop 1.14.0 unsigned 統合適用 | Pass。全63 patch-status OK。manual-read / message-controls は通常・通知とも2/2 |
+| XIG07 / Android16 の `dex2oat64 --compiler-filter=verify` | Pass。初回は統合 APK を一時領域で検証 |
+| 独立した一時 Activity のメッセージ別ボタン・全体ボタン | Pass。実 runtime の Button を操作し、選択位置101と全体位置150を worker に渡すことを確認 |
+| 操作後の抑制維持・進捗更新・後続位置の未読維持 | Activity smoke Pass |
+| 完了した行のボタン除去・通常モードのボタン／案内除去・追加上余白の復元 | Activity smoke / screenshot Pass |
+| 別 chatId への行再利用・送信行への非表示 | Activity smoke Pass |
+| 配色・案内とメッセージの非重複 | screenshot Pass。端末ダークモードとホストの明色 Button theme の組合せも確認 |
+| XIG07 への同一署名上書き更新・ART verify・起動 | Pass。既存署名 SHA-256 と一致、署名付き APK も全63 status OK。`adb install --no-incremental -r` と `cmd package compile -f -m verify` が成功。MainActivity の起動と process 維持、当該 process の AndroidRuntime error 0件を確認。データ消去なし |
+| 実際の LINE の新ボタン表示・相手側の既読・部分既読後の未読件数 | 未確認。上書き後は MainActivity の起動確認まで。外部メッセージの送信や手動既読ボタンの実操作は行っていない |
+
+一時 Activity は共通行と同じ FrameLayout → 縦 LinearLayout を用い、
+統合 APK からそのまま取り出した patch-status と実 runtime を使用した。
+reader の bridge だけは呼び出しを観測する代替であり、LINE の RPC 成功を検証したものではない。
+
+初回の実表示では、ホストの明色 Button 背景にダーク配色の文字を重ねたためコントラストが不足した。
+背景にも LinimalPalette を適用して再確認した。
+また、worker の進捗更新だけでは次の描画が発生せず、全体既読後のボタンが残ることを確認した。
+現在の所有 Activity へ再描画を要求するように修正し、完了後のボタン除去を
+Activity 内の assertion とスクリーンショットの両方で確認した。
+
+新規の設定キー・migration・release version の変更はない。
+検証用アプリは端末から削除し、一時 APK・DEX・署名鍵・逆コンパイル結果・smoke script も削除した。
+
+## 手動既読 UI の A案
+
+個別操作を時刻の下の小さな文字リンク「既読にする」に変更した。
+各メッセージの水平線と塗りつぶしボタンは使わず、「ここまで既読」の境界線だけを残す。
+初期位置は adapter の入室時 read_up を採用し、既読済み行に操作を付けない。
+全体操作は入力欄の上に「すべて既読にする」をフローティング表示する。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| Java17 / `--no-daemon --offline test buildAndroid` | Pass |
+| 最終バンドルの対象26.11.0 APKMへの統合適用 | Morphe Desktop 1.14.0でPass。署名付きAPKの全63 patch-statusがOK。通常・通知のmessage-controlsはいずれも2/2 |
+| 署名 | `apksigner verify --print-certs` Pass。以前の上書き用と同じSHA-256 `24b512b8b166fc38b9bb4bebaafcdac3eda4d989ddd01bb2eea23bc7ec717fe6` |
+| 未読だけの文字リンク・時刻との位置合わせ・個別の水平線なし | Pixel_10 AVDの一時Activityでassertionとスクリーンショットを確認 |
+| 初期既読2件・未読3件・送信1件 | 未読の受信3件だけに操作。初期境界は1本 |
+| 位置102の個別操作 | 101・102の操作を除去し、120の操作を維持。境界を102の後ろへ移動。抑制を維持 |
+| 全体操作 | 残る個別操作を除去し、最終受信位置120の後ろに境界を1本表示。抑制を維持 |
+| フローティングと入力欄拡大 | 64dp・120dpの入力欄で、上端から8dp以上離して表示 |
+| 操作領域・文字拡大・横画面 | 最低48dp四方を確認。通常縦画面・fontScale 2の専用Activity・横画面Activityで上記操作のsmokeがPass。各画面を撮影確認 |
+| 実機への今回の上書き・実際のLINE内の表示・相手側の既読 | 未実施。実機はADB未接続。エミュレーターには独立した検証用アプリだけを導入 |
+
+一時Activityは実runtimeと統合APKのpatch-statusを使用する。
+メッセージ・時刻・入力欄は検証用のViewであり、reader bridgeは呼び出し位置を観測する代替。
+実際のLINEのRPC成功や全メッセージ形式の表示を確認したものではない。
+今回の署名付きAPKはリポジトリ外の `/Users/uta_a/morphe/line-linimal.apk` に生成した。
+設定schema・既存値・release versionは変更していない。
+
+## 上部案内によるヘッダー移動と最新の個別操作の重なり
+
+実機の現在画面で、案内が公式ヘッダーより上に置かれて画面全体を押し下げることと、
+全体既読ボタンが最新メッセージの個別操作を覆うことを確認した。
+案内は本文の縦コンテナへ挿入し、フローティングの高さ分はメッセージ一覧の下余白で確保する方式に変更した。
+
+参照APKの「ヘッダー／本文内の縦レイアウト／重み付き一覧／入力欄」を再現した一時Activityで、
+変更前後のruntimeを切り替えて同じ画面を操作した。既読ボタンは押していない。
+
+| 確認項目 | 変更前 | 変更後 |
+| --- | --- | --- |
+| 案内表示後のヘッダー移動量 | 下へ362px | 0px |
+| 一覧末尾の個別操作と全体既読ボタン | 操作領域が重なる | 個別操作の下端から全体ボタン上端まで21px（8dp）確保 |
+| 入力欄を64dpから120dpへ拡大 | — | ヘッダー固定・個別操作の非重複をassertionと撮影で確認 |
+| 案内を閉じた後 | — | 一覧の元の下余白9dpを復元。Window全体の上余白は不変。本文から案内を除去 |
+
+- Java17の `--no-daemon --offline test buildAndroid` はPass。
+- Morphe Desktop 1.14.0で対象26.11.0 APKMへ再適用し、署名付きAPKの全63 patch-statusがOK。
+- `apksigner verify --print-certs` はPass。上書き用の既存署名と同じ証明書。
+- 一時Activityの検証端末はPixel_10 AVD。一覧はScrollViewによる検証用Viewであり、実際のLINEのRecyclerViewではない。
+- 実機再接続後、XIG07へ `adb install --no-incremental -r` で同一署名の上書き、ART verify、MainActivity起動が成功。データ消去なし。
+- 実際のLINEの長押しメニューから「既読をつけずに読む」を選び、ヘッダーの下に案内があることと、最新の個別操作が全体ボタンに隠れないことを撮影・UI階層の座標で確認。既読操作は押していない。
+- 実機の個別操作の下端と全体ボタン上端の間隔は26px。入力欄の座標は修正前後で不変。当該processのAndroidRuntime errorは0件。
+- 修正版APKはリポジトリ外の `/Users/uta_a/morphe/line-linimal.apk` に生成した。
+
 ## 実機成立性ゲート
 
 | ケース | 公式版リファレンス | Linimal統合APK | 結果 |

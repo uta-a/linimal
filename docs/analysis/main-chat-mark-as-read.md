@@ -244,3 +244,97 @@ pause/destroy では view を取り除き、同じ token の復帰や構成変�
 対象トークの未読バッジも消え、別トークの未読1は維持された。
 通知入室・他の送信形式との組合せは個別には実機確認していない。
 
+## 既読なし閲覧中の手動既読操作（2026-10-22）
+
+### メッセージとの対応
+
+対象 APK の共通 holder `Lwi1/r;` の `H0(I, Lk61/c;, Ld91/b;, Ls61/h;, I,
+Lm16/m;, Ljv1/b;, I)V` は、形式別の balloon bind より前に共通の表示情報を処理する。
+`ContentView(Landroidx/compose/runtime/Composer;I)V` と引数・access flag の形で同定する。
+短い `ContentView` も同じ fingerprint に含めると文字列の部分一致が重なって不一致になるため、
+長い署名の文字列だけを使う。
+
+`h.b()` が返す model は `ChatMessageCommonViewData(chatId=` などの `toString` 文字列で同定する。
+constructor の27 fieldの保存順と先頭の型列を検証し、chatId、serverMessageId、
+isNormalMessage、isUnsentMessage、isOtherUserMessage、isMyMessage を導く。
+参照 APK では `Ls61/c;` の a、c、g、k、m、n に対応する。
+localMessageId（b）は既読位置に使わない。
+生成 bridge は holder・全引数を range invoke で受け取り、元のレジスタを変更せず値を取り出す。
+再 bind 時には旧ボタンを先に除去し、例外は共通 bind へ伝播させない。
+
+`chat_ui_row.xml` は FrameLayout の最初の子が縦 LinearLayout で、
+その中に公式の SwipeableConstraintLayout がある。個別操作は縦コンテナ末尾の FrameLayout に追加し、
+balloon、clicktarget、swipe、公式の時刻コンテナの listener や構造を変更しない。
+受信・通常・送信取消でない・正の server ID・初期既読位置より後、という条件を満たす行だけを表示する。
+クリック時にも chatId、所有 Activity、token、bind 世代を再検証する。
+
+### 初期既読位置と境界
+
+adapter `Lxi1/b;` の `i()String` は、入室時の `ChatData.read_up` を保持する String field の getter。
+未読判定 `h(J)Z` が参照する同じ field と getter の形を検証し、runtime に渡す。
+送信抑制で観測した最大位置は未読の末尾であり、初期既読位置には使わない。
+初回の有効な非負の値を凍結し、不正な文字列は位置不明として個別操作・境界を非表示にする。
+未設定の read_up は0として扱う。
+
+model の constructor 第22引数の unread checker と、adapter の `h(J)Z` が使う
+一意な public・非 static の `Long` field を検証して最初の未読位置を得る。
+`h(J)Z` 自体には表示タイミングの条件もあるため、その戻り値を境界の有無に転用しない。
+初期状態では最初の未読行の前、手動操作後は完了位置の行の後ろにだけ
+「ここまで既読」を中央に置いた水平線を付ける。
+構成変更でも初期位置と手動進捗を引き継ぐ。
+
+### A案の個別操作
+
+参照 APK の `chat_ui_row_layout_receive_horizontal_metadata.xml` は
+縦 LinearLayout の末尾に `chat_ui_row_timestamp`（`0x7f0b08a6`）を持つ。
+「既読にする」は11spの下線付き文字リンクにし、時刻の画面座標に左端を揃えて下側に配置する。
+右端を超える場合は追加したコンテナ内に収める。時刻がない行や非表示の間は操作も表示しない。
+文字色・文字の影は公式の時刻から取り、恒常的な背景・個別の水平線・影付きボタンは付けない。
+操作領域は最低48dp四方を保ち、処理中は無効化する。
+表示文言は短縮しても、アクセシビリティ上の説明と処理は「このメッセージまで既読にする」のまま。
+
+### 既読処理とセッション
+
+`readWithoutReceiptManualReadPatch` は既存 outbound と同じ executor に
+`linimalMarkReadManually(J, String, Z)J` を生成する。
+個別操作は指定した正の server ID で `d(point, chatId, false)` を呼ぶ。
+これは指定位置以前の累積既読であり、後のメッセージだけを既読にする操作ではない。
+`Y` と一覧更新 Runnable は実行せず、既存の `Q0` と RPC・再送保存を使う。
+個別操作による正確な残り未読件数の再計算は行わない。
+
+全体操作は公式の `(String)J` getter と保存済みの位置の大きい方を使い、
+`d(point, chatId, true)` でトークの未読件数も解除する。
+getter は `read_up`、profile ID、chat ID を既存検索へ渡す。
+対象 APK の `h38.x$t.c()` は created_time DESC、local ID DESC で並べ、
+既読位置以降の最大500行から未読の受信メッセージを抽出して先頭1件を返す。
+公式のトーク一覧一括既読と同じ検索であり、SQL や通信 payload は追加・変更しない。
+getter が0でも、個別既読後に保存済み位置で未読件数を解除できる。
+
+明示的な操作だけを同一 worker・chatId・session token に限定して local/RPC gate へ通す。
+自動既読停止の許可も同じ worker で準備し、例外を含めて finally で破棄する。
+途中で別セッションへ移った worker は gate を通れず、その観測を新しいセッションへ保存しない。
+操作後もセッションは終了せず、後続の自動既読を抑制する。
+既読位置・処理中状態は構成変更で引き継ぎ、通常再入室では破棄する。
+worker の完了時に現在の所有 Activity の描画を要求し、操作済み行のボタンと処理中表示を更新する。
+
+上部案内は `chat_ui_history_main.xml` のヘッダー直下の本文 RelativeLayout（`0x7f0b0772`）にある、
+先頭の縦 LinearLayout に通常の子として挿入する。重み付きのメッセージ領域が案内の高さ分だけ縮む。
+`android.R.id.content` の padding は変更しない。Window 全体に上余白を足す方式では、
+案内の上に加えて公式ヘッダーまで押し下げることを実機の画面で確認した。
+pause・抑制終了時には挿入した本文内の案内を親から取り除く。
+全体操作「すべて既読にする」は別のフローティング表示にし、
+実際の入力欄 `chat_ui_message`（`0x7f0b077b`）の上端から8dp離す。
+入力欄の拡大、IME、system bar・cutout の安全領域を考慮し、入力欄が特定できない場合や
+表示領域が不足する場合は推測した位置に出さない。
+背景にも LinimalPalette を適用し、ホストの Button theme と端末のダークモードの不一致を避ける。
+
+フローティング表示中は `chathistory_message_list`（`0x7f0b096a`）だけに下余白を確保する。
+一覧の下端から全体既読ボタンの上端までの距離に8dpを足し、元の下余白より小さくならない値を使う。
+末尾までスクロールした際に最新メッセージの「既読にする」がボタンの上に出るようにする。
+入力欄拡大やボタンの高さ変更時にも再計算し、ボタン非表示時とpause・抑制終了時は元に戻す。
+復元時には現在の値が自分の適用値と一致することを確かめ、公式側が変更した余白を上書きしない。
+
+通常・通知の各 feature に `manual-read` と `message-controls` の必須 PatchId を追加した。
+それぞれ expected target count は2。対象不一致や不安全な形の場合は注入せず、
+既読なし feature 全体を利用不可にする。設定キー・schema・既存値は変更しない。
+

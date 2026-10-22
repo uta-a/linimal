@@ -13,6 +13,7 @@ public final class ReadWithoutReceiptSendHooks {
 
     /** セッションが終了すれば executor も解放します。移管時だけ同じ状態を引き継ぎます。 */
     static final class SendState {
+        final ReadWithoutReceiptManualHooks.State manualState = new ReadWithoutReceiptManualHooks.State();
         private Object executor;
         private Method markRead;
         private long readPoint;
@@ -43,6 +44,14 @@ public final class ReadWithoutReceiptSendHooks {
             return claimIfReady();
         }
 
+        synchronized boolean hasReadAttempt() {
+            return executor != null;
+        }
+
+        synchronized ReadAttempt snapshot() {
+            return executor == null ? null : new ReadAttempt(executor, markRead, readPoint);
+        }
+
         private ReadAttempt claimIfReady() {
             if (!submitted || executor == null || scheduled) {
                 return null;
@@ -70,6 +79,9 @@ public final class ReadWithoutReceiptSendHooks {
     /** ローカル更新を止める入口で、その executor・既読位置・トーク ID を parameter のまま受け取ります。 */
     public static void recordReadAttempt(Object executor, long readPoint, String chatId) {
         try {
+            if (ReadWithoutReceiptManualHooks.hasManualInvocation()) {
+                return;
+            }
             ReadWithoutReceiptHooks.Suppression session = matchingSession(chatId);
             if (session != null) {
                 schedule(session, chatId, session.sendState.record(executor, readPoint));

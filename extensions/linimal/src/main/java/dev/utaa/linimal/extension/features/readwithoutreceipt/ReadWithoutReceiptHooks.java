@@ -28,6 +28,7 @@ public final class ReadWithoutReceiptHooks {
         final boolean confirmed;
         final WeakReference<Object> owner;
         final ReadWithoutReceiptSendHooks.SendState sendState;
+        final ReadWithoutReceiptManualHooks.State manualState;
 
         Suppression(String chatId, long atMillis, long token, boolean confirmed, Object owner,
                 boolean fromNotification, ReadWithoutReceiptSendHooks.SendState sendState) {
@@ -38,6 +39,7 @@ public final class ReadWithoutReceiptHooks {
             this.confirmed = confirmed;
             this.owner = owner == null ? null : new WeakReference<>(owner);
             this.sendState = sendState;
+            this.manualState = sendState.manualState;
         }
 
         Suppression withOwner(Object activity) {
@@ -176,6 +178,9 @@ public final class ReadWithoutReceiptHooks {
     /** ローカル未読反映と送信 RPC の両方で使う入口です。 */
     public static boolean shouldBlockMarkAsRead(String chatId) {
         try {
+            if (ReadWithoutReceiptManualHooks.hasManualInvocation()) {
+                return !ReadWithoutReceiptManualHooks.isManualRead(chatId);
+            }
             LinimalConfig config = LinimalConfig.get();
             return shouldBlockGivenSources(chatId, SystemClock.elapsedRealtime(), currentSuppression(),
                     config.isReadWithoutReceiptEnabled(), config.isNotificationReadWithoutReceiptEnabled());
