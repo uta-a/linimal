@@ -13,6 +13,7 @@ import dev.utaa.linimal.extension.features.readreceipts.ReadReceiptHooks;
 public final class ReadWithoutReceiptManualHooks {
     private static final String BRIDGE = "linimalMarkReadManually";
     private static final ThreadLocal<ReadWithoutReceiptHooks.Suppression> INVOCATION = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> INVOCATION_BLOCKED = new ThreadLocal<>();
 
     /** 構成変更では引き継ぎ、再入室では破棄する操作状態です。 */
     static final class State {
@@ -123,6 +124,15 @@ public final class ReadWithoutReceiptManualHooks {
         }
     }
 
+    /** 実行中にセッションが替わって送信を止めた場合は、この呼び出しを未送信として記録します。 */
+    static boolean blockManualInvocation(String chatId) {
+        if (isManualRead(chatId)) {
+            return false;
+        }
+        INVOCATION_BLOCKED.set(Boolean.TRUE);
+        return true;
+    }
+
     static boolean hasManualInvocation() {
         return INVOCATION.get() != null;
     }
@@ -164,6 +174,10 @@ public final class ReadWithoutReceiptManualHooks {
                 return;
             }
             completed = invokeRead(session, executor, point, all);
+            if (!all && completed > 0L) {
+                // 全体既読は公式の e0 が更新します。部分既読は実際に送れた位置だけを基準にします。
+                ReadWithoutReceiptPartialUnread.sync(executor, session.chatId, completed);
+            }
         } catch (Throwable ignored) {
             // 元の RPC 再送経路は変更せず、bridge の例外を UI へ伝播させません。
         } finally {
@@ -203,9 +217,11 @@ public final class ReadWithoutReceiptManualHooks {
         try {
             INVOCATION.set(session);
             ReadReceiptHooks.prepareSentMessageRead(session.chatId);
-            return (Long) bridge.invoke(executor, point, session.chatId, all);
+            long completed = (Long) bridge.invoke(executor, point, session.chatId, all);
+            return INVOCATION_BLOCKED.get() == null ? completed : 0L;
         } finally {
             INVOCATION.remove();
+            INVOCATION_BLOCKED.remove();
             ReadReceiptHooks.clearPreparedSupplier();
         }
     }

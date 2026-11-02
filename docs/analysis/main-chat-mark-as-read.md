@@ -300,7 +300,50 @@ model の constructor 第22引数の unread checker と、adapter の `h(J)Z` �
 個別操作は指定した正の server ID で `d(point, chatId, false)` を呼ぶ。
 これは指定位置以前の累積既読であり、後のメッセージだけを既読にする操作ではない。
 `Y` と一覧更新 Runnable は実行せず、既存の `Q0` と RPC・再送保存を使う。
-個別操作による正確な残り未読件数の再計算は行わない。
+
+#### 個別操作の送信位置と結果（LINE 26.16.0）
+
+`qg3.e.d` は同じ chat の queue に `FAILED` で保持値が押した位置以上の状態があると、
+押した位置を保持値へ置き換えて `U0` と RPC を実行する（`qg3/e.java:236-241`、smali 0x41-0x4d）。
+個別操作の bridge は `all=false` のときだけ、`d` の前に該当する `FAILED` を map と永続 prefs から消す。
+保持値が押した位置より小さい `FAILED` は `d` が上書きするため残す。全体操作と公式の再送は変えない。
+
+`d` は RPC 失敗と空振りを戻り値で返さない。個別操作の bridge は `d` の後に queue を読み、
+押した位置が `SUCCEEDED` のときだけその位置を返す。`PROCESSING` で保持値が押した位置以上の空振り、
+RPC 失敗、gate による中断では 0 を返し、「既読を反映できませんでした」と表示する。
+
+`U0` は `read_up` を RPC より前に進めるので、この `FAILED` は通常 `read_up` 以下にある。
+入室時の `read_up` を基準に操作を出すため、古い `FAILED` だけで今回の事象がすべて説明できるとは限らない。
+実機で再発する場合は `c1` の第3引数を記録して切り分ける。
+
+#### 個別操作の未読件数
+
+部分更新の公式 API はないため、成功後に同じ worker で `chat.read_message_count` だけを増やす。
+バッジは `message_count - read_message_count`（`ze3/s.java:620-623`）。
+押した位置の行が `chat_history` にない場合は書かず、次の値で更新する。
+
+    read_message_count = MAX(read_message_count, MAX(message_count - N, 0))
+
+`N` は同じ transaction で数える、押した位置より server ID が大きい受信行の数で、次の条件を満たす。
+
+- `from_mid` が NULL、空、自分の mid のいずれでもない（公式の `yk8.b.o`）
+- `type` が 1、4、5、8、13、17 のいずれか
+
+`message_count` は `wk8.l0.a(so8.g)` で新規挿入のたびに増える（`wk8/l0.java:1365-1396`）。
+取り消しは増やさず、未読だった行では減らす（`uq8/z0.java:150-154`）ので、27、28、38 は数えない。
+`RECEIVE_MESSAGE` は `CHATEVENT` も同じ経路へ渡すため 13 を数える。
+
+差が残る場合は次のとおり。
+
+- 通話行（`type=4`）は状態により `message_count` を増やさないが、SQL では区別せず数える。
+  このときバッジは実際より多くなる
+- 未取得の受信行は数えられない。このときバッジは実際より少なくなる
+- 後から公式の差分更新や全置換が走ると、その値へ戻る場合がある
+
+`read_up`、`message_count`、`latest_mentioned_position`、`unread_type_and_count` は変更しない。
+DB は `en8.e` が保持する接続を生成メソッド経由で使い、別ハンドルは開かない。
+更新で値が変わったときだけ、公式の Runnable と同じ取得方法の bus へ `xe8.b.CHAT_LIST` と
+`xe8.a`（`MainActivity.onUpdateMainChatTabBadgeEvent`）を投稿する。DB の失敗はバッジだけに留める。
 
 全体操作は公式の `(String)J` getter と保存済みの位置の大きい方を使い、
 `d(point, chatId, true)` でトークの未読件数も解除する。

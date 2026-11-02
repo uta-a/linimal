@@ -25,6 +25,39 @@ public final class ReadWithoutReceiptHooksTest {
     }
 
     @Test
+    public void closingTheChatKeepsBlockingOnlyThatChatForAShortTime() {
+        Object activity = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+        ReadWithoutReceiptHooks.onChatCreatedObserved(activity, "chat", 0L, 1L, true, true,
+                ReadWithoutReceiptHooks.currentSuppression());
+        ReadWithoutReceiptHooks.endActivityObserved(activity, false, true,
+                ReadWithoutReceiptHooks.currentSuppression(), 1000L);
+
+        org.junit.Assert.assertNull(ReadWithoutReceiptHooks.currentSuppression());
+        org.junit.Assert.assertTrue(ReadWithoutReceiptHooks.isRecentlyEnded(
+                "chat", 1000L + ReadWithoutReceiptHooks.ENDED_GRACE_MILLIS - 1));
+        org.junit.Assert.assertFalse(ReadWithoutReceiptHooks.isRecentlyEnded("other", 1001L));
+        ReadWithoutReceiptHooks.clearRecentlyEnded("other");
+        org.junit.Assert.assertTrue(ReadWithoutReceiptHooks.isRecentlyEnded("chat", 1001L));
+        org.junit.Assert.assertFalse(ReadWithoutReceiptHooks.isRecentlyEnded(
+                "chat", 1000L + ReadWithoutReceiptHooks.ENDED_GRACE_MILLIS));
+    }
+
+    @Test
+    public void reenteringTheSameChatEndsTheGraceImmediately() {
+        Object activity = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+        ReadWithoutReceiptHooks.onChatCreatedObserved(activity, "chat", 0L, 1L, true, true,
+                ReadWithoutReceiptHooks.currentSuppression());
+        ReadWithoutReceiptHooks.endActivityObserved(activity, false, true,
+                ReadWithoutReceiptHooks.currentSuppression(), 1000L);
+
+        ReadWithoutReceiptHooks.clearRecentlyEnded("chat");
+
+        org.junit.Assert.assertFalse(ReadWithoutReceiptHooks.isRecentlyEnded("chat", 1001L));
+    }
+
+    @Test
     public void pendingBlocksOnlyTheSelectedChatAndExpiresPermanently() {
         assertFalse(blocks("chat-1", 0L));
         ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);

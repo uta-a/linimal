@@ -163,6 +163,23 @@ public final class ReadWithoutReceiptManualHooksTest {
     }
 
     @Test
+    public void blockedSendDuringSessionReplacementIsNotReportedAsSent() throws Exception {
+        ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+        create(new Object(), 0L);
+        ReadWithoutReceiptHooks.Suppression old = ReadWithoutReceiptHooks.currentSuppression();
+
+        assertEquals(0L, ReadWithoutReceiptManualHooks.invokeRead(old, new Executor(() -> {
+            ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+            create(new Object(), 0L);
+            assertTrue(ReadWithoutReceiptHooks.shouldBlockMarkAsRead("chat"));
+        }), 42L, false));
+
+        ReadWithoutReceiptHooks.Suppression current = ReadWithoutReceiptHooks.currentSuppression();
+        assertEquals(42L, ReadWithoutReceiptManualHooks.invokeRead(current, new Executor(() -> {
+        }), 42L, false));
+    }
+
+    @Test
     public void nativeReadPositionSeparatesHistoryFromUnreadAndMovesOnlyAfterManualCompletion() {
         ReadWithoutReceiptManualHooks.State state = new ReadWithoutReceiptManualHooks.State();
         assertEquals(-1, state.presentation(101L, true));
