@@ -44,7 +44,7 @@ private val recommendationViewHolderClassFingerprint = Fingerprint(
         "Lb18/f;",
     ),
     filters = listOf(
-        literal(0x7f0b11e6), // home_tab_contents_recommendation_placement
+        literal(0x7f0b11ad), // home_tab_contents_recommendation_placement
         methodCall(
             definingClass = "Landroid/view/View;",
             name = "findViewById",
@@ -106,7 +106,7 @@ val homeContentsRecommendationPatch = bytecodePatch(
     dependsOn(lineAiEntryPatch)
 
     execute {
-        val matches = recommendationBindFingerprint.matchAllOrNull().orEmpty()
+        val matches = runCatching { recommendationBindFingerprint.matchAllOrNull() }.getOrNull().orEmpty()
         if (matches.size != 1) {
             recordFeatureStatus(
                 listOf(PatchId.HOME_CONTENTS_RECOMMENDATION),

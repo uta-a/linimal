@@ -28,8 +28,8 @@ import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
 import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 
-private const val SETTINGS_AGENT_I_TITLE = 0x7f151e38
-private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f151e3b
+private const val SETTINGS_AGENT_I_TITLE = 0x7f152018
+private const val SETTINGS_LINE_AI_SERVICES_TITLE = 0x7f15201b
 private const val SETTINGS_ITEM = "Lpx4/v;"
 private const val SETTINGS_TARGET = "Llx4/m0;"
 private const val SETTINGS_TARGET_LINE_AI_SERVICE = "TARGET_LINE_AI_SERVICE"

@@ -28,10 +28,10 @@ final class ReadWithoutReceiptNotice {
     private static final String MESSAGE = "現在、既読は無効です。メッセージを送信すると既読になります";
     private static final String KEEP_UNREAD_MESSAGE = "現在、既読は無効です。送信しても既読はつきません";
     // LINE 26.11.0 の chat_ui_history_main → chat_ui_input_area のルート。
-    private static final int COMPOSER_ID = 0x7f0b077b; // chat_ui_message
+    private static final int COMPOSER_ID = 0x7f0b0731; // chat_ui_message
     // ヘッダー直下の本文コンテナと、その中のメッセージ一覧。
-    private static final int HISTORY_BODY_ID = 0x7f0b0772;
-    private static final int MESSAGE_LIST_ID = 0x7f0b096a; // chathistory_message_list
+    private static final int HISTORY_BODY_ID = 0x7f0b0728;
+    private static final int MESSAGE_LIST_ID = 0x7f0b0925; // chathistory_message_list
 
     private long pendingToken;
     private WeakReference<Activity> owner;

@@ -30,9 +30,9 @@ import dev.utaa.linimal.patches.util.BOXED_BOOLEAN
 import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.boxedBooleanReturnGateShape
 
-private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0570 // line_user_settings_premium_item
-private const val LYP_PREMIUM_TITLE = 0x7f151df5 // line_settings_category_lyppfornonsubscriber
-private const val LINE_PREMIUM_TITLE = 0x7f151df4 // line_settings_category_linepfornonsubscriber
+private const val PREMIUM_SETTINGS_ITEM_LAYOUT = 0x7f0e0546 // line_user_settings_premium_item
+private const val LYP_PREMIUM_TITLE = 0x7f151fd3 // line_settings_category_lyppfornonsubscriber
+private const val LINE_PREMIUM_TITLE = 0x7f151fd2 // line_settings_category_linepfornonsubscriber
 private const val PREMIUM_SETTINGS_ROW_HOOK =
     "Ldev/utaa/linimal/extension/features/PremiumSettingsRowHooks;->adjustVisibility(Z)Z"
 private const val BOOLEAN_UNBOX = "$BOXED_BOOLEAN->booleanValue()$BOOLEAN"

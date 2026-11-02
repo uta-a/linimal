@@ -27,7 +27,7 @@ public final class ReadWithoutReceiptMessageControls {
     private static final int BOUNDARY_BEFORE = 2;
     private static final int BOUNDARY_AFTER = 4;
     // LINE 26.11.0 の受信メッセージで共通の時刻表示。
-    private static final int TIMESTAMP_ID = 0x7f0b08a6; // chat_ui_row_timestamp
+    private static final int TIMESTAMP_ID = 0x7f0b0864; // chat_ui_row_timestamp
     private static final WeakHashMap<View, WeakReference<Binding>> BINDINGS = new WeakHashMap<>();
 
     private ReadWithoutReceiptMessageControls() {

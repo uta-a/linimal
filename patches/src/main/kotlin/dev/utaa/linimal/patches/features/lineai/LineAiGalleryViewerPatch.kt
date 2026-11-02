@@ -52,7 +52,7 @@ private val lineAiGalleryViewerActionFingerprint = Fingerprint(
     returnType = VOID,
     parameters = emptyList(),
     filters = listOf(
-        literal(0x7f0b0629), // chat_gallery_line_ai_edit_image_tooltip
+        literal(0x7f0b05fa), // chat_gallery_line_ai_edit_image_tooltip
         string("LINE_AI_EDIT_IMAGE"),
         fieldAccess(
             definingClass = GALLERY_ACTION,
@@ -109,7 +109,7 @@ private val lineAiGalleryViewerBinderFingerprint = Fingerprint(
             returnType = BOOLEAN,
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
-        literal(0x7f0b0628), // chat_gallery_line_ai_button
+        literal(0x7f0b05f9), // chat_gallery_line_ai_button
         methodCall(
             definingClass = VIEW,
             name = "setVisibility",
@@ -123,7 +123,7 @@ private val lineAiGalleryViewerBinderFingerprint = Fingerprint(
             type = GALLERY_ACTION,
             opcode = Opcode.SGET_OBJECT,
         ),
-        literal(0x7f1400ac), // viewer_ic_line_ai
+        literal(0x7f1400b4), // viewer_ic_line_ai
         newInstance(GALLERY_CLICK_CALLBACK),
     ),
 )

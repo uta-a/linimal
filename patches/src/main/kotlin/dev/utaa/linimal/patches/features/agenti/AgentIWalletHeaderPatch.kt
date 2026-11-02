@@ -27,8 +27,8 @@ private const val WALLET_HEADER_OWNER =
 private const val WALLET_AGENT_STATE =
     "Lcom/linecorp/line/wallet/impl/v3/view/WalletV3GrandDesignHeaderView\$a;"
 private const val WALLET_AGENT_ACTION_ENTRY = "minitab_header"
-private const val WALLET_AGENT_ICON = 0x7f0821c0
-private const val WALLET_AGENT_ACCESSIBILITY_LABEL = 0x7f150343
+private const val WALLET_AGENT_ICON = 0x7f08221d
+private const val WALLET_AGENT_ACCESSIBILITY_LABEL = 0x7f15035a
 private const val WALLET_HEADER_HOOK =
     "Ldev/utaa/linimal/extension/features/agenti/AgentIWalletHeaderHooks;->adjustButtonState(Ljava/lang/Object;)Ljava/lang/Object;"
 

@@ -53,8 +53,8 @@ private const val HOME_LAN_BANNER_MODULE_ID = "home-content-server_home-lan-bann
 private const val HOME_RECENTLY_UPDATED_PROFILE_MODULE_ID =
     "home-content-server_home-recently-profile-update"
 private const val HOME_PERFORMANCE_AD_CATALOG_TARGET_COUNT = 2
-private const val HOME_PERFORMANCE_AD_LAYOUT = 0x7f0e0405
-private const val HOME_GCS_AD_LAYOUT = 0x7f0e036d
+private const val HOME_PERFORMANCE_AD_LAYOUT = 0x7f0e03e1
+private const val HOME_GCS_AD_LAYOUT = 0x7f0e0346
 private const val CREATE_VIEW_DATA_FLOW_SOURCE =
     "GcsHomePerformanceAdModuleController\$createViewDataFlow\$\$inlined\$map\$1\$2"
 private const val MODULE_CONTROLLER_SOURCE = "GcsHomePerformanceAdModuleController.kt"

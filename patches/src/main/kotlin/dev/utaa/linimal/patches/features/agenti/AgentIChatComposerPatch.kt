@@ -47,8 +47,8 @@ private const val MESSAGE_INPUT_SOURCE = "MessageInputViewControllerImpl.kt"
 private const val OBSERVE_AI_TALK_SOURCE =
     "MessageInputViewControllerImpl\$observeViewModelForAiTalkSuggestionFeature\$2"
 private const val COMPOSER_BUTTON = 0x7f0b0760
-private const val AI_TALK_SUGGESTION_CHIP_BAR = 0x7f0b0676
-private const val AI_TALK_INPUT_LAYOUT = 0x7f0e0134
+private const val AI_TALK_SUGGESTION_CHIP_BAR = 0x7f0b0649
+private const val AI_TALK_INPUT_LAYOUT = 0x7f0e0119
 private const val CONTROLLER_IMAGE_VIEW_PARAMETER_INDEX = 8
 private const val CONTROLLER_CHIP_BAR_PARAMETER_INDEX = 2
 

@@ -24,8 +24,8 @@ import dev.utaa.linimal.patches.status.PatchStatusRecord
 import dev.utaa.linimal.patches.status.patchStatusCollector
 import dev.utaa.linimal.patches.status.recordUnsafeFeatureStatus
 
-private const val HOME_AGENT_ICON = 0x7f080b83
-private const val HOME_AGENT_ACCESSIBILITY_LABEL = 0x7f15006b
+private const val HOME_AGENT_ICON = 0x7f080b92
+private const val HOME_AGENT_ACCESSIBILITY_LABEL = 0x7f15006c
 private const val HOME_AGENT_DEEP_LINK = "line://lineai/thread"
 private const val HOME_AGENT_ENTRY = "hometab_v4_header"
 private const val HOME_HEADER_HOOK =

@@ -53,7 +53,7 @@ private val lineAiMessageContextModelFingerprint = Fingerprint(
     filters = listOf(
         newInstance(CONTEXT_MENU_CALLBACK),
         literal(0x7f08064a), // chat_ui_context_line_ai
-        literal(0x7f151848), // line_chat_button_lineai
+        literal(0x7f1519dd), // line_chat_button_lineai
         fieldAccess(
             definingClass = CONTEXT_MENU_MODEL,
             name = "LINE_AI",
