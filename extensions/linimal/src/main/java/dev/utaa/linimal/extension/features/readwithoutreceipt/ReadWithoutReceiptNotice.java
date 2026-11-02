@@ -36,6 +36,7 @@ final class ReadWithoutReceiptNotice {
     private long pendingToken;
     private WeakReference<Activity> owner;
     private WeakReference<FrameLayout> decor;
+    private final ListHeightFollower heightFollower = new ListHeightFollower();
     private LinearLayout notice;
     private TextView messageText;
     private Button markAll;
@@ -70,6 +71,7 @@ final class ReadWithoutReceiptNotice {
                 markAll.setEnabled(ReadWithoutReceiptManualHooks.isReady(activity));
                 positionMarkAll(activity);
                 reserveMarkAllSpace(activity);
+                followListHeight();
             }
         } catch (Throwable ignored) {
             dismiss();
@@ -226,6 +228,7 @@ final class ReadWithoutReceiptNotice {
         View list = messageList == null ? null : messageList.get();
         if (list == null || !list.isAttachedToWindow()) {
             restoreMarkAllSpace();
+            heightFollower.reset();
             list = activity.findViewById(MESSAGE_LIST_ID);
             if (list == null) {
                 return;
@@ -245,6 +248,18 @@ final class ReadWithoutReceiptNotice {
             appliedListBottom = padding;
             // 一覧の末尾をボタンより上までスクロールできるようにし、入力欄は動かしません。
             list.setPadding(list.getPaddingLeft(), list.getPaddingTop(), list.getPaddingRight(), padding);
+        }
+    }
+
+    /** キーボードや入力欄の拡大で一覧が縮んだ分だけ送り、表示中のメッセージを隠しません。 */
+    private void followListHeight() {
+        View list = messageList == null ? null : messageList.get();
+        if (list == null || !list.isShown()) {
+            return;
+        }
+        int distance = heightFollower.onHeight(list.getHeight());
+        if (distance > 0) {
+            list.scrollBy(0, distance);
         }
     }
 
