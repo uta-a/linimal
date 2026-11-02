@@ -9,7 +9,7 @@ Linimal は独立したプロジェクトであり、LINE および Morphe の�
 | 項目 | 値 |
 | --- | --- |
 | アプリ | LINE（`jp.naver.line.android`） |
-| バージョン | 26.11.0（versionCode 261100124） |
+| バージョン | 26.16.0（versionCode 261600106） |
 | アーキテクチャ | arm64-v8a |
 | 入力形式 | APKM |
 
