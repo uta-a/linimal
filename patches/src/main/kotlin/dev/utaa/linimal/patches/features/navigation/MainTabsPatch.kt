@@ -100,8 +100,8 @@ val mainTabsPatch = bytecodePatch(
             accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
             returnType = "V",
             parameters = listOf(
-                "Ljp/naver/line/android/activity/main/MainActivity;",
                 "L",
+                "Ljp/naver/line/android/activity/main/MainBottomNavigationStateViewModel;",
                 "L",
                 "Landroid/view/View;",
                 "L",
