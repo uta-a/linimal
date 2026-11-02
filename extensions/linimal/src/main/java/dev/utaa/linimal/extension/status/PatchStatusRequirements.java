@@ -69,7 +69,11 @@ final class PatchStatusRequirements {
                 "linimal.patch.read-receipts-main-chat-pending-queue-clear",
                 "linimal.patch.read-receipts-main-chat-manual-caller",
                 "linimal.patch.read-receipts-main-chat-supplier-registration",
-                "linimal.patch.read-receipts-main-chat-supplier-preparation"));
+                "linimal.patch.read-receipts-main-chat-supplier-preparation",
+                "linimal.patch.read-receipts-main-chat-mark-all-as-read",
+                "linimal.patch.read-receipts-main-chat-context-menu-read",
+                "linimal.patch.read-receipts-main-chat-chat-subtab-read",
+                "linimal.patch.read-receipts-main-chat-notification-read"));
         requirements.put("linimal.read-without-receipt", ids(
                 "linimal.patch.read-without-receipt-menu-label-resource",
                 "linimal.patch.read-without-receipt-compose-menu-row",

@@ -33,6 +33,7 @@ import dev.utaa.linimal.patches.features.googleauth.googleAuthMicrogManifestPatc
 import dev.utaa.linimal.patches.features.googleauth.googleAuthTokenRoutingPatch
 import dev.utaa.linimal.patches.features.push.fisCertificateHeaderPatch
 import dev.utaa.linimal.patches.features.premium.premiumUnsendPromotionPatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptExplicitMarkAsReadPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptManualCallerPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
@@ -114,7 +115,8 @@ class LinimalPatchTest {
         assertEquals(setOf(agentIWalletHeaderPatch), agentISettingsPatch.dependencies)
         assertEquals(setOf(agentIHomeHeaderPatch), agentIWalletHeaderPatch.dependencies)
         assertEquals(setOf(homeTopAdPatch), agentIHomeHeaderPatch.dependencies)
-        assertEquals(setOf(readReceiptSupplierPreparationPatch), homeTopAdPatch.dependencies)
+        assertEquals(setOf(readReceiptExplicitMarkAsReadPatch), homeTopAdPatch.dependencies)
+        assertEquals(setOf(readReceiptSupplierPreparationPatch), readReceiptExplicitMarkAsReadPatch.dependencies)
         assertEquals(setOf(readReceiptSupplierRegistrationPatch), readReceiptSupplierPreparationPatch.dependencies)
         assertEquals(setOf(readReceiptManualCallerPatch), readReceiptSupplierRegistrationPatch.dependencies)
         assertEquals(setOf(readReceiptOutboundGatePatch), readReceiptManualCallerPatch.dependencies)

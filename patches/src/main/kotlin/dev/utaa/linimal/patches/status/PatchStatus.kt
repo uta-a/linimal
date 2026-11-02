@@ -148,6 +148,22 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.read-receipts-main-chat-supplier-preparation",
         FeatureId.READ_RECEIPTS_MAIN_CHAT,
     ),
+    READ_RECEIPTS_MAIN_CHAT_MARK_ALL_AS_READ(
+        "linimal.patch.read-receipts-main-chat-mark-all-as-read",
+        FeatureId.READ_RECEIPTS_MAIN_CHAT,
+    ),
+    READ_RECEIPTS_MAIN_CHAT_CONTEXT_MENU_READ(
+        "linimal.patch.read-receipts-main-chat-context-menu-read",
+        FeatureId.READ_RECEIPTS_MAIN_CHAT,
+    ),
+    READ_RECEIPTS_MAIN_CHAT_CHAT_SUBTAB_READ(
+        "linimal.patch.read-receipts-main-chat-chat-subtab-read",
+        FeatureId.READ_RECEIPTS_MAIN_CHAT,
+    ),
+    READ_RECEIPTS_MAIN_CHAT_NOTIFICATION_READ(
+        "linimal.patch.read-receipts-main-chat-notification-read",
+        FeatureId.READ_RECEIPTS_MAIN_CHAT,
+    ),
     READ_WITHOUT_RECEIPT_MENU_LABEL_RESOURCE(
         "linimal.patch.read-without-receipt-menu-label-resource",
         FeatureId.READ_WITHOUT_RECEIPT,

@@ -110,7 +110,7 @@ private val markAsReadButtonFingerprint = Fingerprint(
 )
 
 /** Rx Single を作る supplier factory。constructor -> Rx Single -> cached scheduler chain を必須にします。 */
-private val supplierFactoryFingerprint = Fingerprint(
+internal val supplierFactoryFingerprint = Fingerprint(
     parameters = listOf(STRING),
     custom = { method, classDef ->
         hasSupplierFactoryReferences(method) && classDef.methods.any(::hasOutboundGateReferences)

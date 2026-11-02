@@ -377,3 +377,55 @@ executor 呼び出しだけを囲む。26.11.0 と同じく明示的なボタン
 投入 API は `Ltq8/z0;->d(Ltq8/m1;Lqf1/k;Z)V` の 3 引数に変わった。`Lqf1/d;` の 13 箇所すべてが
 投入直後に `return-void` する形で、受理数は 13 のまま。`ChatMessageCommonViewData` の field 数は 29。
 
+
+## 明示操作とロック画面系の未読クリア（26.16.0）
+
+送信メソッドは `Lqg3/e;->d(JLString;Z)V`。`sendChatChecked` の Java 側の呼び出し元はここだけで、
+呼び出し元は `e.c`（一括）、`Lqg3/c;->run`（`e.e` の supplier）、`e$d.run`（`e.b` と再送）の 3 つ。
+
+| 経路 | 入口（DebugMetadata など） | 停止中の扱い |
+| --- | --- | --- |
+| すべて既読（タブ + メニュー） | `ChatTabViewModel$markAllAsReadForNormalChat$2` → `e.c` | 送る |
+| すべて既読（More） | `ChatListHeaderViewModel$markAllAsReadForNormalChat$2` → `e.c` | 送る |
+| 長押し「既読にする」 | `ChatListContextMenuDialogModel$markAsReadMainChat$1` → `e.e` | 送る |
+| チャットサブタブの行アクションとメニュー | `ChatSubTabActionRequestProcessor$markMainChatAsRead$2`（`w42/i`）→ `e.e` | 送る |
+| 通知「既読」 | `LineAccessServiceForNotification.onStartCommand` の `MARK_AS_READ_ACTION` → `e.e` | 送る |
+| 既読ボタン | `UnreadMarkViewController$bindMarkAsReadButton$1$1` → executor → `e.e` | 送る（既存） |
+| 開いているトーク | `ld8/s0` → `e.b` | 止める |
+| 再送 | 起動時 `io8/l0` とネットワーク復帰 → `e$c` → `e$d` | 止める |
+| 送信後、リアクション、削除 | `tq8/l1`、`ce8/a`、`mc8/c` など → `i91/a` → `e.e` | 止める |
+| 通知の返信成功、検索、Google Assistant | `LineAccessServiceForNotification$b.g`、`g55/x`、`us0/h$a.g` → `e.e` | 止める |
+| talk operation の処理 | `uq8/y3.f`（`SEND_MESSAGE`）→ `e.e` | 止める |
+| メッセージリクエスト | `d42/j` → `d42/d.u7`、`w42/j`、`z42/m` → `e.e` | 止める |
+
+`d42/d.u7` は `markAsReadMessageRequests` が呼ぶメッセージリクエスト一括既読で、起点は長押しメニューの
+`f22.s` なので操作自体は明示的。ただしメッセージリクエストは許可の対象外としている。
+
+`w42/i` を作るのは `w42/z$f` の `z61/v1$e` 分岐だけで、`v1$e` の生成元は次の 2 つだけである。
+
+- `b71/z0.invoke`: `b71/c1` の行アクション。`u2.f.READ` を記録する。
+- `y61/a.d`: `pi1/c$e` の変換。`a71/i` のメニュー項目を `a71/f` が描画し、その選択結果か、
+  `extra_preview_menu_callback` で返るプレビューの選択結果（`u42/j`）から届く。
+
+どちらもユーザー操作が起点で、自動経路から届く形跡は無い。
+
+### 許可の受け渡し
+
+- `e.e` の入口は、factory の呼び出しを `beginManualInvocation` と `clearManualInvocation` で囲む。
+  `w42/i` は try の handler が `CancellationException` と `Exception` だけなので、それ以外の Throwable 用の
+  handler を足す。
+  印は supplier の登録で消費され、worker の `prepareSupplier` が chatId 単位の一回限りの許可へ変換する。
+- `e.c` は同じ thread で `d` を順に呼ぶ。`d` の直前で対象トークだけ `prepareExplicitRead` し、直後と
+  例外 handler で `clearPreparedSupplier` する。呼び出し元が上の 2 coroutine だけと確認できない版では注入しない。
+- 既読なし閲覧中のトークは `d` の先頭で return するので gate が許可を消費しない。直後の破棄が次のトークへの
+  漏れを防ぐ。local block と RPC block は変えていないので、すべて既読でもそのトークだけ未読が残る。
+- 送信に失敗すると公式どおり FAILED queue へ入るが、再送の `d` は自動扱いなので停止中は送らず queue を消す。
+
+### 送信メソッドを通らない未読クリア
+
+`Lqg3/e$a;->f` は `e.b` の read point が 0 以下の分岐だけが使い、`e0` と chat-list Runnable を実行する。
+read point の前進と RPC は無い。`readWithoutReceiptLocalReadBlockPatch` が check-cast の直後へ
+`shouldBlockMarkAsRead` を注入し、既読なし閲覧中のトークだけ本体を飛ばして元の戻り値を返す。自動既読の停止では
+`d` の `e0` と揃えて未読を消す。read point が 0 以下のイベントが実際に届くかは未確認。
+
+いずれも静的解析と JVM テストの結論で、実機の相手側既読は未確認。

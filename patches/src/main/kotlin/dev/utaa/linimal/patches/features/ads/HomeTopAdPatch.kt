@@ -23,7 +23,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
-import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
+import dev.utaa.linimal.patches.features.readreceipts.readReceiptExplicitMarkAsReadPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -225,7 +225,7 @@ val homeTopAdPatch = bytecodePatch(
             PatchAvailability.UNAVAILABLE
         }
     }
-    dependsOn(readReceiptSupplierPreparationPatch)
+    dependsOn(readReceiptExplicitMarkAsReadPatch)
 
     execute {
         val catalogMatches = homePerformanceAdCatalogFingerprint.matchAllOrNull().orEmpty()
