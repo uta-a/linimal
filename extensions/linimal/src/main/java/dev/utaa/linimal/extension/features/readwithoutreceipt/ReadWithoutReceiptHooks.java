@@ -233,8 +233,8 @@ public final class ReadWithoutReceiptHooks {
         return false;
     }
 
-    /** 送信が投入されたトークの確定セッションだけを終了します。予約や別トークには触れません。 */
-    static boolean endSuppressionForSentMessage(String chatId, Suppression observed) {
+    /** 指定トークの確定セッションだけを終了します。予約や別トークには触れません。 */
+    static boolean endConfirmedSuppression(String chatId, Suppression observed) {
         if (observed == null || !observed.confirmed || chatId == null || !observed.chatId.equals(chatId)) {
             return false;
         }

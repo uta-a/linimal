@@ -207,25 +207,25 @@ public final class ReadWithoutReceiptHooksTest {
             }
             create(activity, "chat-1", 0L, 1L, true);
             ReadWithoutReceiptHooks.Suppression session = ReadWithoutReceiptHooks.currentSuppression();
-            assertFalse(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat-2", session));
+            assertFalse(ReadWithoutReceiptHooks.endConfirmedSuppression("chat-2", session));
             assertTrue(blocks("chat-1", 2L));
-            assertTrue(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat-1", session));
+            assertTrue(ReadWithoutReceiptHooks.endConfirmedSuppression("chat-1", session));
             assertFalse(blocks("chat-1", 2L));
             assertEquals(0L, ReadWithoutReceiptHooks.sessionTokenFor(activity));
-            assertFalse(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat-1", session));
+            assertFalse(ReadWithoutReceiptHooks.endConfirmedSuppression("chat-1", session));
         }
     }
 
     @Test
     public void sendingCannotConsumePendingOrReplaceANewerSession() {
         ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 0L);
-        assertFalse(ReadWithoutReceiptHooks.endSuppressionForSentMessage(
+        assertFalse(ReadWithoutReceiptHooks.endConfirmedSuppression(
                 "chat-1", ReadWithoutReceiptHooks.currentSuppression()));
         create(new Object(), "chat-1", 0L, 1L, true);
         ReadWithoutReceiptHooks.Suppression old = ReadWithoutReceiptHooks.currentSuppression();
         ReadWithoutReceiptHooks.markSuppressedAt("chat-1", 2L);
         create(new Object(), "chat-1", 0L, 3L, true);
-        assertFalse(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat-1", old));
+        assertFalse(ReadWithoutReceiptHooks.endConfirmedSuppression("chat-1", old));
         assertTrue(blocks("chat-1", 3L));
     }
 

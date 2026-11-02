@@ -61,12 +61,12 @@ public final class ReadWithoutReceiptSendHooksTest {
         create(new Object(), session.token);
         ReadWithoutReceiptHooks.Suppression restored = ReadWithoutReceiptHooks.currentSuppression();
         assertEquals(84L, restored.sendState.record(new ReadExecutor(), 84L).readPoint);
-        assertTrue(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat", session));
+        assertTrue(ReadWithoutReceiptHooks.endConfirmedSuppression("chat", session));
         assertNull(ReadWithoutReceiptHooks.currentSuppression());
         ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
         create(new Object(), 0L);
         assertNull(ReadWithoutReceiptHooks.currentSuppression().sendState.onSubmitted(false));
-        assertFalse(ReadWithoutReceiptHooks.endSuppressionForSentMessage("chat", session));
+        assertFalse(ReadWithoutReceiptHooks.endConfirmedSuppression("chat", session));
     }
 
     @Test

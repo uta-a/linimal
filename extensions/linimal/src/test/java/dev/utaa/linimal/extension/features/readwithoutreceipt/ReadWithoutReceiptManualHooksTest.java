@@ -128,6 +128,41 @@ public final class ReadWithoutReceiptManualHooksTest {
     }
 
     @Test
+    public void markingTheWholeChatReturnsToNormalLineOnlyWhenItSucceeds() {
+        Object activity = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+        create(activity, 0L);
+        ReadWithoutReceiptHooks.Suppression session = ReadWithoutReceiptHooks.currentSuppression();
+
+        assertFalse(ReadWithoutReceiptManualHooks.finishRead(session, 42L, false));
+        assertSame(session, ReadWithoutReceiptHooks.currentSuppression());
+        assertFalse(ReadWithoutReceiptManualHooks.finishRead(session, 0L, true));
+        assertSame(session, ReadWithoutReceiptHooks.currentSuppression());
+
+        assertTrue(ReadWithoutReceiptManualHooks.finishRead(session, 42L, true));
+        assertEquals(null, ReadWithoutReceiptHooks.currentSuppression());
+        assertEquals(0L, ReadWithoutReceiptHooks.sessionTokenFor(activity));
+    }
+
+    @Test
+    public void resultIsSentToTheOwnerAfterRotationEvenWhenTheSessionEnds() {
+        Object first = new Object();
+        ReadWithoutReceiptHooks.markSuppressedAt("chat", 0L);
+        create(first, 0L);
+        ReadWithoutReceiptHooks.Suppression started = ReadWithoutReceiptHooks.currentSuppression();
+        ReadWithoutReceiptHooks.endActivityObserved(first, true, true, started);
+        Object second = new Object();
+        create(second, started.token);
+
+        ReadWithoutReceiptHooks.Suppression target = ReadWithoutReceiptManualHooks.resultTarget(started);
+        assertSame(second, target.owner.get());
+        assertTrue(ReadWithoutReceiptManualHooks.finishRead(started, 42L, true));
+        assertEquals(null, ReadWithoutReceiptHooks.currentSuppression());
+        assertSame(second, target.owner.get());
+        assertSame(started, ReadWithoutReceiptManualHooks.resultTarget(started));
+    }
+
+    @Test
     public void nativeReadPositionSeparatesHistoryFromUnreadAndMovesOnlyAfterManualCompletion() {
         ReadWithoutReceiptManualHooks.State state = new ReadWithoutReceiptManualHooks.State();
         assertEquals(-1, state.presentation(101L, true));

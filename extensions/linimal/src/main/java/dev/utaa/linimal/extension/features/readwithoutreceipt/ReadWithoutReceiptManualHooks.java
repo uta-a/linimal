@@ -150,7 +150,7 @@ public final class ReadWithoutReceiptManualHooks {
             AsyncTask.SERIAL_EXECUTOR.execute(() -> execute(owner, session, attempt.executor, requestedPoint, all));
         } catch (Throwable ignored) {
             session.manualState.finish(0L);
-            showResult(session.token, false);
+            showResult(resultTarget(session), false, false);
         }
     }
 
@@ -167,9 +167,26 @@ public final class ReadWithoutReceiptManualHooks {
         } catch (Throwable ignored) {
             // 元の RPC 再送経路は変更せず、bridge の例外を UI へ伝播させません。
         } finally {
-            session.manualState.finish(completed);
-            showResult(session.token, completed > 0L);
+            // 実行中の回転で所有者が移っても、終了前に最新の Activity を通知先として確定します。
+            ReadWithoutReceiptHooks.Suppression target = resultTarget(session);
+            showResult(target, completed > 0L, finishRead(session, completed, all));
         }
+    }
+
+    /** 同じセッションが続いていれば、構成変更後の所有者を持つ最新の状態を返します。 */
+    static ReadWithoutReceiptHooks.Suppression resultTarget(ReadWithoutReceiptHooks.Suppression session) {
+        ReadWithoutReceiptHooks.Suppression current = ReadWithoutReceiptHooks.currentSuppression();
+        return current != null && current.token == session.token ? current : session;
+    }
+
+    /**
+     * 既読処理の結果を記録します。トーク全体を既読にできた場合は閲覧セッションを終え、
+     * 以降の既読と画面表示を通常の LINE へ戻します。個別操作と失敗時はセッションを続けます。
+     */
+    static boolean finishRead(ReadWithoutReceiptHooks.Suppression session, long completed, boolean all) {
+        session.manualState.finish(completed);
+        return all && completed > 0L
+                && ReadWithoutReceiptHooks.endConfirmedSuppression(session.chatId, session);
     }
 
     /** Android に依存しない worker 境界。失敗・入室変更時にも thread 上の許可を残しません。 */
@@ -193,10 +210,11 @@ public final class ReadWithoutReceiptManualHooks {
         }
     }
 
-    private static void showResult(long token, boolean success) {
+    private static void showResult(ReadWithoutReceiptHooks.Suppression session, boolean success, boolean ended) {
         ReadWithoutReceiptHooks.Suppression current = ReadWithoutReceiptHooks.currentSuppression();
-        Object candidate = current != null && current.token == token && current.owner != null
-                ? current.owner.get() : null;
+        long token = session.token;
+        Object candidate = (ended || (current != null && current.token == token)) && session.owner != null
+                ? session.owner.get() : null;
         if (!(candidate instanceof Activity)) {
             return;
         }
@@ -204,7 +222,7 @@ public final class ReadWithoutReceiptManualHooks {
         activity.runOnUiThread(() -> {
             try {
                 if (!activity.isFinishing() && !activity.isDestroyed()
-                        && ReadWithoutReceiptHooks.sessionTokenFor(activity) == token) {
+                        && (ended || ReadWithoutReceiptHooks.sessionTokenFor(activity) == token)) {
                     // worker の状態変更だけでは次の描画が起きないため、完了した行の操作を更新します。
                     activity.getWindow().getDecorView().invalidate();
                     Toast.makeText(activity, success ? "既読処理を実行しました" : "既読を反映できませんでした",
