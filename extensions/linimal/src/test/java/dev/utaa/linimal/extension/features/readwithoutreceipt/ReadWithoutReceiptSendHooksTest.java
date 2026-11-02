@@ -41,12 +41,6 @@ public final class ReadWithoutReceiptSendHooksTest {
     public void highestAttemptedPointIsNeverThePreviouslyReadBaseline() throws Exception {
         ReadWithoutReceiptSendHooks.SendState state = new ReadWithoutReceiptSendHooks.SendState();
         state.record(new ReadExecutor(), 120L);
-        assertEquals(-1, state.manualState.presentation(90L, false));
-        assertEquals(-1, state.manualState.presentation(101L, true));
-        state.manualState.observeBaseline("100");
-        assertEquals(0, state.manualState.presentation(90L, false));
-        assertEquals(3, state.manualState.presentation(101L, true));
-        assertEquals(1, state.manualState.presentation(102L, false));
         assertEquals(120L, state.snapshot().readPoint);
     }
 

@@ -246,104 +246,33 @@ pause/destroy では view を取り除き、同じ token の復帰や構成変�
 
 ## 既読なし閲覧中の手動既読操作（2026-10-22）
 
-### メッセージとの対応
+### 個別既読の廃止（2026-11-03）
 
-対象 APK の共通 holder `Lwi1/r;` の `H0(I, Lk61/c;, Ld91/b;, Ls61/h;, I,
-Lm16/m;, Ljv1/b;, I)V` は、形式別の balloon bind より前に共通の表示情報を処理する。
-`ContentView(Landroidx/compose/runtime/Composer;I)V` と引数・access flag の形で同定する。
-短い `ContentView` も同じ fingerprint に含めると文字列の部分一致が重なって不一致になるため、
-長い署名の文字列だけを使う。
+行ごとの「既読にする」と、それに伴う境界線・部分既読後のバッジ調整は廃止した。実装は git 履歴（`e00d3f2` 以前）にある。
 
-`h.b()` が返す model は `ChatMessageCommonViewData(chatId=` などの `toString` 文字列で同定する。
-constructor の27 fieldの保存順と先頭の型列を検証し、chatId、serverMessageId、
-isNormalMessage、isUnsentMessage、isOtherUserMessage、isMyMessage を導く。
-参照 APK では `Ls61/c;` の a、c、g、k、m、n に対応する。
-localMessageId（b）は既読位置に使わない。
-生成 bridge は holder・全引数を range invoke で受け取り、元のレジスタを変更せず値を取り出す。
-再 bind 時には旧ボタンを先に除去し、例外は共通 bind へ伝播させない。
+`sendChatChecked` の引数は次の4つだけで（`ts8/bo.java`）、既読範囲を指定できるのは `lastMessageId` の1つのみ。
 
-`chat_ui_row.xml` は FrameLayout の最初の子が縦 LinearLayout で、
-その中に公式の SwipeableConstraintLayout がある。個別操作は縦コンテナ末尾の FrameLayout に追加し、
-balloon、clicktarget、swipe、公式の時刻コンテナの listener や構造を変更しない。
-受信・通常・送信取消でない・正の server ID・初期既読位置より後、という条件を満たす行だけを表示する。
-クリック時にも chatId、所有 Activity、token、bind 世代を再検証する。
+| ID | 名前 | 型 | 値 |
+| --- | --- | --- | --- |
+| 1 | `seq` | i32 | 要求番号 |
+| 2 | `chatMid` | string | トーク ID |
+| 3 | `lastMessageId` | string | 既読にする位置の server ID |
+| 4 | `sessionId` | byte | 常に 0 |
 
-### 初期既読位置と境界
+XIG07 の計測版で `LegacyTalkServiceClientImpl.c1` を記録した結果は次のとおり。
 
-adapter `Lxi1/b;` の `i()String` は、入室時の `ChatData.read_up` を保持する String field の getter。
-未読判定 `h(J)Z` が参照する同じ field と getter の形を検証し、runtime に渡す。
-送信抑制で観測した最大位置は未読の末尾であり、初期既読位置には使わない。
-初回の有効な非負の値を凍結し、不正な文字列は位置不明として個別操作・境界を非表示にする。
-未設定の read_up は0として扱う。
+- 押した行の位置（最新より古い）だけを、bridge 経由で1回送信し、RPC は成功した
+- 閉じた後を含め、他の呼び出し元から `c1` は呼ばれなかった
+- それでも、相手の公式 Web 版 LINE では全行に既読が付いた
 
-model の constructor 第22引数の unread checker と、adapter の `h(J)Z` が使う
-一意な public・非 static の `Long` field を検証して最初の未読位置を得る。
-`h(J)Z` 自体には表示タイミングの条件もあるため、その戻り値を境界の有無に転用しない。
-初期状態では最初の未読行の前、手動操作後は完了位置の行の後ろにだけ
-「ここまで既読」を中央に置いた水平線を付ける。
-構成変更でも初期位置と手動進捗を引き継ぐ。
-
-### A案の個別操作
-
-参照 APK の `chat_ui_row_layout_receive_horizontal_metadata.xml` は
-縦 LinearLayout の末尾に `chat_ui_row_timestamp`（`0x7f0b08a6`）を持つ。
-「既読にする」は11spの下線付き文字リンクにし、時刻の画面座標に左端を揃えて下側に配置する。
-右端を超える場合は追加したコンテナ内に収める。時刻がない行や非表示の間は操作も表示しない。
-文字色・文字の影は公式の時刻から取り、恒常的な背景・個別の水平線・影付きボタンは付けない。
-操作領域は最低48dp四方を保ち、処理中は無効化する。
-表示文言は短縮しても、アクセシビリティ上の説明と処理は「このメッセージまで既読にする」のまま。
+Android 公式の受信処理（`uq8/z1`、`sp8/b`）は `NOTIFIED_READ_MESSAGE` の param3 を位置として保存するため、
+プロトコル上は途中の位置を表現できる。ただし、Web 版の表示とサーバーのどちらが全行にしているかは切り分けておらず、
+公式スマホ版を受信側にした実機確認もしていない。クライアントから変更できる項目が他にないため廃止した。
 
 ### 既読処理とセッション
 
 `readWithoutReceiptManualReadPatch` は既存 outbound と同じ executor に
-`linimalMarkReadManually(J, String, Z)J` を生成する。
-個別操作は指定した正の server ID で `d(point, chatId, false)` を呼ぶ。
-これは指定位置以前の累積既読であり、後のメッセージだけを既読にする操作ではない。
-`Y` と一覧更新 Runnable は実行せず、既存の `Q0` と RPC・再送保存を使う。
-
-#### 個別操作の送信位置と結果（LINE 26.16.0）
-
-`qg3.e.d` は同じ chat の queue に `FAILED` で保持値が押した位置以上の状態があると、
-押した位置を保持値へ置き換えて `U0` と RPC を実行する（`qg3/e.java:236-241`、smali 0x41-0x4d）。
-個別操作の bridge は `all=false` のときだけ、`d` の前に該当する `FAILED` を map と永続 prefs から消す。
-保持値が押した位置より小さい `FAILED` は `d` が上書きするため残す。全体操作と公式の再送は変えない。
-
-`d` は RPC 失敗と空振りを戻り値で返さない。個別操作の bridge は `d` の後に queue を読み、
-押した位置が `SUCCEEDED` のときだけその位置を返す。`PROCESSING` で保持値が押した位置以上の空振り、
-RPC 失敗、gate による中断では 0 を返し、「既読を反映できませんでした」と表示する。
-
-`U0` は `read_up` を RPC より前に進めるので、この `FAILED` は通常 `read_up` 以下にある。
-入室時の `read_up` を基準に操作を出すため、古い `FAILED` だけで今回の事象がすべて説明できるとは限らない。
-実機で再発する場合は `c1` の第3引数を記録して切り分ける。
-
-#### 個別操作の未読件数
-
-部分更新の公式 API はないため、成功後に同じ worker で `chat.read_message_count` だけを増やす。
-バッジは `message_count - read_message_count`（`ze3/s.java:620-623`）。
-押した位置の行が `chat_history` にない場合は書かず、次の値で更新する。
-
-    read_message_count = MAX(read_message_count, MAX(message_count - N, 0))
-
-`N` は同じ transaction で数える、押した位置より server ID が大きい受信行の数で、次の条件を満たす。
-
-- `from_mid` が NULL、空、自分の mid のいずれでもない（公式の `yk8.b.o`）
-- `type` が 1、4、5、8、13、17 のいずれか
-
-`message_count` は `wk8.l0.a(so8.g)` で新規挿入のたびに増える（`wk8/l0.java:1365-1396`）。
-取り消しは増やさず、未読だった行では減らす（`uq8/z0.java:150-154`）ので、27、28、38 は数えない。
-`RECEIVE_MESSAGE` は `CHATEVENT` も同じ経路へ渡すため 13 を数える。
-
-差が残る場合は次のとおり。
-
-- 通話行（`type=4`）は状態により `message_count` を増やさないが、SQL では区別せず数える。
-  このときバッジは実際より多くなる
-- 未取得の受信行は数えられない。このときバッジは実際より少なくなる
-- 後から公式の差分更新や全置換が走ると、その値へ戻る場合がある
-
-`read_up`、`message_count`、`latest_mentioned_position`、`unread_type_and_count` は変更しない。
-DB は `en8.e` が保持する接続を生成メソッド経由で使い、別ハンドルは開かない。
-更新で値が変わったときだけ、公式の Runnable と同じ取得方法の bus へ `xe8.b.CHAT_LIST` と
-`xe8.a`（`MainActivity.onUpdateMainChatTabBadgeEvent`）を投稿する。DB の失敗はバッジだけに留める。
+`linimalMarkReadManually(J, String)J` を生成する。
 
 全体操作は公式の `(String)J` getter と保存済みの位置の大きい方を使い、
 `d(point, chatId, true)` でトークの未読件数も解除する。

@@ -424,3 +424,15 @@ XIG07（Android SDK 36）へ `~/morphe/linimal.keystore` で署名した APK を
 | native library load / restart / process death | Pass | Pending | cold launchはPass。main UI到達後のrestartとprocess deathは未確認 |
 
 `Pending` は未成立を意味し、成功扱いにしない。主要機能に失敗した場合は feature hook の実装へ進まない。
+
+## 個別既読の廃止（2026-11-03）
+
+LINE 26.16.0 の XIG07 で、既読なしで開いたトークの真ん中の行から「既読にする」を実行した。
+
+| 確認 | 結果 |
+| --- | --- |
+| `c1` の呼び出し | bridge 経由の1回のみ。トークを閉じた後の呼び出しなし |
+| 送信位置 | 押した行の位置。最新の受信位置より古い |
+| 相手側（公式 Web 版 LINE） | 全行に既読 |
+
+公式スマホ版を受信側にした確認は行っていない。この結果を受け、行ごとの操作は廃止した。
