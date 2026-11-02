@@ -27,6 +27,9 @@ private const val BIND_CONTROLS = "linimalBindReadControls"
 private const val VIEW = "Landroid/view/View;"
 private const val STRING = "Ljava/lang/String;"
 
+/** ChatMessageCommonViewData の constructor が保存する field 数。先頭 15 個の型と順序を別途検証します。 */
+private const val MODEL_FIELD_COUNT = 29
+
 /** 形式別 balloon ではなく、通常・システム両方が必ず通る共通行 bind を観測します。 */
 val readWithoutReceiptMessageControlsPatch = bytecodePatch(
     name = "既読なし閲覧のメッセージ別既読操作",
@@ -65,7 +68,7 @@ val readWithoutReceiptMessageControlsPatch = bytecodePatch(
         }.filter { it.definingClass == model.originalClassDef.type }.distinctBy { it.name }.toList()
         val prefix = listOf(STRING, "J", "J", STRING, STRING, "L", "Z", "L",
             "Ljava/lang/Long;", "Z", "Z", "L", "Z", "Z", "Z")
-        val shape = fields.size == 27 && fields.take(15).map { it.type }.withIndex().all { (index, type) ->
+        val shape = fields.size == MODEL_FIELD_COUNT && fields.take(15).map { it.type }.withIndex().all { (index, type) ->
             // contentType・表示型は fingerprint で決まった model 内の参照型でよく、難読化名では固定しない。
             if (index == 5 || index == 7 || index == 11) type.startsWith("L") else type == prefix[index]
         }

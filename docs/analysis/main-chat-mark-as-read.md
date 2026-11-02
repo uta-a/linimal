@@ -338,3 +338,42 @@ pause・抑制終了時には挿入した本文内の案内を親から取り除
 それぞれ expected target count は2。対象不一致や不安全な形の場合は注入せず、
 既読なし feature 全体を利用不可にする。設定キー・schema・既存値は変更しない。
 
+## LINE 26.16.0 での変更点
+
+DEX（全 14 個）を判定関数で直接走査し、下記の一意性と形状を確認した。実機は未確認。
+
+### 既読送信の経路
+
+- `Lqg3/e;->d(J, String, Z)V` が既読処理の唯一の入口で、命令列と register は 26.11.0 と同型。
+  `TalkServiceClient` の `(I, String, String)V`（`c1`）を呼ぶのはこのメソッドだけ。
+- `sendChatChecked` の引数書き出しは `LegacyTalkServiceClientImpl$e` のみ（`toString` を除く）。
+
+### 手動既読の executor が共用になった
+
+`Li91/a;`（26.11.0 の `MainChatMarkAsReadExecutor` 相当）は metadata が消え、呼び出し元が増えた。
+
+| 呼び出し元 | 契機 |
+| --- | --- |
+| `Lns1/d;`（`UnreadMarkViewController$bindMarkAsReadButton$1$1`） | 公式の「既読にする」ボタン |
+| `Ltq8/l1;`（`SendMessageReadPointUpdaterImpl`。`tq8/v1` が `Always` で呼ぶ） | メッセージ送信 |
+| `Lce8/a;` / `Lmc8/c;` | リアクション送信 |
+| `message/list/edit/a`（`MessageDeleteActionHandler` 周辺） | メッセージ削除 |
+
+executor へ印を付けると、送信・リアクション・削除も「手動」扱いになり、自動既読を停止していても
+相手へ既読が届く。そのため `readReceiptManualCallerPatch` は executor ではなくボタンの coroutine の
+executor 呼び出しだけを囲む。26.11.0 と同じく明示的なボタン操作だけが手動で、他は gate で止まる。
+
+26.16.0 には公式の手動既読設定（`ManualReadReceiptSettingsCategory`、Premium）も追加された。
+公式の説明では返信・リアクション・「既読にする」で既読が付く。Linimal の設定とは独立している。
+
+### 長押しメニュー
+
+固定 4 行ではなく、`Lb71/e;->k`（トーク項目の分岐）が行一覧の composable `La71/f;->a` を呼び、
+その中で一覧から行を描く。行は `a` を呼ぶ直前へ 1 行だけ差し込み、行 composable とラベルの複製元は
+`a` の中から取り出す。同じ `a` を使うトークプレビューには行を足さない。
+
+### 送信の観測
+
+投入 API は `Ltq8/z0;->d(Ltq8/m1;Lqf1/k;Z)V` の 3 引数に変わった。`Lqf1/d;` の 13 箇所すべてが
+投入直後に `return-void` する形で、受理数は 13 のまま。`ChatMessageCommonViewData` の field 数は 29。
+
