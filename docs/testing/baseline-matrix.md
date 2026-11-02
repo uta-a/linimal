@@ -394,6 +394,21 @@ Activity 内の assertion とスクリーンショットの両方で確認した
 - 実機の個別操作の下端と全体ボタン上端の間隔は26px。入力欄の座標は修正前後で不変。当該processのAndroidRuntime errorは0件。
 - 修正版APKはリポジトリ外の `/Users/uta_a/morphe/line-linimal.apk` に生成した。
 
+## 2026-11-02 LINE 26.16.0 移行の実機確認（途中経過）
+
+XIG07（Android SDK 36）へ `~/morphe/linimal.keystore` で署名した APK を上書き install した。データ消去なし。
+実アカウントのため、トークルーム内の確認は利用者が手で行った。
+
+| 確認項目 | 結果 |
+| --- | --- |
+| Patch Status | 全 64 件 OK |
+| ART verify、cold start、ログイン維持 | Pass。`FATAL EXCEPTION` と `VerifyError` は 0 件 |
+| Linimal 設定の表示 | 5 ページの全スイッチが操作可能 |
+| 下部タブ、ホーム上部、トーク一覧上部の抑制 | Pass（ホームは確認した範囲でのキーワード照合） |
+| 既読なし閲覧中のキーボード追従 | 利用者が修正を確認（`c6c21a1`） |
+
+未確認: 相手側で見た既読の動作（全体既読の結果を含めて個別の記録なし）、通知、通話、deep link、入力欄の chip bar と `@` 候補、LINE AI の各入口、＋ メニュー。
+
 ## 実機成立性ゲート
 
 | ケース | 公式版リファレンス | Linimal統合APK | 結果 |
