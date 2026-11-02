@@ -91,6 +91,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.line-ai-message-context-menu",
         FeatureId.LINE_AI_MESSAGE_CONTEXT_MENU,
     ),
+    LINE_AI_IMAGE_SIDE_MENU(
+        "linimal.patch.line-ai-image-side-menu",
+        FeatureId.LINE_AI_MESSAGE_CONTEXT_MENU,
+    ),
     LINE_AI_GALLERY_VIEWER(
         "linimal.patch.line-ai-gallery-viewer",
         FeatureId.LINE_AI_GALLERY_VIEWER,

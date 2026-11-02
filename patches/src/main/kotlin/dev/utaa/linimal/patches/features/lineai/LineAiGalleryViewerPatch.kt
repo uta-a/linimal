@@ -157,7 +157,7 @@ val lineAiGalleryViewerPatch = bytecodePatch(
             PatchAvailability.UNAVAILABLE
         }
     }
-    dependsOn(lineAiMessageContextMenuPatch)
+    dependsOn(lineAiImageSideMenuPatch)
 
     execute {
         val actionMatches = lineAiGalleryViewerActionFingerprint.matchAllOrNull().orEmpty()

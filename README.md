@@ -64,7 +64,7 @@ LINE の設定画面の一番下に `Linimal` が追加されます。設定は 
 | Agent i・LINE AI | トーク一覧の検索欄の Agent i を表示しない | ON | 検索欄がその分だけ広がります。 |
 | Agent i・LINE AI | チャット情報の Agent i を表示しない | ON | |
 | Agent i・LINE AI | チャット入力欄の Agent i を表示しない | ON | 入力欄の Agent i と AI の返信提案を表示しません。 |
-| Agent i・LINE AI | メッセージ長押しメニューの LINE AI を表示しない | ON | |
+| Agent i・LINE AI | メッセージ長押しメニューの LINE AI を表示しない | ON | 画像メッセージ横の LINE AI ボタンも消えます。 |
 | Agent i・LINE AI | 写真・動画表示画面の LINE AI を表示しない | ON | |
 | Agent i・LINE AI | 設定画面の Agent i を表示しない | ON | |
 | 表示を消す | VOOM / ショッピング / ニュース / ウォレット / アプリ を表示しない | OFF | 下部タブから取り除きます。 |

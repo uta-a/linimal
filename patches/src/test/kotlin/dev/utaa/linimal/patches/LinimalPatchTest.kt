@@ -25,6 +25,7 @@ import dev.utaa.linimal.patches.features.home.homeRecentHistoryPatch
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiEntryPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiGalleryViewerPatch
+import dev.utaa.linimal.patches.features.lineai.lineAiImageSideMenuPatch
 import dev.utaa.linimal.patches.features.lineai.lineAiMessageContextMenuPatch
 import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
 import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
@@ -106,7 +107,8 @@ class LinimalPatchTest {
         assertEquals(setOf(homeFeedPostCardsPatch), premiumSettingsRowPatch.dependencies)
         assertEquals(setOf(agentIChatListSearchPatch), homeFeedPostCardsPatch.dependencies)
         assertEquals(setOf(lineAiGalleryViewerPatch), agentIChatListSearchPatch.dependencies)
-        assertEquals(setOf(lineAiMessageContextMenuPatch), lineAiGalleryViewerPatch.dependencies)
+        assertEquals(setOf(lineAiImageSideMenuPatch), lineAiGalleryViewerPatch.dependencies)
+        assertEquals(setOf(lineAiMessageContextMenuPatch), lineAiImageSideMenuPatch.dependencies)
         assertEquals(setOf(agentIChatComposerPatch), lineAiMessageContextMenuPatch.dependencies)
         assertEquals(setOf(agentISettingsPatch), agentIChatComposerPatch.dependencies)
         assertEquals(setOf(agentIWalletHeaderPatch), agentISettingsPatch.dependencies)

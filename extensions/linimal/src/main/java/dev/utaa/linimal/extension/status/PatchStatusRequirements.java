@@ -38,7 +38,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.agent-i-chat-list-search",
                 ids("linimal.patch.agent-i-chat-list-search"));
         requirements.put("linimal.line-ai-message-context-menu",
-                ids("linimal.patch.line-ai-message-context-menu"));
+                ids("linimal.patch.line-ai-message-context-menu", "linimal.patch.line-ai-image-side-menu"));
         requirements.put("linimal.line-ai-gallery-viewer", ids("linimal.patch.line-ai-gallery-viewer"));
         requirements.put("linimal.voom", ids("linimal.patch.main-tab-voom"));
         requirements.put("linimal.shopping", ids("linimal.patch.main-tab-shopping"));
