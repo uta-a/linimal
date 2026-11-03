@@ -1,6 +1,6 @@
 # ADR 0004: Google アカウントでのログインを MicroG-RE へ向ける
 
-- 状態: 採用（2026-11-03、利用者の指示による。実機でのログイン成功は未確認）
+- 状態: 採用（2026-11-03、利用者の指示による。同日に実機でログイン成功を確認）
 - 日付: 2026-11-03
 - 関連: [ADR 0003](0003-microg-re-google-auth.md)、[解析](../analysis/google-sign-in-auth.md)
 
@@ -50,8 +50,13 @@ provider に渡すので、manifest の meta-data では申告できない。LIN
   - Google ログインの準備から接続までの間に、そのパスキー要求の接続が先に行われた場合
   - MicroG-RE へ向けた Sign-In client の接続が保持されている間に、パスキー要求が同じ接続を使った場合
 
+## 実機の結果（2026-11-03）
+
+XIG07（SDK 36）、LINE 26.16.0、MicroG-RE 7.3.0 で「Google でログイン」を実行し、ログインが完了した。
+LINE の `HiddenActivity`（Play services 版 provider）から MicroG-RE の `AssistedSignInActivity` と `AuthSignInActivity` が開き、
+端末本体の Google Play services の Sign-In 画面は使われなかった。
+
 ## 未確認事項
 
-- MicroG-RE 7.3.0 での実際のログインの成否。
 - 端末本体の Google Play services を使う他の Identity API（パスワードの保存など）との両立。
 - SDK 33 以下の端末。
