@@ -97,6 +97,10 @@ public final class GoogleAuthRoutingHooksTest {
         assertEquals(GoogleAuthRoutingHooks.GMS_IDENTITY_SIGN_IN_ACTION, GoogleAuthRoutingHooks.identitySignInAction(
                 null, GoogleAuthRoutingHooks.GMS_IDENTITY_SIGN_IN_ACTION));
         assertTrue(GoogleAuthRoutingHooks.identitySignInDynamicLookup(null, true));
+        // 未初期化では端末本体のアカウント検索（元の処理）を続けます。
+        assertNull(GoogleAuthRoutingHooks.selectedAccount(new Object(), "user@example.com"));
+        assertNull(GoogleAuthRoutingHooks.selectedAccount(new Object(), ""));
+        assertNull(GoogleAuthRoutingHooks.chooseAccountIntent(null));
         assertTrue(GoogleAuthRoutingHooks.useIdentityCredentialsApi(true, null,
                 new Request(Collections.singletonList(new SignInOption()))));
         assertFalse(GoogleAuthRoutingHooks.useIdentityCredentialsApi(false, null,

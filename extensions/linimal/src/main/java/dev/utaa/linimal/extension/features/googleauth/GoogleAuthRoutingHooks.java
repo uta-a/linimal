@@ -1,7 +1,9 @@
 package dev.utaa.linimal.extension.features.googleauth;
 
+import android.accounts.Account;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import dev.utaa.linimal.extension.config.LinimalConfig;
 import java.lang.reflect.Field;
@@ -29,6 +31,11 @@ public final class GoogleAuthRoutingHooks {
     /** Identity API の Sign-In サービス。MicroG-RE は action の接頭辞を自分のパッケージ名に変えて公開します。 */
     static final String GMS_IDENTITY_SIGN_IN_ACTION = "com.google.android.gms.auth.api.identity.service.signin.START";
     static final String MICROG_IDENTITY_SIGN_IN_ACTION = "app.revanced.android.gms.auth.api.identity.service.signin.START";
+    static final String GMS_CHOOSE_ACCOUNT_ACTION = "com.google.android.gms.common.account.CHOOSE_ACCOUNT";
+    static final String MICROG_CHOOSE_ACCOUNT_ACTION = "app.revanced.android.gms.common.account.CHOOSE_ACCOUNT";
+    /** MicroG-RE が自分の Google アカウントを登録する種別（{@code basePackageName}）。 */
+    static final String MICROG_ACCOUNT_TYPE = "app.revanced";
+    static final String GOOGLE_ACCOUNT_TYPE = "com.google";
     /** Credential Manager の「Google でログイン」系 option の type。 */
     static final String GOOGLE_ID_TOKEN_CREDENTIAL_TYPE =
             "com.google.android.libraries.identity.googleid.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL";
@@ -102,6 +109,58 @@ public final class GoogleAuthRoutingHooks {
             return new ComponentName(routed, original.getClassName());
         } catch (Throwable ignored) {
             return original;
+        }
+    }
+
+    /**
+     * バックアップのアカウント選択の Intent を返す直前で呼ばれます。MicroG-RE へ向けるときは、
+     * 端末本体の Google Play services ではなく MicroG-RE の選択画面を開き、MicroG-RE のアカウントだけを表示させます。
+     * token は MicroG-RE がアカウント名で探すため、選択も MicroG-RE で行うと、選んだアカウントが必ず見つかります。
+     */
+    public static Intent chooseAccountIntent(Intent intent) {
+        try {
+            if (intent == null || !GMS_CHOOSE_ACCOUNT_ACTION.equals(intent.getAction())
+                    || !GMS_PACKAGE.equals(intent.getPackage())) {
+                return intent;
+            }
+            // Intent を作る処理は Context の register を途中で再利用するため、プロセスの Application を使います。
+            Context context = currentApplication();
+            Routing routing = routingFor(context);
+            if (routing == Routing.MICROG_MISSING) {
+                MicrogInstallNotifier.notifyMissing(context);
+            }
+            if (routing != Routing.MICROG) {
+                return intent;
+            }
+            // 途中で失敗しても元の Intent が残るよう、コピーを書き換えて、すべて成功したときだけ返します。
+            Intent routed = new Intent(intent);
+            routed.setAction(MICROG_CHOOSE_ACCOUNT_ACTION);
+            routed.setPackage(MICROG_PACKAGE);
+            routed.putExtra("allowableAccountTypes", new String[] {MICROG_ACCOUNT_TYPE});
+            return routed;
+        } catch (Throwable ignored) {
+            return intent;
+        }
+    }
+
+    /**
+     * Drive の資格情報がアカウント名から Account を探す処理の先頭で呼ばれます。MicroG-RE へ向けるときは、
+     * 端末本体の {@code com.google} アカウントを探さず、名前から Account を作って返します。
+     * MicroG-RE だけにあるアカウントは端末本体の一覧に無いため、探すと名前ごと消えてしまいます。
+     * null を返すと元の処理（端末本体のアカウントの検索）を続けます。
+     *
+     * <p>MicroG-RE のアカウントが MicroG-RE に実在するかは確かめません。Android のアカウントの可視性はアカウントごとに決まり、
+     * LINE から見える一覧では判定できないためです。MicroG-RE に無い名前（以前に端末本体のアカウントで設定した自動バックアップなど）は、
+     * MicroG-RE が NetworkError を返して失敗します。バックアップの設定でアカウントを選び直す必要があります。</p>
+     */
+    public static Account selectedAccount(Object credential, String name) {
+        try {
+            if (name == null || name.isEmpty() || routingFor(contextOf(credential)) != Routing.MICROG) {
+                return null;
+            }
+            return new Account(name, GOOGLE_ACCOUNT_TYPE);
+        } catch (Throwable ignored) {
+            return null;
         }
     }
 
@@ -208,6 +267,17 @@ public final class GoogleAuthRoutingHooks {
         boolean armed = android.os.SystemClock.elapsedRealtime() < signInArmedUntil;
         signInArmedUntil = 0L;
         return armed;
+    }
+
+    private static Context currentApplication() {
+        try {
+            Object application = Class.forName("android.app.ActivityThread")
+                    .getMethod("currentApplication")
+                    .invoke(null);
+            return application instanceof Context ? (Context) application : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     static String routedIdentityPackage(boolean routeToMicrog, String original) {

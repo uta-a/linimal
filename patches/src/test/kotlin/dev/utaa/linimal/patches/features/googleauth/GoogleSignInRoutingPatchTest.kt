@@ -49,6 +49,22 @@ class GoogleSignInRoutingPatchTest {
         assertFalse(returnsConstant(other, Opcode.CONST_4))
     }
 
+    @Test
+    fun `the account setter must store exactly one Account and one name on itself`() {
+        val owner = BASE
+        fun put(type: String, name: String) = com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c(
+            Opcode.IPUT_OBJECT, 0, 1, com.android.tools.smali.dexlib2.immutable.reference.ImmutableFieldReference(owner, name, type))
+        val setter = ImmutableMethod(owner, "c", listOf(com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter(
+            "Ljava/lang/String;", null, null)), "V", AccessFlags.PUBLIC.value, null, null,
+            ImmutableMethodImplementation(3, listOf(put("Landroid/accounts/Account;", "e"), put("Ljava/lang/String;", "d"),
+                ImmutableInstruction10x(Opcode.RETURN_VOID)), emptyList(), emptyList()))
+        assertEquals("$owner->e:Landroid/accounts/Account;" to "$owner->d:Ljava/lang/String;", selectedAccountFields(setter))
+        val ambiguous = ImmutableMethod(owner, "c", setter.parameters, "V", AccessFlags.PUBLIC.value, null, null,
+            ImmutableMethodImplementation(3, listOf(put("Ljava/lang/String;", "d"), put("Ljava/lang/String;", "f"),
+                ImmutableInstruction10x(Opcode.RETURN_VOID)), emptyList(), emptyList()))
+        assertNull(selectedAccountFields(ambiguous))
+    }
+
     private fun constantString(value: String, flags: Int = AccessFlags.PUBLIC.value) = method("E", "Ljava/lang/String;",
         listOf(ImmutableInstruction21c(Opcode.CONST_STRING, 0, ImmutableStringReference(value)),
             ImmutableInstruction11x(Opcode.RETURN_OBJECT, 0)), flags)
