@@ -461,3 +461,18 @@ XIG07（SDK 36、HyperOS）、LINE 26.16.0。同じプロセスから `startActi
 | install / ART verify / 起動 | 成功。crash は 0 件 |
 | patch-status | 68 件すべて OK |
 | 表示系の設定を切り替えて「再起動」 | LINE が自動で開き直り、設定が反映された |
+
+## MicroG-RE の認証エラーの通知（2026-11-04）
+
+XIG07（SDK 36）、LINE 26.16.0、MicroG-RE 7.3.0。v0.10.0 に診断の patch を加えた bundle で生成し、`~/morphe/linimal.keystore` で上書き install した。データ消去なし。
+
+| 確認 | 結果 |
+| --- | --- |
+| install / ART verify / 起動 | 成功。crash と VerifyError は 0 件 |
+| patch-status | 69 件すべて OK（`linimal.patch.google-auth-failure-diagnostics` を含む） |
+| 注入位置（生成 APK の `sq/h`） | `Error` を読んだ直後に `onTokenError`、`Could not bind to service.` の直後に `onAuthServiceBindFailed`（差し替え後の ComponentName を渡す） |
+| バックアップ設定でのアカウントの選び直し | 成功。MicroG-RE が `drive.appdata` の token を発行し、通知は出ない |
+| 「今すぐバックアップ」 | 成功。通知は出ない |
+| MicroG-RE を `pm suspend` した状態の「今すぐバックアップ」 | bind は失敗せず、MicroG-RE が保存済みの token を返して成功した。bind の失敗は再現できていない |
+
+最初の build では、`getString` が `BaseBundle` のメソッドとして参照されていたことと、bind 先を差し替える hook が同じ register に結果を置くことから、fail-safe により注入されず ERROR になった。どちらも判定を直した。
