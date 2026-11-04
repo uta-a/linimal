@@ -56,11 +56,12 @@ public final class GoogleAuthFailureNotifierTest {
     }
 
     @Test
-    public void networkErrorExplainsBothPossibleCauses() {
+    public void networkErrorExplainsThePossibleCauses() {
         String message = GoogleAuthFailureNotifier.message(Kind.MICROG_ERROR, "NetworkError");
         assertTrue(message.contains("「NetworkError」"));
         assertTrue(message.contains("MicroG-RE に無い"));
         assertTrue(message.contains("Google が要求を拒否"));
+        assertTrue(message.contains("Google に接続できなかった"));
     }
 
     @Test

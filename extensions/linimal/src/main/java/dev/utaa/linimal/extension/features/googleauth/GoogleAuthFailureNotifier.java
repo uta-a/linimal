@@ -115,8 +115,9 @@ final class GoogleAuthFailureNotifier {
         }
         if ("NetworkError".equals(error)) {
             return "MicroG-RE がエラー「NetworkError」を返しました。"
-                    + "選んだ Google アカウントが MicroG-RE に無いか、Google が要求を拒否した可能性があります。"
-                    + "MicroG-RE のアカウントと、MicroG-RE からの通知を確認してください。";
+                    + "選んだ Google アカウントが MicroG-RE に無いか、MicroG-RE が Google に接続できなかったか、"
+                    + "Google が要求を拒否した可能性があります。"
+                    + "MicroG-RE のアカウント、MicroG-RE の通信の制限、MicroG-RE からの通知を確認してください。";
         }
         return "MicroG-RE がエラー「" + error + "」を返しました。";
     }
