@@ -1,6 +1,6 @@
 {
-  "created_at": "2026-11-05T12:54:52",
-  "description": "Linimal v0.10.3。\n\n改善:\n- 「Google ドライブの認証に失敗しました」の通知には、エラーコード（NetworkError など）だけを表示し、それ以外の形の値は「不明な値」と表示するようにしました。メールアドレスなどが通知に載らないようにするためです。\n- 同じ失敗の通知は、間に別の失敗を挟んでも 1 分に 1 回までにしました。\n- 通知のための処理を LINE に組み込むときの安全確認を強めました。\n\n対象は LINE 26.16.0（versionCode 261600106）です。",
-  "download_url": "https://github.com/uta-a/linimal/releases/download/v0.10.3/patches-0.10.3.mpp",
-  "version": "0.10.3"
+  "created_at": "2026-11-05T15:21:12",
+  "description": "Linimal v0.11.0。\n\n追加:\n- 「既読をつけずに読むをメニューに追加」が ON のとき、トークの長押しでスクロールプレビューが開くアカウントでも、プレビュー下部のメニューに「既読をつけずに読む」の行を追加します。\n- 「一般」に「プレビューの Premium の案内を表示しない」を追加しました。スクロールプレビューにある LINE Premium の案内とメニューの行を表示しません。\n- 「一般」に「プレビューをスクロール可能にする」を追加しました。長押しで開いたトークのプレビューをスクロールできるようにします。再起動後に反映されます。\n\n新しく追加した 2 つの設定は、どちらも初期値が OFF です。\n\n対象は LINE 26.16.0（versionCode 261600106）です。",
+  "download_url": "https://github.com/uta-a/linimal/releases/download/v0.11.0/patches-0.11.0.mpp",
+  "version": "0.11.0"
 }
