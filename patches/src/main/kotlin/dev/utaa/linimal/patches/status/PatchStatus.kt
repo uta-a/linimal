@@ -172,6 +172,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.read-without-receipt-compose-menu-row",
         FeatureId.READ_WITHOUT_RECEIPT,
     ),
+    READ_WITHOUT_RECEIPT_PREVIEW_MENU_ROW(
+        "linimal.patch.read-without-receipt-preview-menu-row",
+        FeatureId.READ_WITHOUT_RECEIPT,
+    ),
     READ_WITHOUT_RECEIPT_MARK_AS_READ_BLOCK(
         "linimal.patch.read-without-receipt-mark-as-read-block",
         FeatureId.READ_WITHOUT_RECEIPT,

@@ -48,6 +48,7 @@ import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMe
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptSessionPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptSendPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptManualReadPatch
+import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptPreviewMenuPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.notificationReadWithoutReceiptEntryPatch
 import dev.utaa.linimal.patches.settings.linimalSettingsResourcePatch
 import dev.utaa.linimal.patches.settings.settingsEntryPatch
@@ -103,7 +104,8 @@ class LinimalPatchTest {
             setOf(readWithoutReceiptMarkAsReadBlockPatch),
             readWithoutReceiptLocalReadBlockPatch.dependencies,
         )
-        assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptPreviewMenuPatch), readWithoutReceiptMarkAsReadBlockPatch.dependencies)
+        assertEquals(setOf(readWithoutReceiptComposeMenuPatch), readWithoutReceiptPreviewMenuPatch.dependencies)
         assertEquals(setOf(readWithoutReceiptMenuLabelResourcePatch), readWithoutReceiptComposeMenuPatch.dependencies)
         assertEquals(setOf(homeFeedLoadingIndicatorPatch), readWithoutReceiptMenuLabelResourcePatch.dependencies)
         assertEquals(setOf(homeRecentHistoryPatch), homeFeedLoadingIndicatorPatch.dependencies)
