@@ -479,3 +479,15 @@ XIG07（SDK 36）、LINE 26.16.0、MicroG-RE 7.3.0。v0.10.0 に診断の patch 
 通信の遮断には `cmd connectivity set-chain3-enabled true` と `set-package-networking-enabled false app.revanced.android.gms` を使い、確認後に両方を戻した。chain を有効にしないと遮断は効かず、MicroG-RE は token を取り直して成功する。MicroG-RE は期限内の token を保存して返すため、期限（発行から 1 時間）が切れるまでは失敗を再現できない。この確認を受けて、`NetworkError` の説明に「MicroG-RE が Google に接続できなかった」場合を加えた。
 
 最初の build では、`getString` が `BaseBundle` のメソッドとして参照されていたことと、bind 先を差し替える hook が同じ register に結果を置くことから、fail-safe により注入されず ERROR になった。どちらも判定を直した。
+
+## 認証エラーの通知の見直し（2026-11-05）
+
+sol のレビューの指摘を受けて、注入の判定（wide 命令による register の上書き、getString のキー）と、通知に載せる値（英字と `_` だけのエラーコードに限る）、重複の抑止（失敗の内容ごと）を直した。XIG07（SDK 36）、LINE 26.16.0、MicroG-RE 7.3.0 に上書き install した。データ消去なし。
+
+| 確認 | 結果 |
+| --- | --- |
+| install / ART verify / 起動 | 成功。crash と VerifyError は 0 件 |
+| patch-status | 69 件すべて OK。診断の patch は `GoogleAuthDiagnosticsGuarded` で、新しい判定でも注入される |
+| token の期限切れ後に MicroG-RE の通信だけを遮断してアカウントを選び直す | LINE のダイアログと同時に通知が出た。本文は修正後の `NetworkError` の説明と `MicroG-RE 7.3.0 / LINE 26.16.0 / Android 16 (SDK 36)` |
+
+確認後に MicroG-RE の通信と chain3 を戻した。
