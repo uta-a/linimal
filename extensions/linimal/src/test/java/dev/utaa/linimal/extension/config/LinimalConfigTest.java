@@ -76,7 +76,8 @@ public final class LinimalConfigTest {
             LinimalFeature.HOME_RECENT_HISTORY,
             LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT,
             LinimalFeature.PUSH_NOTIFICATIONS,
-            LinimalFeature.GOOGLE_DRIVE_BACKUP);
+            LinimalFeature.GOOGLE_DRIVE_BACKUP,
+            LinimalFeature.PREMIUM_PREVIEW_PROMOTION);
 
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {
@@ -97,6 +98,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isSuppressionEnabled(LinimalFeature.LINE_AI));
         assertFalse(config.isPremiumSuppressionEnabled());
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
+        assertFalse(config.isPremiumPreviewPromotionSuppressionEnabled());
         assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
         assertFalse(config.isHomeFeaturedCollectionsSuppressionEnabled());
         assertFalse(config.isNotificationReadWithoutReceiptEnabled());
@@ -128,6 +130,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isShoppingSuppressionEnabled());
         assertFalse(config.isPremiumSuppressionEnabled());
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
+        assertFalse(config.isPremiumPreviewPromotionSuppressionEnabled());
         assertFalse(config.isVoomSuppressionEnabled());
         assertFalse(config.isNewsSuppressionEnabled());
         assertFalse(config.isWalletSuppressionEnabled());
@@ -361,6 +364,31 @@ public final class LinimalConfigTest {
         assertFalse(config.isSuppressionEnabled(LinimalFeature.HOME_FEED_POST_CARDS));
         assertFalse(config.isSuppressionEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW));
         assertTrue(config.isHomeRecommendationsSuppressionEnabled());
+        assertTrue(config.isPremiumSuppressionEnabled());
+    }
+
+    /** プレビューの Premium 案内は、ほかの Premium 系の設定と独立に保存されます。 */
+    @Test
+    public void premiumPreviewPromotionIsIndependentOfTheOtherPremiumFeatures() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM_PREVIEW_PROMOTION, true);
+        // 表示系の機能は、再起動後に hook へ反映されます。
+        config = config.restartForTesting();
+
+        assertTrue(config.isPremiumPreviewPromotionSuppressionEnabled());
+        assertFalse(config.isPremiumSuppressionEnabled());
+        assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
+        assertEquals(true, backend.values.get(LinimalConfigSchema.PREMIUM_PREVIEW_PROMOTION_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.PREMIUM_ENABLED_KEY));
+        assertNull(backend.values.get(LinimalConfigSchema.PREMIUM_SETTINGS_ROW_ENABLED_KEY));
+
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM, true);
+        config.setSuppressionEnabled(LinimalFeature.PREMIUM_PREVIEW_PROMOTION, false);
+        config = config.restartForTesting();
+
+        assertFalse(config.isPremiumPreviewPromotionSuppressionEnabled());
         assertTrue(config.isPremiumSuppressionEnabled());
     }
 

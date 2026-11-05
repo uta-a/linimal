@@ -9,6 +9,7 @@ enum class FeatureId(val value: String) {
     SETTINGS("linimal.settings"),
     PREMIUM("linimal.premium"),
     PREMIUM_SETTINGS_ROW("linimal.premium-settings-row"),
+    PREMIUM_PREVIEW_PROMOTION("linimal.premium-preview-promotion"),
     SMART_CHANNEL_ADS("linimal.smart-channel-ads"),
     HOME_TOP_AD("linimal.home-top-ad"),
     AGENT_I_HOME_HEADER("linimal.agent-i-home-header"),
@@ -55,6 +56,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     SETTINGS_ENTRY("linimal.patch.settings-entry", FeatureId.SETTINGS),
     PREMIUM_UNSEND("linimal.patch.premium-unsend", FeatureId.PREMIUM),
     PREMIUM_SETTINGS_ROW("linimal.patch.premium-settings-row", FeatureId.PREMIUM_SETTINGS_ROW),
+    PREMIUM_PREVIEW_PROMOTION(
+        "linimal.patch.premium-preview-promotion",
+        FeatureId.PREMIUM_PREVIEW_PROMOTION,
+    ),
     MAIN_TAB_VOOM("linimal.patch.main-tab-voom", FeatureId.VOOM),
     MAIN_TAB_SHOPPING("linimal.patch.main-tab-shopping", FeatureId.SHOPPING),
     MAIN_TAB_NEWS("linimal.patch.main-tab-news", FeatureId.NEWS),

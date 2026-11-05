@@ -174,6 +174,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.PREMIUM_SETTINGS_ROW);
     }
 
+    public boolean isPremiumPreviewPromotionSuppressionEnabled() {
+        return isEnabled(LinimalFeature.PREMIUM_PREVIEW_PROMOTION);
+    }
+
     public boolean isVoomSuppressionEnabled() {
         return isEnabled(LinimalFeature.VOOM);
     }
