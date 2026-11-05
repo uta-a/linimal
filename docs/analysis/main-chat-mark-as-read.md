@@ -335,7 +335,7 @@ executor へ印を付けると、送信・リアクション・削除も「手�
 相手へ既読が届く。そのため `readReceiptManualCallerPatch` は executor ではなくボタンの coroutine の
 executor 呼び出しだけを囲む。26.11.0 と同じく明示的なボタン操作だけが手動で、他は gate で止まる。
 
-26.16.0 には公式の手動既読設定（`ManualReadReceiptSettingsCategory`、Premium）も追加された。
+26.16.0 には公式の手動既読設定（`ManualReadReceiptSettingsCategory`）も追加された。
 公式の説明では返信・リアクション・「既読にする」で既読が付く。Linimal の設定とは独立している。
 
 ### 長押しメニュー
