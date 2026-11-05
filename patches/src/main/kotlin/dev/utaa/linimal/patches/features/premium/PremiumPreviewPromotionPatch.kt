@@ -118,7 +118,7 @@ val premiumPreviewPromotionPatch = bytecodePatch(
             PatchAvailability.UNAVAILABLE
         }
     }
-    // 機能パッチは単一の直列チェーンを成し、この patch の後段に homeFeaturedCollectionsPatch が続きます。
+    // 機能パッチは単一の直列チェーンを成し、この patch の後段に previewScrollPatch が続きます。
     dependsOn(premiumSettingsRowPatch)
 
     execute {

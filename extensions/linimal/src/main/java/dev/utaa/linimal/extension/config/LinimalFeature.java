@@ -51,6 +51,7 @@ public enum LinimalFeature {
     HOME_RECENT_HISTORY("linimal.home-recent-history"),
     PREMIUM_SETTINGS_ROW("linimal.premium-settings-row"),
     PREMIUM_PREVIEW_PROMOTION("linimal.premium-preview-promotion"),
+    PREVIEW_SCROLL("linimal.preview-scroll"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
     NOTIFICATION_READ_WITHOUT_RECEIPT("linimal.chat.notification-read-without-receipt"),
     MINI("linimal.mini"),

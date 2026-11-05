@@ -7,7 +7,7 @@ LINE 26.16.0 の APK を JADX と dexdump で読んだ結果をまとめる。�
 - `com.linecorp.line.chattab.ChatScrollPreviewAvailability`（`u42/f`）の `resolvePlan` がプラン `pi1/d` を決める。
   - サーバー設定 `ChatScrollPreviewConfig`（`ya5/w`、mode = OFF / LABS / LYP）が OFF なら null。
   - LABS なら LINE ラボの切り替え（`chat.scrollpreview.enabled`）に従って `LABS`。
-  - LYP なら `se3.b.SCROLL_PREVIEW` の資格から `LYP_MEMBER` / `LYP_LITE` / `LYP_NON_MEMBER` を決める。
+  - LYP なら `se3.b.SCROLL_PREVIEW` の結果に応じて `LYP_MEMBER` / `LYP_LITE` / `LYP_NON_MEMBER` を決める。
 - プランが null なら従来の長押しメニュー（Compose のダイアログ）を開く。それ以外は `ChatHistoryPreviewActivity` を開き、Intent に `extra_preview_item`（`pi1/b`）と `extra_preview_plan` を渡す。
 - `readWithoutReceiptComposeMenuPatch` が行を足すダイアログは、プレビューが開く場合には表示されない。v0.10.3 まで「既読をつけずに読む」の行が消えていたのはこのためである。
 
@@ -22,7 +22,7 @@ LINE 26.16.0 の APK を JADX と dexdump で読んだ結果をまとめる。�
 | LYP_LITE | `nx1/d0` | false | 「未読のまま過去のトークを確認可能」 | LYP_BENEFIT_STATUS |
 | LYP_NON_MEMBER | `nx1/f0` | false | 「未読のまま過去のトークを確認可能」（premium_check_banner） | LYP_BENEFIT_HOME |
 
-- `a()` はスクロールの可否で、Premium の特典そのものである。Linimal はこの判定に触れない。
+- `a()` は公式のスクロール可否を返す。Linimal の「プレビューをスクロール可能にする」が OFF のときはこの結果を維持し、ON のときだけ画面へ渡す boolean を true にする。元の model の選択自体は変更しない。
 - 結果の受け取りは `ChatTabComposeFragment` の `u42/j`。結果 1（`extra_preview_open_full_chat_id`）で通常どおりトークを開き、結果 2（`extra_preview_menu_callback`、`pi1/c`）でメニューの選択を処理する。
 
 ### Compose の構造
@@ -52,8 +52,19 @@ LINE 26.16.0 の APK を JADX と dexdump で読んだ結果をまとめる。�
 - `c0.e` の入口で、バナーと誘導行の引数を hook に通す。設定 ON のとき、`chipDestination != NONE` のバナーと誘導行を null に差し替える。どちらの引数も元から nullable である。
 - タップ先のない「画面をスクロールできます」の案内は残す。スクロール可否・課金・通信は変更しない。
 
+### プレビューをスクロール可能にする（`previewScrollPatch`）
+
+- 初期 OFF の独立設定 `linimal.preview.scroll`。Premium 案内の非表示とは独立し、変更は再起動後に反映する。
+- 全 15 DEX で `nx1/z0.a()Z` の呼び出しは `fk3/w0.invoke()` の 1 件だけ。結果 `v9` はプレビュー画面 model `nx1/h1` の唯一の boolean 引数へ渡される。
+- `nx1/h1.d` の読み取り先は `rx1/d0(Context, RecyclerView, Z, ...)` で、同じ scrollEnabled field が `onScroll` と `onFling` の両方を制御する。これがプレビューの nested gesture を制御する UI 境界である。
+- `openFullChat()V` と `countVerticalScroll()V` の文字列で候補を特定し、Activity callback 型を含む model のコンストラクタ、判定の型・register、途中の上書き、分岐先・例外 handler を検査する。一意に安全確認できた場合だけ `move-result v9` の直後へ `PreviewScrollHooks.allowScroll(Z)Z` を挿入する。
+- hook は元の結果または設定 ON なら true を返す。設定 OFF・未初期化・適用不可・設定エラー・例外では元の結果を維持する。元から true の結果を false にはしない。
+- プレビュー画面の提供条件、LINE ラボ、課金・購読 API、通信、既読の経路は変更しない。この設定だけで Premium の案内は消えない。
+
 ## 確認状況
 
 - 全 DEX を判定関数で直接走査し、上記の一意性と形状を確認した。
-- exact APKM への適用、embedded status 71 件すべて OK、全 15 DEX の dexdump と d8 を確認した。
-- 実機（プレビュー画面での表示、行のタップ、相手側の既読）は未確認。
+- スクロール有効化の追加後、Java 17 の全テスト・`buildAndroid`・一覧再生成、exact APKM の preflight と Morphe 適用が成功。embedded status 72 件すべて OK、スクロールは 1/1、全 15 DEX の dexdump と d8 を確認した。
+- 生成 APK の命令列で、公式判定の `move-result v9` → `allowScroll(Z)Z` → `move-result v9` の注入を確認した。生成 APK の status を読み、実 runtime の設定保存・再起動・ON/OFF・適用不可を JVM smoke で確認した。
+- XIG07 上の独立検証アプリに実 runtime と生成 APK の status を入れ、実設定画面の独立スイッチ、初期 OFF、再起動案内、ON/OFF の保存とプロセス再起動後の hook の false→true→false を確認した。
+- XIG07 の LINE へデータを保持したまま上書きし、設定 ON・再起動後にプレビューが問題なくスクロールできることを利用者が実アカウントで確認した。起動後と操作後の FATAL EXCEPTION と VerifyError は 0件。

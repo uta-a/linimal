@@ -158,6 +158,7 @@ public final class FeatureCatalogTest {
                 "linimal.premium",
                 "linimal.premium-settings-row",
                 "linimal.premium-preview-promotion",
+                "linimal.preview-scroll",
                 "linimal.external-browser",
                 "linimal.push-notifications",
                 "linimal.google-drive-backup");

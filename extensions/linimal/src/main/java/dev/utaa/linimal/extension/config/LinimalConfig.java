@@ -178,6 +178,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.PREMIUM_PREVIEW_PROMOTION);
     }
 
+    public boolean isPreviewScrollEnabled() {
+        return isEnabled(LinimalFeature.PREVIEW_SCROLL);
+    }
+
     public boolean isVoomSuppressionEnabled() {
         return isEnabled(LinimalFeature.VOOM);
     }
