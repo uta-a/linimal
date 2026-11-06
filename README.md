@@ -6,6 +6,10 @@ Linimal は、公式 LINE Android クライアント向けの Morphe パッチ�
 
 Linimal は独立したプロジェクトであり、LINE および Morphe の公式プロジェクトではありません。
 
+[![Linimal の紹介動画（49 秒）。画像を押すと動画が開きます。](docs/media/linimal-promo-poster.png)](docs/media/linimal-promo.mp4)
+
+紹介動画（49 秒、音声なし）。画像を押すと再生できます。画面の名前やトークの内容は架空のものです。
+
 ## 対象
 
 | 項目 | 値 |
