@@ -119,7 +119,7 @@ const BA: React.FC<{before: string; after: string; marks: typeof MARKS.talkBefor
       </Shot>
       <div style={{position: 'absolute', top: 210, width: 760, left: flip ? M : 1920 - M - 760}}>
         <Heading>{title}</Heading>
-        <Spec rows={rows} delay={34} />
+        <Spec rows={rows} delay={34} keyW={170} />
       </div>
     </Frame>
   );
