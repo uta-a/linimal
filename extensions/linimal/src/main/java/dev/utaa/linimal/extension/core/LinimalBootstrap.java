@@ -5,6 +5,7 @@ import android.content.Context;
 import dev.utaa.linimal.extension.config.LinimalConfigBootstrap;
 import dev.utaa.linimal.extension.features.readwithoutreceipt.ChatListMenuHooks;
 import dev.utaa.linimal.extension.features.theme.AmoledThemeHooks;
+import dev.utaa.linimal.extension.i18n.LinimalText;
 import dev.utaa.linimal.extension.settings.SettingsEntryHooks;
 
 /** LINE の Application 初期化から Linimal を一度だけ立ち上げる注入境界。 */
@@ -19,6 +20,11 @@ public final class LinimalBootstrap {
     public static void initialize(Context context) {
         if (context == null) {
             return;
+        }
+        try {
+            LinimalText.initialize(context);
+        } catch (Throwable ignored) {
+            // 文言は端末の既定の言語で表示します。
         }
         try {
             LinimalConfigBootstrap.initialize(context);

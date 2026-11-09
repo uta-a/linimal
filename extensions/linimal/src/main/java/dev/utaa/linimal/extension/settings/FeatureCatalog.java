@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import dev.utaa.linimal.extension.config.LinimalFeature;
+import dev.utaa.linimal.extension.i18n.LinimalText;
 
 /**
  * 設定画面に並べる機能の定義です。
@@ -62,12 +63,14 @@ public final class FeatureCatalog {
             return section;
         }
 
+        /** 表示言語に訳したタイトルです。 */
         public String getTitle() {
-            return title;
+            return LinimalText.t(title);
         }
 
+        /** 表示言語に訳した説明です。 */
         public String getSummary() {
-            return summary;
+            return LinimalText.t(summary);
         }
     }
 
