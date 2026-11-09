@@ -25,7 +25,6 @@ public enum LinimalFeature {
     LINE_AI("linimal.agent-i-chat-information"),
 
     PREMIUM("linimal.premium"),
-    VOOM("linimal.voom"),
     NEWS("linimal.news"),
     WALLET("linimal.wallet"),
     HOME_RECOMMENDATIONS("linimal.home-recommendations"),

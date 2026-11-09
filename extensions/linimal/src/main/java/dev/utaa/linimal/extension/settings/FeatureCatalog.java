@@ -136,10 +136,6 @@ public final class FeatureCatalog {
                     "設定画面の Agent i を表示しない",
                     "LINE の設定画面にある Agent i の入口を表示しません。"),
 
-            new Entry(LinimalFeature.VOOM, SettingsPage.HIDE,
-                    SettingsSection.HIDE_BOTTOM_TABS,
-                    "VOOM を表示しない",
-                    "下部タブから VOOM を取り除きます。"),
             new Entry(LinimalFeature.SHOPPING, SettingsPage.HIDE,
                     SettingsSection.HIDE_BOTTOM_TABS,
                     "ショッピングを表示しない",
