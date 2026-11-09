@@ -237,6 +237,8 @@ public final class LinimalSettingsActivity extends Activity {
                 "表示を消す", "画面ごとに表示する項目を選びます。");
         addCategoryRow(parent, SettingsPage.READ_RECEIPT,
                 "既読", "既読の送信と、既読をつけずに読む機能を設定します。");
+        addCategoryRow(parent, SettingsPage.THEME,
+                "テーマ", "LINE の画面の配色を設定します。");
         addCategoryRow(parent, SettingsPage.GENERAL,
                 "一般", "Premium の案内とリンクの開き方を設定します。");
     }
@@ -560,6 +562,8 @@ public final class LinimalSettingsActivity extends Activity {
                 return "表示を消す";
             case READ_RECEIPT:
                 return "既読";
+            case THEME:
+                return "テーマ";
             case GENERAL:
                 return "一般";
             case ROOT:

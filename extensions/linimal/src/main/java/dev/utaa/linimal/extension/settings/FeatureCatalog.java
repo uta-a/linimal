@@ -205,6 +205,11 @@ public final class FeatureCatalog {
                     "通知から既読をつけずに開く",
                     "メッセージ通知から開いたトークは未読を維持し、上部に案内を表示します。送信後の既読は下の設定で選べます。"),
 
+            new Entry(LinimalFeature.AMOLED_THEME, SettingsPage.THEME,
+                    "ダークモードの背景を黒にする",
+                    "端末がダークモードのとき、画面の背景と下部タブを真っ黒にします。カードや吹き出しは元の色のままです。"
+                            + "着せかえが色を決めている部分は変わりません。"),
+
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",
                     "送信取消時に出る LINE Premium の案内を表示しません。"),

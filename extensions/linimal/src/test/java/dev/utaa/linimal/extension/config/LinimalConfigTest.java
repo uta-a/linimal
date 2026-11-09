@@ -78,7 +78,8 @@ public final class LinimalConfigTest {
             LinimalFeature.PUSH_NOTIFICATIONS,
             LinimalFeature.GOOGLE_DRIVE_BACKUP,
             LinimalFeature.PREMIUM_PREVIEW_PROMOTION,
-            LinimalFeature.PREVIEW_SCROLL);
+            LinimalFeature.PREVIEW_SCROLL,
+            LinimalFeature.AMOLED_THEME);
 
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {
@@ -101,6 +102,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
         assertFalse(config.isPremiumPreviewPromotionSuppressionEnabled());
         assertFalse(config.isPreviewScrollEnabled());
+        assertFalse(config.isAmoledThemeEnabled());
         assertFalse(PreviewScrollHooks.allowScroll(false));
         assertTrue(PreviewScrollHooks.allowScroll(true));
         assertFalse(config.isHomeFeedPostCardsSuppressionEnabled());
@@ -136,6 +138,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isPremiumSettingsRowSuppressionEnabled());
         assertFalse(config.isPremiumPreviewPromotionSuppressionEnabled());
         assertFalse(config.isPreviewScrollEnabled());
+        assertFalse(config.isAmoledThemeEnabled());
         assertFalse(config.isNewsSuppressionEnabled());
         assertFalse(config.isWalletSuppressionEnabled());
         assertFalse(config.isMiniSuppressionEnabled());
@@ -867,6 +870,33 @@ public final class LinimalConfigTest {
         } finally {
             shared.set(null, previous);
         }
+    }
+
+    @Test
+    public void amoledThemePersistsAndAppliesOnlyAfterRestartWhenAvailable() {
+        InMemoryBackend backend = new InMemoryBackend();
+        LinimalConfig config = configFor(backend);
+        assertFalse(config.isAmoledThemeEnabled());
+
+        config.setSuppressionEnabled(LinimalFeature.AMOLED_THEME, true);
+        assertEquals(true, backend.values.get("linimal.appearance.amoled"));
+        assertTrue(config.isSuppressionEnabled(LinimalFeature.AMOLED_THEME));
+        assertFalse(config.isAmoledThemeEnabled());
+        assertTrue(config.isRestartPending(LinimalFeature.AMOLED_THEME));
+
+        config = config.restartForTesting();
+        assertTrue(config.isAmoledThemeEnabled());
+        assertFalse(config.isRestartPending(LinimalFeature.AMOLED_THEME));
+        assertFalse(config.isPreviewScrollEnabled());
+
+        config = configFor(backend, availableFeatures(LinimalFeature.PREVIEW_SCROLL));
+        assertFalse(config.isAmoledThemeEnabled());
+        assertEquals(true, backend.values.get("linimal.appearance.amoled"));
+
+        config = configFor(backend);
+        config.setSuppressionEnabled(LinimalFeature.AMOLED_THEME, false);
+        config = config.restartForTesting();
+        assertFalse(config.isAmoledThemeEnabled());
     }
 
     @Test

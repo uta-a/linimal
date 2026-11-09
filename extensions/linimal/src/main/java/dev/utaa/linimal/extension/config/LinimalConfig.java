@@ -182,6 +182,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.PREVIEW_SCROLL);
     }
 
+    public boolean isAmoledThemeEnabled() {
+        return isEnabled(LinimalFeature.AMOLED_THEME);
+    }
+
     public boolean isNewsSuppressionEnabled() {
         return isEnabled(LinimalFeature.NEWS);
     }

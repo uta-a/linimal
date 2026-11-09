@@ -4,6 +4,7 @@ import android.content.Context;
 
 import dev.utaa.linimal.extension.config.LinimalConfigBootstrap;
 import dev.utaa.linimal.extension.features.readwithoutreceipt.ChatListMenuHooks;
+import dev.utaa.linimal.extension.features.theme.AmoledThemeHooks;
 import dev.utaa.linimal.extension.settings.SettingsEntryHooks;
 
 /** LINE の Application 初期化から Linimal を一度だけ立ち上げる注入境界。 */
@@ -28,6 +29,12 @@ public final class LinimalBootstrap {
             SettingsEntryHooks.initialize(context);
         } catch (Throwable ignored) {
             // 設定画面への入口が作れないだけで、LINE の機能には影響させません。
+        }
+        try {
+            // 設定の初期化の後、Activity が作られる前に loader を用意します。
+            AmoledThemeHooks.initialize(context);
+        } catch (Throwable ignored) {
+            // 背景色を変えられないだけで、LINE の機能には影響させません。
         }
         try {
             ChatListMenuHooks.initialize(context);

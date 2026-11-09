@@ -509,3 +509,21 @@ sol のレビューの指摘を受けて、注入の判定（wide 命令によ�
 | LINE 内のプレビュー（設定 ON・再起動後） | Pass。利用者が実アカウントで操作し、問題なくスクロールできることを確認。adb からトークは操作していない |
 
 生成 APK はリポジトリ外の `/Users/uta_a/morphe/line-linimal-preview-scroll.apk`。独立検証アプリは LINE 本体とは別 package・別保存先であり、LINE 内の確認は上の 2 行で別に行った。
+
+## AMOLED テーマ（2026-11-10）
+
+「テーマ」ページを新設し、初期 OFF の「ダークモードの背景を黒にする」を追加。LINE の DEX とリソースは変更せず、夜間設定だけの resource table を `ResourcesLoader` で重ねる（`docs/analysis/amoled-theme.md`）。
+
+| 確認 | 結果 |
+| --- | --- |
+| Java 17 の全テスト、`buildAndroid` | Pass。arsc encoder の構造、対象の解決・欠落時の縮退・ID 不整合時の無効化、画素の塗り替え、patch の値検証、runtime と patch の対象一覧の一致、設定の保存・再起動反映・status 不在時の無効化を含む |
+| encoder の出力を aapt2 で読む | Pass。`aapt2 dump resources` / `dump chunks` で night 設定の color entry として解釈される |
+| Morphe Desktop 1.14.0 適用、署名 | Pass。端末の LINE と同じ証明書（SHA-256 `24b512b8…`） |
+| embedded patch-status | 全件 OK。`linimal.patch.amoled-theme-colors` は `AmoledThemeColorsVerified`、9/9 |
+| XIG07（SDK 36）への上書き | Pass。同一署名でデータを保持。cold start と各画面の操作後の FATAL EXCEPTION と VerifyError は 0 件 |
+| 設定 ON・再起動後（ダークモード） | ホーム・トーク一覧で画面の約 96% が `#000000`。下部タブは元の高さ（244px）のまま黒、ナビゲーションバーも黒。トーク「Linimal」はヘッダーと入力欄が黒で壁紙はそのまま。LINE の設定画面、Linimal の設定画面も黒 |
+| 設定 OFF・再起動後 | 公式どおり `#111111`（約 96%） |
+| 設定 ON でライトモード | 公式どおり白。確認後に端末をダークモードへ戻した |
+| 「テーマ」ページ | ルートの「既読」と「一般」の間に表示。項目は「テーマ」にだけあり、「一般」にはない |
+
+途中の版で下部タブを単色（`ColorDrawable`）にしたところ、背景の `ImageView` の高さが 0 になり白い帯が出た。元画像と同寸の PNG に差し替える方式に改めて解消した。
