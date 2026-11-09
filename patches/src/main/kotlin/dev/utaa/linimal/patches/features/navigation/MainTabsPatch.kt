@@ -610,7 +610,13 @@ val mainTabsPatch = bytecodePatch(
             )
         }
         val pageIdSite = if (pageIdImplementation != null && pageFactorySite != null) {
-            tabPageIdSite(pageIdImplementation.instructions.toList(), pageFactoryMethod.definingClass, pageFactorySite.tabsField)
+            tabPageIdSite(
+                pageIdImplementation.instructions.toList(),
+                pageIdImplementation.registerCount,
+                pageIdMethod.parameterTypes.map { it.toString() },
+                pageFactoryMethod.definingClass,
+                pageFactorySite.tabsField,
+            )
         } else {
             null
         }

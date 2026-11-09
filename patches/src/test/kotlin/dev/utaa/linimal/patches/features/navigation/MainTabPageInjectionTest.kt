@@ -130,7 +130,7 @@ class MainTabPageInjectionTest {
     fun `the page id site is the ordinal call on the same tab list`() {
         val factory = checkNotNull(tabPageFactorySite(pageFactory(), 4, listOf("I"), FRAGMENT, ADAPTER))
 
-        val site = tabPageIdSite(pageId(), ADAPTER, factory.tabsField)
+        val site = tabPageIdSite(pageId(), 2, listOf("I"), ADAPTER, factory.tabsField)
 
         assertEquals(TabPageIdSite(ordinalIndex = 4, tabRegister = 0), site)
     }
@@ -139,16 +139,38 @@ class MainTabPageInjectionTest {
     fun `the page id of another list or without the cast is rejected`() {
         val factory = checkNotNull(tabPageFactorySite(pageFactory(), 4, listOf("I"), FRAGMENT, ADAPTER))
 
-        assertNull(tabPageIdSite(pageId(field = "other"), ADAPTER, factory.tabsField))
-        assertNull(tabPageIdSite(pageId().filterIndexed { index, _ -> index != 3 }, ADAPTER, factory.tabsField))
-        assertNull(tabPageIdSite(pageId() + pageId(), ADAPTER, factory.tabsField))
+        assertNull(tabPageIdSite(pageId(field = "other"), 2, listOf("I"), ADAPTER, factory.tabsField))
+        assertNull(tabPageIdSite(pageId().filterIndexed { index, _ -> index != 3 }, 2, listOf("I"), ADAPTER, factory.tabsField))
+        assertNull(tabPageIdSite(pageId() + pageId(), 2, listOf("I"), ADAPTER, factory.tabsField))
+    }
+
+    @Test
+    fun `the page id whose element is not this tab list get of the position is rejected`() {
+        val factory = checkNotNull(tabPageFactorySite(pageFactory(), 4, listOf("I"), FRAGMENT, ADAPTER))
+        fun site(instructions: List<Instruction>, registerCount: Int = 2, parameters: List<String> = listOf("I")) =
+            tabPageIdSite(instructions, registerCount, parameters, ADAPTER, factory.tabsField)
+
+        // List.get 以外の呼び出し
+        val otherCall = ImmutableInstruction35c(
+            Opcode.INVOKE_INTERFACE, 2, 0, 1, 0, 0, 0,
+            ImmutableMethodReference(LIST, "remove", listOf("I"), "Ljava/lang/Object;"),
+        )
+        assertNull(site(pageId().mapIndexed { index, instruction -> if (index == 1) otherCall else instruction }))
+        // position 以外を index に渡す
+        assertNull(site(pageId().mapIndexed { index, instruction -> if (index == 1) listGet(0, 0) else instruction }))
+        // this 以外から一覧を読む
+        val otherReceiver = ImmutableInstruction22c(Opcode.IGET_OBJECT, 0, 1, ImmutableFieldReference(ADAPTER, "g", LIST))
+        assertNull(site(pageId().mapIndexed { index, instruction -> if (index == 0) otherReceiver else instruction }))
+        // getItemId でない signature
+        assertNull(site(pageId(), parameters = listOf("J")))
+        assertNull(site(pageId(), registerCount = 3))
     }
 
     @Test
     fun `the ordinal call is replaced by the hook with the same register`() {
         val implementation = mutable(pageId(), registerCount = 2)
         val factory = checkNotNull(tabPageFactorySite(pageFactory(), 4, listOf("I"), FRAGMENT, ADAPTER))
-        val site = checkNotNull(tabPageIdSite(implementation.instructions.toList(), ADAPTER, factory.tabsField))
+        val site = checkNotNull(tabPageIdSite(implementation.instructions.toList(), 2, listOf("I"), ADAPTER, factory.tabsField))
 
         separateHiddenPageId(implementation, site)
 

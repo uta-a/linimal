@@ -148,14 +148,22 @@ internal data class TabPageIdSite(
 )
 
 /**
- * `this.tabs.get(position)` を cast して `ordinal()` を呼ぶ箇所を返します。[tabsField] は
+ * `this.tabs.get(position)` を cast して `ordinal()` を呼ぶ箇所を返します。一覧は `this` から読み、`get` には
+ * position 引数を渡していなければなりません。[tabsField] は
  * [tabPageFactorySite] が見つけた、page を作る method と同じ一覧でなければなりません。
  */
 internal fun tabPageIdSite(
     instructions: List<Instruction>,
+    registerCount: Int,
+    parameterTypes: List<String>,
     ownType: String,
     tabsField: FieldReference,
 ): TabPageIdSite? {
+    val thisRegister = registerCount - 2
+    val positionRegister = thisRegister + 1
+    if (parameterTypes != listOf("I") || thisRegister < 0 || positionRegister > MAX_NON_RANGE_REGISTER) {
+        return null
+    }
     val sites = instructions.indices.mapNotNull { index ->
         val ordinal = instructions[index] as? FiveRegisterInstruction ?: return@mapNotNull null
         val method = ordinal.methodReference()
@@ -179,10 +187,11 @@ internal fun tabPageIdSite(
             element.registerA == cast.registerA &&
             ordinal.registerC <= MAX_NON_RANGE_REGISTER &&
             tabsLoad?.opcode == Opcode.IGET_OBJECT &&
+            tabsLoad.registerB == thisRegister &&
             tabsLoad.fieldReference()?.definingClass == ownType &&
             tabsLoad.fieldReference()?.name == tabsField.name &&
             tabsLoad.fieldReference()?.type == LIST &&
-            get != null && (get as? FiveRegisterInstruction)?.registerC == tabsLoad.registerA
+            isListGet(get, tabsLoad.registerA, positionRegister)
         if (matches) TabPageIdSite(index, ordinal.registerC) else null
     }
     return sites.singleOrNull()
