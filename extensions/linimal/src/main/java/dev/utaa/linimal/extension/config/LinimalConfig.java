@@ -182,10 +182,6 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.PREVIEW_SCROLL);
     }
 
-    public boolean isVoomSuppressionEnabled() {
-        return isEnabled(LinimalFeature.VOOM);
-    }
-
     public boolean isNewsSuppressionEnabled() {
         return isEnabled(LinimalFeature.NEWS);
     }
