@@ -49,7 +49,7 @@ private const val MAIN_TAB_HOOKS = "Ldev/utaa/linimal/extension/features/MainTab
 private const val POSITION_BUNDLE_KEY = "MainActivityTabManager.currentPosition"
 
 /** 注入先の数。下部ボタンの位置、ウォレット tooltip、復元する位置、他画面から開くタブの 4 か所です。 */
-private const val TARGET_COUNT = 4
+private const val TARGET_COUNT = 7
 
 /** 非 range の `invoke` に渡せる register の上限（v15）。 */
 private const val MAX_NON_RANGE_REGISTER = 15
@@ -548,6 +548,31 @@ val mainTabsPatch = bytecodePatch(
         }
         val requestMethod = requestMatches.single().method
 
+        val pageFactoryMatches = tabPageFactoryFingerprint.matchAllOrNull().orEmpty()
+        if (pageFactoryMatches.size != 1) {
+            recordUnappliedFeatureStatus(
+                mainTabPatchIds, TARGET_COUNT, pageFactoryMatches.size, "MainTabPageFactoryNotUnique",
+            )
+            return@execute
+        }
+        val pageFactoryMethod = pageFactoryMatches.single().method
+        val pageIdMatches = tabPageIdFingerprint(pageFactoryMethod.definingClass).matchAllOrNull().orEmpty()
+        if (pageIdMatches.size != 1) {
+            recordUnappliedFeatureStatus(
+                mainTabPatchIds, TARGET_COUNT, pageIdMatches.size, "MainTabPageIdNotUnique",
+            )
+            return@execute
+        }
+        val pageIdMethod = pageIdMatches.single().method
+        val pageMatches = pageSelectedFingerprint(managerType).matchAllOrNull().orEmpty()
+        if (pageMatches.size != 1) {
+            recordUnappliedFeatureStatus(
+                mainTabPatchIds, TARGET_COUNT, pageMatches.size, "MainTabPageSelectedNotUnique",
+            )
+            return@execute
+        }
+        val pageMethod = pageMatches.single().method
+
         val buttonImplementation = buttonMethod.implementation
         val managerImplementation = managerMethod.implementation
         val requestImplementation = requestMethod.implementation
@@ -572,10 +597,51 @@ val mainTabsPatch = bytecodePatch(
             null
         }
 
+        val pageFactoryImplementation = pageFactoryMethod.implementation
+        val pageIdImplementation = pageIdMethod.implementation
+        val pageFactorySite = pageFactoryImplementation?.let {
+            tabPageFactorySite(
+                it.instructions.toList(),
+                it.registerCount,
+                pageFactoryMethod.parameterTypes.map { type -> type.toString() },
+                pageFactoryMethod.returnType,
+                pageFactoryMethod.definingClass,
+                exceptionHandlerAddresses(it),
+            )
+        }
+        val pageIdSite = if (pageIdImplementation != null && pageFactorySite != null) {
+            tabPageIdSite(pageIdImplementation.instructions.toList(), pageFactoryMethod.definingClass, pageFactorySite.tabsField)
+        } else {
+            null
+        }
+        val placeholderConstructible = pageFactorySite != null &&
+            isInstantiablePlaceholder(classDefByOrNull(pageFactorySite.fragmentType))
+        val pageImplementation = pageMethod.implementation
+        val pageSite = if (pageImplementation != null && positionSite != null && requestSite != null) {
+            restoredPageSite(
+                pageImplementation.instructions.toList(),
+                pageImplementation.registerCount,
+                pageMethod.parameterTypes.map { it.toString() },
+                viewPagerAccess(
+                    managerMatches.single().originalClassDef.methods
+                        .flatMap { method -> method.implementation?.instructions?.toList().orEmpty() },
+                    managerType,
+                ),
+                requestSite.tabsProviderField,
+                positionSite.tabAtPosition,
+                exceptionHandlerAddresses(pageImplementation),
+            )
+        } else {
+            null
+        }
+
         // 一か所でも形が合わなければ、何も書き換えません。
         if (
             buttonImplementation == null || managerImplementation == null || requestImplementation == null ||
-            buttonSite == null || walletSite == null || positionSite == null || requestSite == null
+            buttonSite == null || walletSite == null || positionSite == null || requestSite == null ||
+            pageFactoryImplementation == null || pageIdImplementation == null ||
+            pageFactorySite == null || pageIdSite == null || !placeholderConstructible ||
+            pageImplementation == null || pageSite == null
         ) {
             recordUnsafeFeatureStatus(mainTabPatchIds, TARGET_COUNT, TARGET_COUNT, "MainTabInjectionShapeMismatch")
             return@execute
@@ -586,6 +652,9 @@ val mainTabsPatch = bytecodePatch(
         hideButtonAtPosition(buttonImplementation, buttonSite)
         redirectRestoredPosition(managerImplementation, positionSite)
         redirectRequestedTab(requestImplementation, requestSite, positionSite.tabAtPosition)
+        placeholderForHiddenPage(pageFactoryImplementation, pageFactorySite)
+        separateHiddenPageId(pageIdImplementation, pageIdSite)
+        resetHiddenPage(pageImplementation, pageSite)
         recordFeatureStatus(mainTabPatchIds, TARGET_COUNT, TARGET_COUNT, "MainTabButtonsHiddenAndRequestsRedirected")
     }
 }

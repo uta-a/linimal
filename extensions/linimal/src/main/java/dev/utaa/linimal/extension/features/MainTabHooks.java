@@ -133,4 +133,65 @@ public final class MainTabHooks {
                     || (mini && "MINI".equals(name));
         }
     }
+
+    /** 隠すタブの page の id に足す値。公式の id（ordinal）と重ならないよう、十分大きくします。 */
+    static final int HIDDEN_PAGE_ID_OFFSET = 0x10000;
+
+    /**
+     * ViewPager が位置 {@code position} の page を作るとき、隠すタブなら中身のない Fragment で置き換えるか。
+     *
+     * <p>隠したタブが現在のページの隣にあると、ViewPager は画面外でその Fragment を作り、通信が走りえます。
+     * 置き換えた page は view を持たず、何も表示も通信もしません。</p>
+     */
+    public static boolean hidesPage(List<?> tabs, int position) {
+        try {
+            return hidesPageForState(tabs, position, readConfig());
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * page の id に使う enum の ordinal を返します。隠すタブでは公式の値と衝突しない別の値にします。
+     *
+     * <p>FragmentPagerAdapter は id から作る tag で既存の Fragment を再利用します。プロセス再生成の後に
+     * 設定が変わっても、中身のない page と本物の page が取り違えられないようにするためです。</p>
+     */
+    public static int pageItemOrdinal(Enum<?> tab) {
+        int ordinal = tab.ordinal();
+        try {
+            return pageItemOrdinalForState(tab, readConfig());
+        } catch (Throwable ignored) {
+            return ordinal;
+        }
+    }
+
+    static boolean hidesPageForState(List<?> tabs, int position, HiddenTabs hidden) {
+        if (tabs == null || position < 0 || position >= tabs.size()) {
+            return false;
+        }
+        Object tab = tabs.get(position);
+        return tab instanceof Enum<?> && isHidden((Enum<?>) tab, hidden);
+    }
+
+    static int pageItemOrdinalForState(Enum<?> tab, HiddenTabs hidden) {
+        return isHidden(tab, hidden) ? tab.ordinal() + HIDDEN_PAGE_ID_OFFSET : tab.ordinal();
+    }
+
+    /**
+     * ViewPager が復元した位置など、隠すタブのページが選ばれたときに、ページ 0 へ戻すかどうか。
+     *
+     * <p>ページ 0 は戻り先なので対象にしません（戻した通知が再び戻そうとして終わらなくなるのを防ぎます）。</p>
+     */
+    public static boolean resetsHiddenPage(Enum<?> tab, int position) {
+        try {
+            return resetsHiddenPageForState(tab, position, readConfig());
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    static boolean resetsHiddenPageForState(Enum<?> tab, int position, HiddenTabs hidden) {
+        return position > 0 && isHidden(tab, hidden);
+    }
 }
