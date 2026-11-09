@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import dev.utaa.linimal.extension.config.LinimalFeature;
+import dev.utaa.linimal.extension.i18n.LinimalText;
 
 /**
  * 設定画面に並べる機能の定義です。
@@ -62,12 +63,14 @@ public final class FeatureCatalog {
             return section;
         }
 
+        /** 表示言語に訳したタイトルです。 */
         public String getTitle() {
-            return title;
+            return LinimalText.t(title);
         }
 
+        /** 表示言語に訳した説明です。 */
         public String getSummary() {
-            return summary;
+            return LinimalText.t(summary);
         }
     }
 
@@ -204,6 +207,11 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT, SettingsPage.READ_RECEIPT,
                     "通知から既読をつけずに開く",
                     "メッセージ通知から開いたトークは未読を維持し、上部に案内を表示します。送信後の既読は下の設定で選べます。"),
+
+            new Entry(LinimalFeature.AMOLED_THEME, SettingsPage.THEME,
+                    "ダークモードの背景を黒にする",
+                    "端末がダークモードのとき、画面の背景と下部タブを真っ黒にします。カードや吹き出しは元の色のままです。"
+                            + "着せかえが色を決めている部分は変わりません。"),
 
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",

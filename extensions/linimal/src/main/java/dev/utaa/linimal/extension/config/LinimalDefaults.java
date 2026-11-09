@@ -35,6 +35,7 @@ public final class LinimalDefaults {
             case PREMIUM_SETTINGS_ROW:
             case PREMIUM_PREVIEW_PROMOTION:
             case PREVIEW_SCROLL:
+            case AMOLED_THEME:
             case SHOPPING:
             case NEWS:
             case WALLET:
