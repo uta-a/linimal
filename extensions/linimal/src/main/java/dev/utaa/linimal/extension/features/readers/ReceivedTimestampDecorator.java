@@ -19,7 +19,7 @@ import dev.utaa.linimal.extension.i18n.LinimalText;
  * 他人のメッセージの時刻（{@code chat_ui_row_timestamp}）の上に、既読数と既読者のアイコンを描きます。
  *
  * <p>行の構造は変えず、時刻の TextView の上側 compound drawable だけを使います。横並びの行では時刻の上へ、
- * スタンプなど縦並びの行では吹き出しの下・時刻の上へ、アイコンと既読数の段が加わります。RecyclerView で再利用されるため、
+ * スタンプなど縦並びの行では吹き出しの下・時刻の上へ、アイコンと既読数の 1 行が加わります。RecyclerView で再利用されるため、
  * 変更前の値を TextView ごとに覚え、対象外の行として bind されたときに必ず元へ戻します。main thread からだけ呼びます。</p>
  *
  * <p>LINE は他人のメッセージの行を既読の更新で bind し直さないため、{@link #REFRESH_MILLIS} ごとに
