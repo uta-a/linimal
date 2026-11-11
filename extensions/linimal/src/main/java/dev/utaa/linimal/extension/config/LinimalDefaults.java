@@ -22,6 +22,7 @@ public final class LinimalDefaults {
             case AGENT_I_WALLET_HEADER:
             case AGENT_I_SETTINGS:
             case AGENT_I_CHAT_COMPOSER:
+            case AGENT_I_CHAT_PLUS_MENU:
             case AGENT_I_CHAT_LIST_SEARCH:
             case LINE_AI_MESSAGE_CONTEXT_MENU:
             case LINE_AI_GALLERY_VIEWER:

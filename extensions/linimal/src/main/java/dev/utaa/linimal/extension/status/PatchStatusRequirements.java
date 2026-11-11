@@ -42,6 +42,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.agent-i-wallet-header", ids("linimal.patch.agent-i-wallet-header"));
         requirements.put("linimal.agent-i-settings", ids("linimal.patch.agent-i-settings"));
         requirements.put("linimal.agent-i-chat-composer", ids("linimal.patch.agent-i-chat-composer"));
+        requirements.put("linimal.agent-i-chat-plus-menu", ids("linimal.patch.agent-i-chat-plus-menu"));
         requirements.put("linimal.agent-i-chat-list-search",
                 ids("linimal.patch.agent-i-chat-list-search"));
         requirements.put("linimal.line-ai-message-context-menu",

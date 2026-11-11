@@ -150,6 +150,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.AGENT_I_CHAT_COMPOSER);
     }
 
+    public boolean isAgentIChatPlusMenuSuppressionEnabled() {
+        return isEnabled(LinimalFeature.AGENT_I_CHAT_PLUS_MENU);
+    }
+
     public boolean isAgentIChatListSearchSuppressionEnabled() {
         return isEnabled(LinimalFeature.AGENT_I_CHAT_LIST_SEARCH);
     }
