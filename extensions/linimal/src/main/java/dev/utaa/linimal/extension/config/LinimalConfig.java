@@ -218,6 +218,10 @@ public final class LinimalConfig {
         return isEnabled(LinimalFeature.HOME_FEATURED_COLLECTIONS);
     }
 
+    public boolean isHomeFeedLiveSuppressionEnabled() {
+        return isEnabled(LinimalFeature.HOME_FEED_LIVE);
+    }
+
     public boolean isHomeRecentHistorySuppressionEnabled() {
         return isEnabled(LinimalFeature.HOME_RECENT_HISTORY);
     }

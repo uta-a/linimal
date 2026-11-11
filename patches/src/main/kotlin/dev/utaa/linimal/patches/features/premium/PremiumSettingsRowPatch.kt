@@ -18,7 +18,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstructio
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
-import dev.utaa.linimal.patches.features.home.homeFeedPostCardsPatch
+import dev.utaa.linimal.patches.features.home.homeFeedLivePatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -118,7 +118,7 @@ val premiumSettingsRowPatch = bytecodePatch(
         }
     }
     // 機能パッチは単一の直列チェーンを成し、この patch が末端で noOpProbePatch に接続されます。
-    dependsOn(homeFeedPostCardsPatch)
+    dependsOn(homeFeedLivePatch)
 
     execute {
         val itemModelMatches = premiumSettingsItemModelFingerprint.matchAllOrNull().orEmpty()

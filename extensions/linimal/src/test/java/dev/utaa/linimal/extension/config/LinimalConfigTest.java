@@ -75,6 +75,7 @@ public final class LinimalConfigTest {
      */
     private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
             LinimalFeature.HOME_RECENT_HISTORY,
+            LinimalFeature.HOME_FEED_LIVE,
             LinimalFeature.AGENT_I_CHAT_PLUS_MENU,
             LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT,
             LinimalFeature.PUSH_NOTIFICATIONS,

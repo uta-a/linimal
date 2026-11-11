@@ -45,6 +45,7 @@ public final class LinimalDefaults {
             case HOME_TRENDING:
             case HOME_FEED_POST_CARDS:
             case HOME_FEATURED_COLLECTIONS:
+            case HOME_FEED_LIVE:
             case HOME_RECENT_HISTORY:
             case CHAT_CALENDAR:
             case CHAT_LINE_GIFT:

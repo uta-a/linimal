@@ -578,3 +578,15 @@ Linimal の設定画面、再起動の確認、既読なし閲覧の案内とメ
 | embedded patch-status | 全件 OK |
 | XIG07 への上書き | 同一署名でデータを保持。cold start と操作後の FATAL EXCEPTION と VerifyError は 0 件 |
 | 実機の表示 | 6 人のグループで、テキスト・ボイスメッセージ・動画・連続した発言のいずれも「既読 3 → アイコン」の 1 行になり、既読数の左端が時刻の左端とそろい、アイコンは吹き出しから遠い側に並ぶ。読み上げ用の説明は「時刻。既読 3」 |
+
+## ホームのライブ配信（2026-11-11）
+
+ホームのフィードに出る公式アカウントのライブ配信のカード（`HomeFeedLiveSingle`、LINE MUSIC など）を、設定「ライブ配信を表示しない」で隠す。
+
+| 確認 | 結果 |
+| --- | --- |
+| Java 17 の全テスト、`buildAndroid` | Pass。描画関数の引数の並び、shouldExecute の分岐と skip 経路（既定値付き引数の `l()` と range の skip を区別）、拒否する形、fail-open |
+| embedded patch-status | 全件 OK。`linimal.patch.home-feed-live` は `HomeFeedLiveRendererGuarded`、1/1 |
+| 注入後の smali | `ds2/c1.q` の `A(IZ)Z` の直後で、元の判定が true のときだけ hook を読み、抑制時は skip 経路へ倒すことを確認 |
+| XIG07 への上書き | 同一署名でデータを保持。設定 OFF・ON それぞれの cold start でホームを表示し、FATAL EXCEPTION と VerifyError は 0 件 |
+| 実機の表示 | 未確認。確認時点ではライブ配信がなく、設定 OFF でもカードが出なかったため、ON で消えることは確かめられていない |

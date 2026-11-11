@@ -118,6 +118,7 @@ public final class FeatureCatalogTest {
                 "linimal.home-trending",
                 "linimal.home-feed-post-cards",
                 "linimal.home-featured-collections",
+                "linimal.home-feed-live",
                 "linimal.home-recent-history");
         assertEquals("下部タブ", groups.get(0).getSection().getTitle());
         assertEquals("トーク一覧の上部", groups.get(1).getSection().getTitle());
