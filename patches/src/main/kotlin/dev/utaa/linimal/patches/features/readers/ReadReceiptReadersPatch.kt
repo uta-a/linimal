@@ -164,7 +164,7 @@ private val dataManagerHolderKeyFingerprint = Fingerprint(
  * <p>どれも形が一致しない場合は注入せず、その feature を設定画面で利用不可にします。</p>
  */
 val readReceiptReadersPatch = bytecodePatch(
-    name = "グループの既読者",
+    name = "Group readers",
     description = "グループと複数人トークで、メッセージを読んだメンバーを実行時設定で表示できるようにします。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)

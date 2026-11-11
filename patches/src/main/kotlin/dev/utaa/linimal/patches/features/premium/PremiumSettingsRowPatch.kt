@@ -106,7 +106,7 @@ private fun premiumSettingsVisibilityPredicateFingerprint(predicateType: String)
  * 最終 visibility predicate 引数から解決します。両方を解決できない場合は一切注入しません。
  */
 val premiumSettingsRowPatch = bytecodePatch(
-    name = "設定の Premium",
+    name = "Premium in settings",
     description = "LINE の設定画面にある LINE Premium の行を、実行時設定で非表示にできるようにします。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)

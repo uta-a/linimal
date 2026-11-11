@@ -52,7 +52,7 @@ private val BITMAP_EXTENSIONS = setOf("png", "webp", "jpg")
  * TARGET_NOT_FOUND、色の値が想定と違う場合は ERROR を記録し、runtime はこの機能を無効にします。</p>
  */
 val amoledThemeResourcePatch = resourcePatch(
-    name = "AMOLED テーマの対象",
+    name = "AMOLED theme targets",
     description = "ダークモードの背景を黒にするため、対象の色と下部タブの背景を確認します。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)
