@@ -30,6 +30,7 @@ import dev.utaa.linimal.patches.util.BOOLEAN
 import dev.utaa.linimal.patches.util.OBJECT
 import dev.utaa.linimal.patches.util.STRING
 import dev.utaa.linimal.patches.util.VOID
+import dev.utaa.linimal.patches.util.isSafeInjectionIndex
 
 private const val CONTEXT = "Landroid/content/Context;"
 private const val URI = "Landroid/net/Uri;"
@@ -269,7 +270,7 @@ val externalBrowserChatTextLinkPatch = bytecodePatch(
 
         val target = targetMatches.single()
         val targetShape = targetInjectionShape(target)
-        if (targetShape == null) {
+        if (targetShape == null || !isSafeInjectionIndex(target.method.implementation, targetShape.insertionIndex)) {
             recordUnsafeFeatureStatus(
                 listOf(PatchId.EXTERNAL_BROWSER_CHAT_TEXT_LINK),
                 expectedTargetCount = 1,
