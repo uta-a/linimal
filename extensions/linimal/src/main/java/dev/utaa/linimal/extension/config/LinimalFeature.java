@@ -55,6 +55,12 @@ public enum LinimalFeature {
     AMOLED_THEME("linimal.amoled-theme"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
     NOTIFICATION_READ_WITHOUT_RECEIPT("linimal.chat.notification-read-without-receipt"),
+    READ_RECEIPT_READERS_ICONS("linimal.read-receipt-readers-icons"),
+    READ_RECEIPT_READERS_TAP("linimal.read-receipt-readers-tap"),
+    READ_RECEIPT_READERS_OTHERS_COUNT("linimal.read-receipt-readers-others-count"),
+    READ_RECEIPT_READERS_OTHERS_ICONS("linimal.read-receipt-readers-others-icons"),
+    READ_RECEIPT_READERS_MENU("linimal.read-receipt-readers-menu"),
+    READ_RECEIPT_READERS_SERVER_SYNC("linimal.read-receipt-readers-server-sync"),
     MINI("linimal.mini"),
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),
@@ -86,6 +92,13 @@ public enum LinimalFeature {
             case READ_WITHOUT_RECEIPT:
             case NOTIFICATION_READ_WITHOUT_RECEIPT:
             case EXTERNAL_BROWSER:
+            // 既読者の表示は次の bind・長押しから反映され、画面の構造を途中で変えません。
+            case READ_RECEIPT_READERS_ICONS:
+            case READ_RECEIPT_READERS_TAP:
+            case READ_RECEIPT_READERS_OTHERS_COUNT:
+            case READ_RECEIPT_READERS_OTHERS_ICONS:
+            case READ_RECEIPT_READERS_MENU:
+            case READ_RECEIPT_READERS_SERVER_SYNC:
             case PUSH_NOTIFICATIONS:
             case GOOGLE_DRIVE_BACKUP:
                 return false;

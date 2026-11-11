@@ -176,6 +176,36 @@ public final class FeatureCatalogTest {
         assertEquals("ダークモードの背景を黒にする", groups.get(0).getEntries().get(0).getTitle());
     }
 
+    @Test
+    public void readersPageGroupsOwnOthersOpeningAndSync() {
+        List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
+                SettingsPage.READ_RECEIPT_READERS, allCatalogFeatureIds());
+
+        assertEquals(4, groups.size());
+        assertGroup(groups.get(0), SettingsSection.READ_RECEIPT_READERS_OWN,
+                "linimal.read-receipt-readers-icons");
+        assertGroup(groups.get(1), SettingsSection.READ_RECEIPT_READERS_OTHERS,
+                "linimal.read-receipt-readers-others-count",
+                "linimal.read-receipt-readers-others-icons");
+        assertGroup(groups.get(2), SettingsSection.READ_RECEIPT_READERS_OPEN,
+                "linimal.read-receipt-readers-tap",
+                "linimal.read-receipt-readers-menu");
+        assertGroup(groups.get(3), SettingsSection.READ_RECEIPT_READERS_DATA,
+                "linimal.read-receipt-readers-server-sync");
+        assertEquals("既読マークの横にアイコンを並べる", groups.get(0).getEntries().get(0).getTitle());
+    }
+
+    @Test
+    public void readersPageHidesTheSyncSectionWhenItsPatchIsMissing() {
+        List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
+                SettingsPage.READ_RECEIPT_READERS,
+                Arrays.asList("linimal.read-receipt-readers-menu"));
+
+        assertEquals(1, groups.size());
+        assertGroup(groups.get(0), SettingsSection.READ_RECEIPT_READERS_OPEN,
+                "linimal.read-receipt-readers-menu");
+    }
+
     /** 見出しだけが残らないよう、項目がすべて消えた小見出しは Group を作りません。 */
     @Test
     public void installedGroupsForPageDropsSectionsWithoutAnyInstalledEntry() {

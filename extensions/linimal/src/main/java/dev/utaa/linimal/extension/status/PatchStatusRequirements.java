@@ -97,6 +97,20 @@ final class PatchStatusRequirements {
                 "linimal.patch.notification-read-without-receipt-session",
                 "linimal.patch.notification-read-without-receipt-send",
                 "linimal.patch.notification-read-without-receipt-manual-read"));
+        // アイコンとタップは同じ行の bind 注入を使うが、feature ごとに patch ID を分けて記録する。
+        requirements.put("linimal.read-receipt-readers-icons",
+                ids("linimal.patch.read-receipt-readers-icons-row-bind"));
+        requirements.put("linimal.read-receipt-readers-tap",
+                ids("linimal.patch.read-receipt-readers-tap-row-bind"));
+        // 他人のメッセージの既読数とアイコンも、同じ bind 入口の注入を feature ごとに記録する。
+        requirements.put("linimal.read-receipt-readers-others-count",
+                ids("linimal.patch.read-receipt-readers-others-count-message-bind"));
+        requirements.put("linimal.read-receipt-readers-others-icons",
+                ids("linimal.patch.read-receipt-readers-others-icons-message-bind"));
+        requirements.put("linimal.read-receipt-readers-menu",
+                ids("linimal.patch.read-receipt-readers-context-menu"));
+        requirements.put("linimal.read-receipt-readers-server-sync",
+                ids("linimal.patch.read-receipt-readers-server-sync"));
         requirements.put("linimal.chat-list-header-ai-friends",
                 ids("linimal.patch.chat-list-header-ai-friends"));
         requirements.put("linimal.chat-list-header-calendar",

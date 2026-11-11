@@ -45,6 +45,7 @@ import dev.utaa.linimal.patches.features.readreceipts.readReceiptManualCallerPat
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptOutboundGatePatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierPreparationPatch
 import dev.utaa.linimal.patches.features.readreceipts.readReceiptSupplierRegistrationPatch
+import dev.utaa.linimal.patches.features.readers.readReceiptReadersPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptComposeMenuPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptLocalReadBlockPatch
 import dev.utaa.linimal.patches.features.readwithoutreceipt.readWithoutReceiptMarkAsReadBlockPatch
@@ -89,7 +90,8 @@ class LinimalPatchTest {
     @Test
     fun `feature patches run in a deterministic order after the status reset`() {
         assertEquals(setOf(noOpProbePatch), linimalPatch.dependencies)
-        assertEquals(setOf(googleAuthFailureDiagnosticsPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(readReceiptReadersPatch), noOpProbePatch.dependencies)
+        assertEquals(setOf(googleAuthFailureDiagnosticsPatch), readReceiptReadersPatch.dependencies)
         assertEquals(setOf(googleAccountPickerRoutingPatch), googleAuthFailureDiagnosticsPatch.dependencies)
         assertEquals(setOf(googleSignInRoutingPatch), googleAccountPickerRoutingPatch.dependencies)
         assertEquals(setOf(googleAuthTokenRoutingPatch), googleSignInRoutingPatch.dependencies)
