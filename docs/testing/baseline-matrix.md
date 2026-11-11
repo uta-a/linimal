@@ -540,3 +540,18 @@ Linimal の設定画面、再起動の確認、既読なし閲覧の案内とメ
 | 端末既定（日本語） | 従来どおり日本語。FATAL EXCEPTION と VerifyError は 0 件 |
 
 確認後に LINE のアプリ別言語を未設定（端末の言語に従う）へ戻した。
+
+## グループの既読者（2026-11-11）
+
+グループと複数人トークで、メッセージを読んだメンバーを表示する 6 設定（自分のメッセージのアイコン、他人のメッセージの既読数・アイコン、タップで一覧、長押しメニュー、サーバー同期）を追加した。解析は `docs/analysis/read-receipt-readers.md`。
+
+| 確認 | 結果 |
+| --- | --- |
+| Java 17 の全テスト、`buildAndroid` | Pass。既読者・未読者の算出（送信者と自分の除外、退会者、メンバー不明時）、命令列の形の判定と拒否する形、画像 path の検証と縮小率、設定・小見出し・訳の網羅 |
+| Morphe Desktop 1.14.0 適用、署名 | Pass。端末の LINE と同じ証明書（SHA-256 `24b512b8…`） |
+| embedded patch-status | 全件 OK。既読者の 6 件は `ReadersReadCountBindInjected`（2）、`ReadersRowEntryInjected`（2）、`ReadersContextMenuInjected`、`ReadersServerSyncBridgeGenerated` |
+| 注入後の smali | `lq1/i.K0` の入口と既読ラベルの表示・非表示の両経路、`kk1/n.s` の配色直前、bridge の生成メソッドを逆アセンブルして確認 |
+| XIG07 への上書き | 同一署名でデータを保持。cold start 後の FATAL EXCEPTION と VerifyError は 0 件 |
+| 実機の表示 | 利用者が確認。他人のメッセージは上からアイコン・既読 N・時刻の順で、時刻と同じ端にそろう。未読者に自分が出ない |
+
+初版では自分の送信行の送信者 mid から自分を学習する方式だったが、実機で未読者に自分が残った。LINE 自身が使う `getProfile()` の mid を返す helper を呼ぶ `myMid` を生成する方式に改めた。他人のメッセージの段は当初中央ぞろえで時刻とずれたため、時刻の文字の端にそろえるよう改めた。

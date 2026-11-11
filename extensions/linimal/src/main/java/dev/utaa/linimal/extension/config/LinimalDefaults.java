@@ -50,6 +50,12 @@ public final class LinimalDefaults {
             case CHAT_LINE_PAY:
             case READ_WITHOUT_RECEIPT:
             case NOTIFICATION_READ_WITHOUT_RECEIPT:
+            case READ_RECEIPT_READERS_ICONS:
+            case READ_RECEIPT_READERS_TAP:
+            case READ_RECEIPT_READERS_OTHERS_COUNT:
+            case READ_RECEIPT_READERS_OTHERS_ICONS:
+            case READ_RECEIPT_READERS_MENU:
+            case READ_RECEIPT_READERS_SERVER_SYNC:
             case CHAT_LIST_HEADER_AI_FRIENDS:
             case CHAT_LIST_HEADER_CALENDAR:
             case CHAT_LIST_HEADER_OPEN_CHAT:

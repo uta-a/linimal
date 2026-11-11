@@ -208,6 +208,33 @@ public final class FeatureCatalog {
                     "通知から既読をつけずに開く",
                     "メッセージ通知から開いたトークは未読を維持し、上部に案内を表示します。送信後の既読は下の設定で選べます。"),
 
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_ICONS, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_OWN,
+                    "既読マークの横にアイコンを並べる",
+                    "グループと複数人トークで、自分のメッセージの「既読」の横に、読んだメンバーのアイコンを小さく並べます。"),
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_OTHERS_COUNT, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_OTHERS,
+                    "他人のメッセージに既読数を表示",
+                    "グループと複数人トークで、他人のメッセージの時刻の上に、送信者と自分を除いて読んだ人数を「既読 N」で表示します。"),
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_OTHERS_ICONS, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_OTHERS,
+                    "他人のメッセージに既読者のアイコンを表示",
+                    "他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、上からアイコン・既読数・時刻の順に並びます。"),
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_TAP, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_OPEN,
+                    "既読マークのタップで一覧を開く",
+                    "自分のメッセージの「既読」や、他人のメッセージに表示した既読数・アイコンをタップすると、"
+                            + "読んだメンバーと未読のメンバーの一覧を開きます。"),
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_MENU, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_OPEN,
+                    "長押しメニューに「既読者」を追加",
+                    "メッセージの長押しメニューに、読んだメンバーの一覧を開く項目を追加します。相手のメッセージにも使えます。"),
+            new Entry(LinimalFeature.READ_RECEIPT_READERS_SERVER_SYNC, SettingsPage.READ_RECEIPT_READERS,
+                    SettingsSection.READ_RECEIPT_READERS_DATA,
+                    "一覧を開くときにサーバーと同期する",
+                    "一覧は LINE がこの端末に保存した既読の記録から作ります。ON にすると、一覧を開くたびに LINE 自身の同期処理で"
+                            + "そのトークの既読の記録を取り直します。OFF のときは通信しません。"),
+
             new Entry(LinimalFeature.AMOLED_THEME, SettingsPage.THEME,
                     "ダークモードの背景を黒にする",
                     "端末がダークモードのとき、画面の背景と下部タブを真っ黒にします。カードや吹き出しは元の色のままです。"

@@ -39,6 +39,12 @@ enum class FeatureId(val value: String) {
     READ_RECEIPTS_MAIN_CHAT("linimal.read-receipts-main-chat"),
     READ_WITHOUT_RECEIPT("linimal.read-without-receipt"),
     NOTIFICATION_READ_WITHOUT_RECEIPT("linimal.chat.notification-read-without-receipt"),
+    READ_RECEIPT_READERS_ICONS("linimal.read-receipt-readers-icons"),
+    READ_RECEIPT_READERS_TAP("linimal.read-receipt-readers-tap"),
+    READ_RECEIPT_READERS_OTHERS_COUNT("linimal.read-receipt-readers-others-count"),
+    READ_RECEIPT_READERS_OTHERS_ICONS("linimal.read-receipt-readers-others-icons"),
+    READ_RECEIPT_READERS_MENU("linimal.read-receipt-readers-menu"),
+    READ_RECEIPT_READERS_SERVER_SYNC("linimal.read-receipt-readers-server-sync"),
     CHAT_LIST_HEADER_AI_FRIENDS("linimal.chat-list-header-ai-friends"),
     CHAT_LIST_HEADER_CALENDAR("linimal.chat-list-header-calendar"),
     CHAT_LIST_HEADER_OPEN_CHAT("linimal.chat-list-header-open-chat"),
@@ -226,6 +232,30 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     NOTIFICATION_READ_WITHOUT_RECEIPT_MANUAL_READ(
         "linimal.patch.notification-read-without-receipt-manual-read",
         FeatureId.NOTIFICATION_READ_WITHOUT_RECEIPT,
+    ),
+    READ_RECEIPT_READERS_ICONS_ROW_BIND(
+        "linimal.patch.read-receipt-readers-icons-row-bind",
+        FeatureId.READ_RECEIPT_READERS_ICONS,
+    ),
+    READ_RECEIPT_READERS_TAP_ROW_BIND(
+        "linimal.patch.read-receipt-readers-tap-row-bind",
+        FeatureId.READ_RECEIPT_READERS_TAP,
+    ),
+    READ_RECEIPT_READERS_OTHERS_COUNT_MESSAGE_BIND(
+        "linimal.patch.read-receipt-readers-others-count-message-bind",
+        FeatureId.READ_RECEIPT_READERS_OTHERS_COUNT,
+    ),
+    READ_RECEIPT_READERS_OTHERS_ICONS_MESSAGE_BIND(
+        "linimal.patch.read-receipt-readers-others-icons-message-bind",
+        FeatureId.READ_RECEIPT_READERS_OTHERS_ICONS,
+    ),
+    READ_RECEIPT_READERS_CONTEXT_MENU(
+        "linimal.patch.read-receipt-readers-context-menu",
+        FeatureId.READ_RECEIPT_READERS_MENU,
+    ),
+    READ_RECEIPT_READERS_SERVER_SYNC(
+        "linimal.patch.read-receipt-readers-server-sync",
+        FeatureId.READ_RECEIPT_READERS_SERVER_SYNC,
     ),
     CHAT_LIST_HEADER_AI_FRIENDS(
         "linimal.patch.chat-list-header-ai-friends",

@@ -79,7 +79,13 @@ public final class LinimalConfigTest {
             LinimalFeature.GOOGLE_DRIVE_BACKUP,
             LinimalFeature.PREMIUM_PREVIEW_PROMOTION,
             LinimalFeature.PREVIEW_SCROLL,
-            LinimalFeature.AMOLED_THEME);
+            LinimalFeature.AMOLED_THEME,
+            LinimalFeature.READ_RECEIPT_READERS_ICONS,
+            LinimalFeature.READ_RECEIPT_READERS_TAP,
+            LinimalFeature.READ_RECEIPT_READERS_OTHERS_COUNT,
+            LinimalFeature.READ_RECEIPT_READERS_OTHERS_ICONS,
+            LinimalFeature.READ_RECEIPT_READERS_MENU,
+            LinimalFeature.READ_RECEIPT_READERS_SERVER_SYNC);
 
     @Test
     public void beforeInitializationHooksPreserveOriginalBehavior() {
@@ -1173,6 +1179,12 @@ public final class LinimalConfigTest {
             boolean behaviour = feature == LinimalFeature.READ_WITHOUT_RECEIPT
                     || feature == LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT
                     || feature == LinimalFeature.EXTERNAL_BROWSER
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_ICONS
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_TAP
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_OTHERS_COUNT
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_OTHERS_ICONS
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_MENU
+                    || feature == LinimalFeature.READ_RECEIPT_READERS_SERVER_SYNC
                     || feature == LinimalFeature.PUSH_NOTIFICATIONS
                     || feature == LinimalFeature.GOOGLE_DRIVE_BACKUP;
             assertEquals(feature.name(), !behaviour, feature.requiresRestart());

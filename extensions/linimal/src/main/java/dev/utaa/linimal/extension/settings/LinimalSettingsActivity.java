@@ -238,6 +238,8 @@ public final class LinimalSettingsActivity extends Activity {
                 LinimalText.t("表示を消す"), LinimalText.t("画面ごとに表示する項目を選びます。"));
         addCategoryRow(parent, SettingsPage.READ_RECEIPT,
                 LinimalText.t("既読"), LinimalText.t("既読の送信と、既読をつけずに読む機能を設定します。"));
+        addCategoryRow(parent, SettingsPage.READ_RECEIPT_READERS,
+                LinimalText.t("既読者"), LinimalText.t("グループで誰がメッセージを読んだかを表示します。"));
         addCategoryRow(parent, SettingsPage.THEME,
                 LinimalText.t("テーマ"), LinimalText.t("LINE の画面の配色を設定します。"));
         addCategoryRow(parent, SettingsPage.GENERAL,
@@ -565,6 +567,8 @@ public final class LinimalSettingsActivity extends Activity {
                 return LinimalText.t("表示を消す");
             case READ_RECEIPT:
                 return LinimalText.t("既読");
+            case READ_RECEIPT_READERS:
+                return LinimalText.t("既読者");
             case THEME:
                 return LinimalText.t("テーマ");
             case GENERAL:

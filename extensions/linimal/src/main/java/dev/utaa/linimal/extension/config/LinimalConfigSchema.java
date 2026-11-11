@@ -44,6 +44,12 @@ final class LinimalConfigSchema {
     static final String READ_WITHOUT_RECEIPT_ENABLED_KEY = "linimal.chat.read_without_receipt";
     static final String NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY =
             "linimal.chat.notification_read_without_receipt";
+    static final String READ_RECEIPT_READERS_ICONS_ENABLED_KEY = "linimal.chat.readers.icons";
+    static final String READ_RECEIPT_READERS_TAP_ENABLED_KEY = "linimal.chat.readers.tap";
+    static final String READ_RECEIPT_READERS_OTHERS_COUNT_ENABLED_KEY = "linimal.chat.readers.others_count";
+    static final String READ_RECEIPT_READERS_OTHERS_ICONS_ENABLED_KEY = "linimal.chat.readers.others_icons";
+    static final String READ_RECEIPT_READERS_MENU_ENABLED_KEY = "linimal.chat.readers.menu";
+    static final String READ_RECEIPT_READERS_SERVER_SYNC_ENABLED_KEY = "linimal.chat.readers.server_sync";
     static final String KEEP_UNREAD_AFTER_SEND_KEY = "linimal.chat.keep_unread_after_send";
     static final String CHAT_LIST_HEADER_AI_FRIENDS_ENABLED_KEY = "linimal.chat.header.ai_friends";
     static final String CHAT_LIST_HEADER_CALENDAR_ENABLED_KEY = "linimal.chat.header.calendar";
@@ -118,6 +124,18 @@ final class LinimalConfigSchema {
                 return READ_WITHOUT_RECEIPT_ENABLED_KEY;
             case NOTIFICATION_READ_WITHOUT_RECEIPT:
                 return NOTIFICATION_READ_WITHOUT_RECEIPT_ENABLED_KEY;
+            case READ_RECEIPT_READERS_ICONS:
+                return READ_RECEIPT_READERS_ICONS_ENABLED_KEY;
+            case READ_RECEIPT_READERS_TAP:
+                return READ_RECEIPT_READERS_TAP_ENABLED_KEY;
+            case READ_RECEIPT_READERS_OTHERS_COUNT:
+                return READ_RECEIPT_READERS_OTHERS_COUNT_ENABLED_KEY;
+            case READ_RECEIPT_READERS_OTHERS_ICONS:
+                return READ_RECEIPT_READERS_OTHERS_ICONS_ENABLED_KEY;
+            case READ_RECEIPT_READERS_MENU:
+                return READ_RECEIPT_READERS_MENU_ENABLED_KEY;
+            case READ_RECEIPT_READERS_SERVER_SYNC:
+                return READ_RECEIPT_READERS_SERVER_SYNC_ENABLED_KEY;
             case CHAT_LIST_HEADER_AI_FRIENDS:
                 return CHAT_LIST_HEADER_AI_FRIENDS_ENABLED_KEY;
             case CHAT_LIST_HEADER_CALENDAR:
