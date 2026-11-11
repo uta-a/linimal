@@ -14,7 +14,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 他人のメッセージの時刻の上に置く 1 行。左から「重ねたアイコン」「既読 N」の順に横へ並べ、その下に時刻が続きます。
+ * 他人のメッセージの時刻の上に置く 1 行。「既読 N」を時刻と同じ端に、「重ねたアイコン」をその外側（吹き出しから遠い側）に
+ * 横へ並べ、その下に時刻が続きます。
  * どちらか片方だけのときは、その要素だけを描きます。行の高さはアイコンと文字の高い方にそろえ、両方を上下中央に置きます。
  *
  * <p>文字は時刻の TextView と同じ大きさ・色で描き、描画のたびに色を読み直して LINE の配色の変更にも追従します。
@@ -151,27 +152,41 @@ final class ReceivedReadersDrawable extends Drawable {
         return getBounds().left + start - drawableLeft;
     }
 
+    /**
+     * 既読数を時刻と同じ端に置き、アイコンを吹き出しから遠い外側へ置きます。左端にそろえる行では
+     * 「既読 N・アイコン」、右端にそろえる行では「アイコン・既読 N」の順です。
+     */
     private void drawRows(Canvas canvas) {
         float left = rowLeft(width);
         float centerY = getBounds().exactCenterY();
-        if (!members.isEmpty()) {
+        boolean hasIcons = !members.isEmpty();
+        boolean hasText = countText != null;
+        float iconsLeft;
+        float textLeft;
+        if (alignEnd) {
+            iconsLeft = left;
+            textLeft = left + (hasIcons ? iconsWidth + gapPx : 0);
+        } else {
+            textLeft = left;
+            iconsLeft = left + (hasText ? textWidth + gapPx : 0);
+        }
+        if (hasIcons) {
             float radius = diameterPx / 2f;
             for (int i = members.size() - 1; i >= 0; i--) {
                 ReadersSnapshot.Member member = members.get(i);
-                float cx = left + ringPx + radius + stepPx * i;
+                float cx = iconsLeft + ringPx + radius + stepPx * i;
                 painter.draw(canvas, cx, centerY, radius, bitmaps[i], member.getDisplayName(), member.getMid(),
                         ringPx, ringColor);
             }
-            left += iconsWidth + gapPx;
         }
-        if (countText != null) {
+        if (hasText) {
             TextView source = style.get();
             if (source != null) {
                 lastTextColor = source.getCurrentTextColor();
             }
             textPaint.setColor(lastTextColor);
             float baseline = centerY - textHeight / 2f - textTop;
-            canvas.drawText(countText, left + 1, baseline, textPaint);
+            canvas.drawText(countText, textLeft + 1, baseline, textPaint);
         }
     }
 

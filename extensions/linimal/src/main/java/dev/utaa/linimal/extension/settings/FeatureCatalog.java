@@ -223,7 +223,7 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.READ_RECEIPT_READERS_OTHERS_ICONS, SettingsPage.READ_RECEIPT_READERS,
                     SettingsSection.READ_RECEIPT_READERS_OTHERS,
                     "他人のメッセージに既読者のアイコンを表示",
-                    "他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、アイコンの右に既読数が並びます。"),
+                    "他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、既読数の外側（吹き出しから遠い側）にアイコンが並びます。"),
             new Entry(LinimalFeature.READ_RECEIPT_READERS_TAP, SettingsPage.READ_RECEIPT_READERS,
                     SettingsSection.READ_RECEIPT_READERS_OPEN,
                     "既読マークのタップで一覧を開く",
