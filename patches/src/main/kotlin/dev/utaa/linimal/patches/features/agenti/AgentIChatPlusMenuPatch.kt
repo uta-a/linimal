@@ -155,7 +155,7 @@ internal fun plusMenuToggleShape(instructions: List<Instruction>): PlusMenuToggl
  * Agent i in chat の設定値や通信は変更しません。</p>
  */
 val agentIChatPlusMenuPatch = bytecodePatch(
-    name = "トークの ＋ メニューの Agent i",
+    name = "Agent i in chat plus menu",
     description = "トークの ＋ メニュー上部にある Agent i の切り替えを、実行時設定で非表示にできるようにします。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)

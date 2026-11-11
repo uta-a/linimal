@@ -13,7 +13,7 @@ import dev.utaa.linimal.patches.status.patchStatusCollector
  * fingerprint は意図的に宣言せず、命令も出力しません。
  */
 val noOpProbePatch = bytecodePatch(
-    name = "Linimal のパッチ適用確認",
+    name = "Linimal patch probe",
     description = "bytecode パッチの処理が対象を変更せずに最後まで実行されたことを確認します。",
 ) {
     compatibleWith(Constants.LINE_COMPATIBILITY)
