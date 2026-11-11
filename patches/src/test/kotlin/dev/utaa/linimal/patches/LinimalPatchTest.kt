@@ -10,6 +10,7 @@ import dev.utaa.linimal.patches.core.noOpProbePatch
 import dev.utaa.linimal.patches.features.ads.homeTopAdPatch
 import dev.utaa.linimal.patches.features.ads.smartChannelAdsPatch
 import dev.utaa.linimal.patches.features.agenti.agentIChatComposerPatch
+import dev.utaa.linimal.patches.features.agenti.agentIChatPlusMenuPatch
 import dev.utaa.linimal.patches.features.agenti.agentIChatListSearchPatch
 import dev.utaa.linimal.patches.features.agenti.agentIHomeHeaderPatch
 import dev.utaa.linimal.patches.features.agenti.agentISettingsPatch
@@ -122,7 +123,8 @@ class LinimalPatchTest {
         assertEquals(setOf(lineAiGalleryViewerPatch), agentIChatListSearchPatch.dependencies)
         assertEquals(setOf(lineAiImageSideMenuPatch), lineAiGalleryViewerPatch.dependencies)
         assertEquals(setOf(lineAiMessageContextMenuPatch), lineAiImageSideMenuPatch.dependencies)
-        assertEquals(setOf(agentIChatComposerPatch), lineAiMessageContextMenuPatch.dependencies)
+        assertEquals(setOf(agentIChatPlusMenuPatch), lineAiMessageContextMenuPatch.dependencies)
+        assertEquals(setOf(agentIChatComposerPatch), agentIChatPlusMenuPatch.dependencies)
         assertEquals(setOf(agentISettingsPatch), agentIChatComposerPatch.dependencies)
         assertEquals(setOf(agentIWalletHeaderPatch), agentISettingsPatch.dependencies)
         assertEquals(setOf(agentIHomeHeaderPatch), agentIWalletHeaderPatch.dependencies)

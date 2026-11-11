@@ -18,6 +18,7 @@ final class LinimalConfigSchema {
     static final String AGENT_I_WALLET_HEADER_ENABLED_KEY = "linimal.agent_i.wallet_header";
     static final String AGENT_I_SETTINGS_ENABLED_KEY = "linimal.agent_i.settings";
     static final String AGENT_I_CHAT_COMPOSER_ENABLED_KEY = "linimal.agent_i.chat_composer";
+    static final String AGENT_I_CHAT_PLUS_MENU_ENABLED_KEY = "linimal.agent_i.chat_plus_menu";
     static final String AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY = "linimal.agent_i.chat_list_search";
     static final String LINE_AI_MESSAGE_CONTEXT_MENU_ENABLED_KEY =
             "linimal.agent_i.message_context_menu";
@@ -74,6 +75,8 @@ final class LinimalConfigSchema {
                 return AGENT_I_SETTINGS_ENABLED_KEY;
             case AGENT_I_CHAT_COMPOSER:
                 return AGENT_I_CHAT_COMPOSER_ENABLED_KEY;
+            case AGENT_I_CHAT_PLUS_MENU:
+                return AGENT_I_CHAT_PLUS_MENU_ENABLED_KEY;
             case AGENT_I_CHAT_LIST_SEARCH:
                 return AGENT_I_CHAT_LIST_SEARCH_ENABLED_KEY;
             case LINE_AI_MESSAGE_CONTEXT_MENU:

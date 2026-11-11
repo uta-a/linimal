@@ -19,6 +19,7 @@ enum class FeatureId(val value: String) {
     AGENT_I_WALLET_HEADER("linimal.agent-i-wallet-header"),
     AGENT_I_SETTINGS("linimal.agent-i-settings"),
     AGENT_I_CHAT_COMPOSER("linimal.agent-i-chat-composer"),
+    AGENT_I_CHAT_PLUS_MENU("linimal.agent-i-chat-plus-menu"),
     AGENT_I_CHAT_LIST_SEARCH("linimal.agent-i-chat-list-search"),
     LINE_AI_MESSAGE_CONTEXT_MENU("linimal.line-ai-message-context-menu"),
     LINE_AI_GALLERY_VIEWER("linimal.line-ai-gallery-viewer"),
@@ -89,6 +90,10 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
     AGENT_I_CHAT_COMPOSER(
         "linimal.patch.agent-i-chat-composer",
         FeatureId.AGENT_I_CHAT_COMPOSER,
+    ),
+    AGENT_I_CHAT_PLUS_MENU(
+        "linimal.patch.agent-i-chat-plus-menu",
+        FeatureId.AGENT_I_CHAT_PLUS_MENU,
     ),
     AGENT_I_CHAT_LIST_SEARCH(
         "linimal.patch.agent-i-chat-list-search",
