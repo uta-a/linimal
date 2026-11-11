@@ -186,7 +186,7 @@ val agentIChatPlusMenuPatch = bytecodePatch(
         match.method.addInstructions(
             shape.injectionIndex,
             """
-                invoke-static { v${shape.flagRegister} }, $PLUS_MENU_TOGGLE_HOOK
+                invoke-static/range { v${shape.flagRegister} .. v${shape.flagRegister} }, $PLUS_MENU_TOGGLE_HOOK
                 move-result v${shape.flagRegister}
             """.trimIndent(),
         )

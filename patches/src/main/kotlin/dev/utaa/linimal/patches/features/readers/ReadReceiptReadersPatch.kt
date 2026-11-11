@@ -235,7 +235,7 @@ private fun BytecodePatchContext.applyRowBind(bridge: MutableClass, message: Mes
     method.addInstructions(
         0,
         """
-            invoke-virtual { v6 }, ${getter.smali()}
+            invoke-virtual/range { v6 .. v6 }, ${getter.smali()}
             move-result-object v0
             iget-object v1, v0, ${message.chatId.smali()}
             iget-wide v2, v0, ${message.serverMessageId.smali()}
@@ -324,13 +324,13 @@ private fun BytecodePatchContext.applyMessageBind(bridge: MutableClass, message:
     bridgeMethod.addInstructionsWithLabels(
         0,
         """
-            invoke-virtual { v$messageHolder }, ${getter.smali()}
+            invoke-virtual/range { v$messageHolder .. v$messageHolder }, ${getter.smali()}
             move-result-object v5
             iget-object v1, v5, ${message.chatId.smali()}
             iget-wide v2, v5, ${message.serverMessageId.smali()}
             iget-object v4, v5, ${message.senderMid.smali()}
             iget-boolean v5, v5, ${otherUser.smali()}
-            invoke-virtual { v$self }, ${entry.viewsGetter.smali()}
+            invoke-virtual/range { v$self .. v$self }, ${entry.viewsGetter.smali()}
             move-result-object v0
             if-eqz v0, :linimalReadersNoViews
             iget-object v0, v0, ${holder.holderField.smali()}
@@ -517,11 +517,11 @@ private fun BytecodePatchContext.applyServerSync(bridge: MutableClass) {
             invoke-static { v5, v0 }, ${lookup.smali()}
             move-result-object v0
             check-cast v0, $holderType
-            invoke-interface { v0 }, $holderType->${managerGetter.name}()${sync.managerType}
+            invoke-interface/range { v0 .. v0 }, $holderType->${managerGetter.name}()${sync.managerType}
             move-result-object v0
             iget-object v1, v0, ${sync.synchronizerField.smali()}
             iget-object v2, v0, ${sync.databaseField.smali()}
-            invoke-static { v6 }, Ljava/util/Collections;->singleton($OBJECT)Ljava/util/Set;
+            invoke-static/range { v6 .. v6 }, Ljava/util/Collections;->singleton($OBJECT)Ljava/util/Set;
             move-result-object v3
             sget-object v4, ${sync.reasonType}->$FULL_SYNC:${sync.reasonType}
             $syncInvoke { v1, v2, v3, v4 }, ${sync.syncMethod.smali()}
@@ -576,7 +576,7 @@ private fun BytecodePatchContext.applyOwnMid(bridge: MutableClass) {
     method.addInstructions(
         0,
         """
-            invoke-static { v1 }, ${getter.definingClass}->${getter.name}($CONTEXT)$STRING
+            invoke-static/range { v1 .. v1 }, ${getter.definingClass}->${getter.name}($CONTEXT)$STRING
             move-result-object v0
             return-object v0
         """.trimIndent(),
