@@ -2,7 +2,7 @@
 
 Linimal は、公式 LINE Android クライアント向けの Morphe パッチバンドルです（GPL-3.0）。広告や使わない機能の表示を消し、既読の送信を制御できるようにします。すべての機能は LINE の設定画面から個別に ON / OFF でき、OFF のときは公式 LINE と同じ動作になります。
 
-![Linimal の紹介動画（49 秒、音声なし）](docs/media/linimal-promo.webp)
+![Linimal の紹介動画（32 秒、音声なし）](docs/media/linimal-promo.webp)
 
 紹介動画の画面に出てくる名前やトークの内容は架空のものです。
 
