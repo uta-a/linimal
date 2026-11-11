@@ -14,11 +14,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 他人のメッセージの時刻の上に置く表示。上から「重ねたアイコン」「既読 N」の順に縦に並べ、その下に時刻が続きます。
- * どちらか片方だけのときは、その段だけを描きます。
+ * 他人のメッセージの時刻の上に置く 1 行。左から「重ねたアイコン」「既読 N」の順に横へ並べ、その下に時刻が続きます。
+ * どちらか片方だけのときは、その要素だけを描きます。行の高さはアイコンと文字の高い方にそろえ、両方を上下中央に置きます。
  *
  * <p>文字は時刻の TextView と同じ大きさ・色で描き、描画のたびに色を読み直して LINE の配色の変更にも追従します。
- * 各段は時刻の文字と同じ端にそろえます。[alignEnd] が false なら時刻の左端（横並びの行。吹き出し側）、
+ * 行は時刻の文字と同じ端にそろえます。[alignEnd] が false なら時刻の左端（横並びの行。吹き出し側）、
  * true なら右端（スタンプなど縦並びの行。吹き出しの右端の下）です。位置は描画のたびに時刻の文字の実際の位置から
  * 求めるため、時刻の文字幅や TextView の幅が変わっても追従します。時刻の上の compound drawable として置くため、行の layout（横並び・縦並び）を変更しません。</p>
  */
@@ -63,8 +63,8 @@ final class ReceivedReadersDrawable extends Drawable {
         this.textPaint.setTextAlign(Paint.Align.LEFT);
         this.diameterPx = Math.round(14f * density);
         this.stepPx = Math.round(10f * density);
-        // アイコンの段と既読数の段の間隔。
-        this.gapPx = Math.round(2f * density);
+        // アイコンと既読数の間隔。
+        this.gapPx = Math.round(3f * density);
         this.ringPx = Math.max(1f, density);
         this.ringColor = ringColor;
 
@@ -78,8 +78,8 @@ final class ReceivedReadersDrawable extends Drawable {
         this.textTop = metrics.top;
         this.textHeight = this.countText == null ? 0 : metrics.bottom - metrics.top;
         this.iconsHeight = members.isEmpty() ? 0 : diameterPx + Math.round(ringPx * 2);
-        this.width = Math.max(iconsWidth, textWidth);
-        this.height = iconsHeight + textHeight + (iconsHeight > 0 && textHeight > 0 ? gapPx : 0);
+        this.width = iconsWidth + textWidth + (iconsWidth > 0 && textWidth > 0 ? gapPx : 0);
+        this.height = Math.max(iconsHeight, textHeight);
         setBounds(0, 0, width, height);
     }
 
@@ -152,18 +152,17 @@ final class ReceivedReadersDrawable extends Drawable {
     }
 
     private void drawRows(Canvas canvas) {
-        float top = getBounds().top;
+        float left = rowLeft(width);
+        float centerY = getBounds().exactCenterY();
         if (!members.isEmpty()) {
-            float left = rowLeft(iconsWidth);
             float radius = diameterPx / 2f;
-            float centerY = top + iconsHeight / 2f;
             for (int i = members.size() - 1; i >= 0; i--) {
                 ReadersSnapshot.Member member = members.get(i);
                 float cx = left + ringPx + radius + stepPx * i;
                 painter.draw(canvas, cx, centerY, radius, bitmaps[i], member.getDisplayName(), member.getMid(),
                         ringPx, ringColor);
             }
-            top += iconsHeight + gapPx;
+            left += iconsWidth + gapPx;
         }
         if (countText != null) {
             TextView source = style.get();
@@ -171,8 +170,8 @@ final class ReceivedReadersDrawable extends Drawable {
                 lastTextColor = source.getCurrentTextColor();
             }
             textPaint.setColor(lastTextColor);
-            float left = rowLeft(textWidth) + 1;
-            canvas.drawText(countText, left, top - textTop, textPaint);
+            float baseline = centerY - textHeight / 2f - textTop;
+            canvas.drawText(countText, left + 1, baseline, textPaint);
         }
     }
 

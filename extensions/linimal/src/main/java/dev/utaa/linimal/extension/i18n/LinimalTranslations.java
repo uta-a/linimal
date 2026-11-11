@@ -235,7 +235,7 @@ final class LinimalTranslations {
             {"他人のメッセージに既読数を表示", "Show read count on others' messages"},
             {"グループと複数人トークで、他人のメッセージの時刻の上に、送信者と自分を除いて読んだ人数を「既読 N」で表示します。", "In groups and multi-person chats, shows how many people read others' messages as \"Read N\" above the time, excluding the sender and you."},
             {"他人のメッセージに既読者のアイコンを表示", "Show reader icons on others' messages"},
-            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、上からアイコン・既読数・時刻の順に並びます。", "Shows small icons of the members who read others' messages above the time. If the read count is also on, the icons, read count, and time are stacked from top to bottom."},
+            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、アイコンの右に既読数が並びます。", "Shows small icons of the members who read others' messages above the time. If the read count is also on, it appears to the right of the icons."},
             {"自分のメッセージの「既読」や、他人のメッセージに表示した既読数・アイコンをタップすると、読んだメンバーと未読のメンバーの一覧を開きます。", "Tap \"Read\" on your messages, or the read count or icons shown on others' messages, to open a list of members who have and haven't read the message."},
     });
 
@@ -425,7 +425,7 @@ final class LinimalTranslations {
             {"他人のメッセージに既読数を表示", "在他人的訊息顯示已讀人數"},
             {"グループと複数人トークで、他人のメッセージの時刻の上に、送信者と自分を除いて読んだ人数を「既読 N」で表示します。", "在群組與多人聊天中，於他人訊息的時間上方，以「已讀 N」顯示扣除傳送者與自己後的已讀人數。"},
             {"他人のメッセージに既読者のアイコンを表示", "在他人的訊息顯示已讀成員的大頭貼"},
-            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、上からアイコン・既読数・時刻の順に並びます。", "在他人訊息的時間上方以小圖示顯示已讀成員的大頭貼。同時開啟已讀人數時，會由上而下依序顯示大頭貼、已讀人數與時間。"},
+            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、アイコンの右に既読数が並びます。", "在他人訊息的時間上方以小圖示顯示已讀成員的大頭貼。同時開啟已讀人數時，人數會顯示在大頭貼右側。"},
             {"自分のメッセージの「既読」や、他人のメッセージに表示した既読数・アイコンをタップすると、読んだメンバーと未読のメンバーの一覧を開きます。", "點選自己訊息的「已讀」，或他人訊息上顯示的已讀人數與大頭貼，即可開啟已讀與未讀成員的清單。"},
     });
 
@@ -615,7 +615,7 @@ final class LinimalTranslations {
             {"他人のメッセージに既読数を表示", "แสดงจำนวนผู้อ่านในข้อความของผู้อื่น"},
             {"グループと複数人トークで、他人のメッセージの時刻の上に、送信者と自分を除いて読んだ人数を「既読 N」で表示します。", "ในกลุ่มและแชทหลายคน จะแสดงจำนวนคนที่อ่านข้อความของผู้อื่นเป็น \"อ่านแล้ว N\" เหนือเวลา โดยไม่นับผู้ส่งและตัวคุณ"},
             {"他人のメッセージに既読者のアイコンを表示", "แสดงไอคอนผู้ที่อ่านแล้วในข้อความของผู้อื่น"},
-            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、上からアイコン・既読数・時刻の順に並びます。", "แสดงไอคอนเล็กๆ ของสมาชิกที่อ่านข้อความของผู้อื่นแล้วไว้เหนือเวลา หากเปิดจำนวนผู้อ่านด้วย จะเรียงจากบนลงล่างเป็นไอคอน จำนวนผู้อ่าน และเวลา"},
+            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、アイコンの右に既読数が並びます。", "แสดงไอคอนเล็กๆ ของสมาชิกที่อ่านข้อความของผู้อื่นแล้วไว้เหนือเวลา หากเปิดจำนวนผู้อ่านด้วย จำนวนจะแสดงทางขวาของไอคอน"},
             {"自分のメッセージの「既読」や、他人のメッセージに表示した既読数・アイコンをタップすると、読んだメンバーと未読のメンバーの一覧を開きます。", "แตะ \"อ่านแล้ว\" ในข้อความของคุณ หรือจำนวนผู้อ่านและไอคอนที่แสดงในข้อความของผู้อื่น เพื่อเปิดรายการสมาชิกที่อ่านแล้วและยังไม่ได้อ่าน"},
     });
 
@@ -805,7 +805,7 @@ final class LinimalTranslations {
             {"他人のメッセージに既読数を表示", "Tampilkan jumlah pembaca di pesan orang lain"},
             {"グループと複数人トークで、他人のメッセージの時刻の上に、送信者と自分を除いて読んだ人数を「既読 N」で表示します。", "Di grup dan chat multi-orang, menampilkan jumlah orang yang telah membaca pesan orang lain sebagai \"Dibaca N\" di atas waktu, tidak termasuk pengirim dan Anda."},
             {"他人のメッセージに既読者のアイコンを表示", "Tampilkan ikon pembaca di pesan orang lain"},
-            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、上からアイコン・既読数・時刻の順に並びます。", "Menampilkan ikon kecil anggota yang telah membaca pesan orang lain di atas waktu. Jika jumlah pembaca juga aktif, ikon, jumlah pembaca, dan waktu ditampilkan berurutan dari atas ke bawah."},
+            {"他人のメッセージの時刻の上に、読んだメンバーのアイコンを小さく並べます。既読数も ON にすると、アイコンの右に既読数が並びます。", "Menampilkan ikon kecil anggota yang telah membaca pesan orang lain di atas waktu. Jika jumlah pembaca juga aktif, jumlahnya muncul di kanan ikon."},
             {"自分のメッセージの「既読」や、他人のメッセージに表示した既読数・アイコンをタップすると、読んだメンバーと未読のメンバーの一覧を開きます。", "Ketuk \"Dibaca\" di pesan Anda, atau jumlah pembaca dan ikon di pesan orang lain, untuk membuka daftar anggota yang sudah dan belum membaca."},
     });
 
