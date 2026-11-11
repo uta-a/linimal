@@ -32,6 +32,7 @@ enum class FeatureId(val value: String) {
     HOME_FEED_POST_CARDS("linimal.home-feed-post-cards"),
     HOME_FEATURED_COLLECTIONS("linimal.home-featured-collections"),
     HOME_FEED_LOADING_INDICATOR("linimal.home-feed-loading-indicator"),
+    HOME_FEED_LIVE("linimal.home-feed-live"),
     HOME_RECENT_HISTORY("linimal.home-recent-history"),
     CHAT_CALENDAR("linimal.chat-calendar"),
     CHAT_LINE_GIFT("linimal.chat-line-gift"),
@@ -128,6 +129,7 @@ enum class PatchId(val value: String, val featureId: FeatureId) {
         "linimal.patch.home-feed-loading-indicator",
         FeatureId.HOME_FEED_LOADING_INDICATOR,
     ),
+    HOME_FEED_LIVE("linimal.patch.home-feed-live", FeatureId.HOME_FEED_LIVE),
     HOME_RECENT_HISTORY("linimal.patch.home-recent-history", FeatureId.HOME_RECENT_HISTORY),
     SMART_CHANNEL_ADS("linimal.patch.smart-channel-ads", FeatureId.SMART_CHANNEL_ADS),
     HOME_TOP_AD_MODULE_GATE(

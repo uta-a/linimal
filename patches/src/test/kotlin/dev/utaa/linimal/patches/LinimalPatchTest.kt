@@ -21,6 +21,7 @@ import dev.utaa.linimal.patches.features.chat.chatPlusMenuPatch
 import dev.utaa.linimal.patches.features.home.homeContentsRecommendationPatch
 import dev.utaa.linimal.patches.features.home.homeFeaturedCollectionsPatch
 import dev.utaa.linimal.patches.features.home.homeFeedLoadingIndicatorPatch
+import dev.utaa.linimal.patches.features.home.homeFeedLivePatch
 import dev.utaa.linimal.patches.features.home.homeFeedPostCardsPatch
 import dev.utaa.linimal.patches.features.home.homeRecentHistoryPatch
 import dev.utaa.linimal.patches.features.home.homeTrendingPatch
@@ -120,7 +121,8 @@ class LinimalPatchTest {
         assertEquals(setOf(previewScrollPatch), amoledThemeResourcePatch.dependencies)
         assertEquals(setOf(premiumPreviewPromotionPatch), previewScrollPatch.dependencies)
         assertEquals(setOf(premiumSettingsRowPatch), premiumPreviewPromotionPatch.dependencies)
-        assertEquals(setOf(homeFeedPostCardsPatch), premiumSettingsRowPatch.dependencies)
+        assertEquals(setOf(homeFeedLivePatch), premiumSettingsRowPatch.dependencies)
+        assertEquals(setOf(homeFeedPostCardsPatch), homeFeedLivePatch.dependencies)
         assertEquals(setOf(agentIChatListSearchPatch), homeFeedPostCardsPatch.dependencies)
         assertEquals(setOf(lineAiGalleryViewerPatch), agentIChatListSearchPatch.dependencies)
         assertEquals(setOf(lineAiImageSideMenuPatch), lineAiGalleryViewerPatch.dependencies)
