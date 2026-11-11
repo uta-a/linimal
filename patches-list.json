@@ -604,6 +604,36 @@
       "options": []
     },
     {
+      "name": "Home feed live streams",
+      "description": "ホームのフィードにあるライブ配信のカードを、実行時設定で非表示にできるようにします。",
+      "default": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": [
+        {
+          "packageName": "jp.naver.line.android",
+          "name": "LINE",
+          "description": null,
+          "apkFileType": "APKM_REQUIRED",
+          "appIconColor": null,
+          "signatures": null,
+          "targets": [
+            {
+              "version": "26.16.0",
+              "versionCodes": {
+                "ARM64_V8A": 261600106
+              },
+              "isExperimental": false,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Home feed loading indicator",
       "description": "ホームのフィードが読み込み中に出る円形の読み込み表示を、実行時設定で非表示にできるようにします。",
       "default": true,
