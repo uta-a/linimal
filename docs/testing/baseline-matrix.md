@@ -540,3 +540,16 @@ Linimal の設定画面、再起動の確認、既読なし閲覧の案内とメ
 | 端末既定（日本語） | 従来どおり日本語。FATAL EXCEPTION と VerifyError は 0 件 |
 
 確認後に LINE のアプリ別言語を未設定（端末の言語に従う）へ戻した。
+
+## トークの ＋ メニューの Agent i（2026-11-11）
+
+トークの ＋ メニュー上部にある「トークルームのAgent iを表示」（`chat_ui_attach_menu_ai_talk_chip_switch`）を、設定「＋メニューの Agent i を表示しない」で隠す。解析は `docs/analysis/agent-i-entry-points.md` の「Chat ＋ menu toggle」。
+
+| 確認 | 結果 |
+| --- | --- |
+| Java 17 の全テスト、`buildAndroid` | Pass。注入位置の形の判定と拒否する形（ID 違い・重複、ComposeView 以外への cast、別 register での中身の判定、フラグの上書き・高位 register、GONE を書かない引数）、fail-open、設定・依存鎖・訳 |
+| Morphe Desktop 1.14.0 適用、署名 | Pass。端末の LINE と同じ証明書（SHA-256 `24b512b8…`） |
+| embedded patch-status | 全件 OK。`linimal.patch.agent-i-chat-plus-menu` は `AgentIPlusMenuToggleGuarded`、1/1 |
+| 注入後の smali | `sm1/f1.invoke` の check-cast 直後で表示可否の `v3` を hook に通し、合流点 `:goto_7c` を避けていることを確認 |
+| XIG07 への上書き | 同一署名でデータを保持。cold start 後の FATAL EXCEPTION と VerifyError は 0 件 |
+| 実機の表示 | 利用者が確認。設定 ON で ＋ メニュー上部の切り替えが消え、OFF・再起動で元どおり表示される |

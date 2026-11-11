@@ -18,7 +18,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
-import dev.utaa.linimal.patches.features.agenti.agentIChatComposerPatch
+import dev.utaa.linimal.patches.features.agenti.agentIChatPlusMenuPatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.PatchStatus
@@ -175,7 +175,7 @@ val lineAiMessageContextMenuPatch = bytecodePatch(
             PatchAvailability.UNAVAILABLE
         }
     }
-    dependsOn(agentIChatComposerPatch)
+    dependsOn(agentIChatPlusMenuPatch)
 
     execute {
         val modelMatches = lineAiMessageContextModelFingerprint.matchAllOrNull().orEmpty()

@@ -72,7 +72,7 @@ public final class FeatureCatalogTest {
     }
 
     @Test
-    public void agentIPageGroupsTheEightEntryPointsByLocation() {
+    public void agentIPageGroupsTheNineEntryPointsByLocation() {
         List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
                 SettingsPage.AGENT_I, allCatalogFeatureIds());
 
@@ -84,6 +84,7 @@ public final class FeatureCatalogTest {
         assertGroup(groups.get(1), SettingsSection.AGENT_I_CHAT,
                 "linimal.agent-i-chat-information",
                 "linimal.agent-i-chat-composer",
+                "linimal.agent-i-chat-plus-menu",
                 "linimal.line-ai-message-context-menu",
                 "linimal.line-ai-gallery-viewer");
         assertGroup(groups.get(2), SettingsSection.AGENT_I_SETTINGS,

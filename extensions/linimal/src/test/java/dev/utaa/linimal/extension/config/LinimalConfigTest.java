@@ -30,6 +30,7 @@ public final class LinimalConfigTest {
             LinimalFeature.AGENT_I_WALLET_HEADER,
             LinimalFeature.AGENT_I_SETTINGS,
             LinimalFeature.AGENT_I_CHAT_COMPOSER,
+            LinimalFeature.AGENT_I_CHAT_PLUS_MENU,
             LinimalFeature.AGENT_I_CHAT_LIST_SEARCH,
             LinimalFeature.LINE_AI_MESSAGE_CONTEXT_MENU,
             LinimalFeature.LINE_AI_GALLERY_VIEWER,
@@ -74,6 +75,7 @@ public final class LinimalConfigTest {
      */
     private static final Set<LinimalFeature> POST_FREEZE_FEATURES = EnumSet.of(
             LinimalFeature.HOME_RECENT_HISTORY,
+            LinimalFeature.AGENT_I_CHAT_PLUS_MENU,
             LinimalFeature.NOTIFICATION_READ_WITHOUT_RECEIPT,
             LinimalFeature.PUSH_NOTIFICATIONS,
             LinimalFeature.GOOGLE_DRIVE_BACKUP,
