@@ -28,6 +28,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.premium-preview-promotion",
                 ids("linimal.patch.premium-preview-promotion"));
         requirements.put("linimal.preview-scroll", ids("linimal.patch.preview-scroll"));
+        requirements.put("linimal.preview-disable", ids("linimal.patch.preview-disable"));
         requirements.put("linimal.amoled-theme", ids("linimal.patch.amoled-theme-colors"));
         requirements.put("linimal.external-browser", ids("linimal.patch.external-browser-chat-text-link"));
         requirements.put("linimal.push-notifications", ids("linimal.patch.fis-certificate-header"));

@@ -1,6 +1,7 @@
 package dev.utaa.linimal.extension.settings;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -158,13 +159,47 @@ public final class FeatureCatalogTest {
         assertGroup(groups.get(0), null,
                 "linimal.premium",
                 "linimal.premium-settings-row",
+                "linimal.preview-disable",
                 "linimal.premium-preview-promotion",
                 "linimal.preview-scroll",
                 "linimal.external-browser",
                 "linimal.push-notifications",
                 "linimal.google-drive-backup");
         assertEquals("設定のプレミアムを表示しない", groups.get(0).getEntries().get(1).getTitle());
-        assertEquals("プレビューの Premium の案内を表示しない", groups.get(0).getEntries().get(2).getTitle());
+        assertEquals("トークのプレビューを無効にする", groups.get(0).getEntries().get(2).getTitle());
+        assertEquals("プレビューの Premium の案内を表示しない", groups.get(0).getEntries().get(3).getTitle());
+    }
+
+    @Test
+    public void previewSettingsAreBlockedOnlyWhilePreviewDisableIsOn() {
+        FeatureCatalog.Entry disable = entryFor("linimal.preview-disable");
+        FeatureCatalog.Entry scroll = entryFor("linimal.preview-scroll");
+        FeatureCatalog.Entry promotion = entryFor("linimal.premium-preview-promotion");
+
+        assertNull(disable.getBlockedBy());
+        assertFalse(disable.isBlocked(true, true));
+        for (FeatureCatalog.Entry entry : java.util.Arrays.asList(scroll, promotion)) {
+            assertEquals(LinimalFeature.PREVIEW_DISABLE, entry.getBlockedBy());
+            assertEquals("「トークのプレビューを無効にする」が ON の間は変更できません。", entry.getBlockedSummary());
+            assertTrue(entry.isBlocked(true, true));
+            assertFalse(entry.isBlocked(true, false));
+            // 無効化のパッチが適用されていない・設定を読めない場合は止めません。
+            assertFalse(entry.isBlocked(false, true));
+        }
+        for (FeatureCatalog.Entry entry : FeatureCatalog.entries()) {
+            if (entry != scroll && entry != promotion) {
+                assertNull(entry.getFeatureId(), entry.getBlockedBy());
+            }
+        }
+    }
+
+    private static FeatureCatalog.Entry entryFor(String featureId) {
+        for (FeatureCatalog.Entry entry : FeatureCatalog.entries()) {
+            if (entry.getFeatureId().equals(featureId)) {
+                return entry;
+            }
+        }
+        throw new AssertionError(featureId);
     }
 
     @Test
