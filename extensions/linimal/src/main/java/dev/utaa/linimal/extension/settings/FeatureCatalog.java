@@ -22,6 +22,8 @@ public final class FeatureCatalog {
         private final SettingsSection section;
         private final String title;
         private final String summary;
+        private final LinimalFeature blockedBy;
+        private final String blockedSummary;
 
         Entry(
                 LinimalFeature feature,
@@ -37,11 +39,29 @@ public final class FeatureCatalog {
                 SettingsSection section,
                 String title,
                 String summary) {
+            this(feature, page, section, title, summary, null, null);
+        }
+
+        private Entry(
+                LinimalFeature feature,
+                SettingsPage page,
+                SettingsSection section,
+                String title,
+                String summary,
+                LinimalFeature blockedBy,
+                String blockedSummary) {
             this.feature = feature;
             this.page = page;
             this.section = section;
             this.title = title;
             this.summary = summary;
+            this.blockedBy = blockedBy;
+            this.blockedSummary = blockedSummary;
+        }
+
+        /** {@code blocker} が ON の間は操作できない項目にします。保存値は書き換えません。 */
+        Entry blockedBy(LinimalFeature blocker, String reason) {
+            return new Entry(feature, page, section, title, summary, blocker, reason);
         }
 
         public LinimalFeature getFeature() {
@@ -72,6 +92,24 @@ public final class FeatureCatalog {
         public String getSummary() {
             return LinimalText.t(summary);
         }
+
+        /** ON の間この項目を操作できなくする機能。制約がなければ null です。 */
+        public LinimalFeature getBlockedBy() {
+            return blockedBy;
+        }
+
+        /** 操作できない理由として説明に足す文。制約がなければ null です。 */
+        public String getBlockedSummary() {
+            return blockedSummary == null ? null : LinimalText.t(blockedSummary);
+        }
+
+        /**
+         * 制約元の機能が利用可能で、かつ ON のときだけ操作できなくします。制約元が適用されていない・
+         * 設定を読めない場合は止めず、この項目だけで判断します。
+         */
+        public boolean isBlocked(boolean blockerAvailable, boolean blockerEnabled) {
+            return blockedBy != null && blockerAvailable && blockerEnabled;
+        }
     }
 
     /**
@@ -97,6 +135,9 @@ public final class FeatureCatalog {
             return entries;
         }
     }
+
+    private static final String PREVIEW_DISABLED_SUMMARY =
+            "「トークのプレビューを無効にする」が ON の間は変更できません。";
 
     private static final List<Entry> ENTRIES = Collections.unmodifiableList(Arrays.asList(
             new Entry(LinimalFeature.SMART_CHANNEL_ADS, SettingsPage.ADS,
@@ -254,12 +295,17 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.PREMIUM_SETTINGS_ROW, SettingsPage.GENERAL,
                     "設定のプレミアムを表示しない",
                     "LINE の設定画面にある LINE Premium の行を表示しません。"),
+            new Entry(LinimalFeature.PREVIEW_DISABLE, SettingsPage.GENERAL,
+                    "トークのプレビューを無効にする",
+                    "トーク一覧の長押しで、プレビューではなく従来の長押しメニューを開きます。LINE ラボや Premium の契約状態は変わりません。"),
             new Entry(LinimalFeature.PREMIUM_PREVIEW_PROMOTION, SettingsPage.GENERAL,
                     "プレビューの Premium の案内を表示しない",
-                    "トーク一覧の長押しで開くスクロールプレビューにある LINE Premium の案内とメニューの行を表示しません。"),
+                    "トーク一覧の長押しで開くスクロールプレビューにある LINE Premium の案内とメニューの行を表示しません。")
+                    .blockedBy(LinimalFeature.PREVIEW_DISABLE, PREVIEW_DISABLED_SUMMARY),
             new Entry(LinimalFeature.PREVIEW_SCROLL, SettingsPage.GENERAL,
                     "プレビューをスクロール可能にする",
-                    "トーク一覧の長押しで開くプレビューをスクロール可能にします。プレビュー自体の提供や Premium の契約状態は変わりません。"),
+                    "トーク一覧の長押しで開くプレビューをスクロール可能にします。プレビュー自体の提供や Premium の契約状態は変わりません。")
+                    .blockedBy(LinimalFeature.PREVIEW_DISABLE, PREVIEW_DISABLED_SUMMARY),
             new Entry(LinimalFeature.EXTERNAL_BROWSER, SettingsPage.GENERAL,
                     "リンクを外部ブラウザで開く",
                     "トークの本文、リッチメッセージ、リッチメニュー、カードの http/https リンクを外部ブラウザへ渡します。LINE のログインや決済は元のまま開きます。"),

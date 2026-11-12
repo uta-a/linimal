@@ -32,6 +32,7 @@ import dev.utaa.linimal.patches.features.lineai.lineAiMessageContextMenuPatch
 import dev.utaa.linimal.patches.features.navigation.mainTabsPatch
 import dev.utaa.linimal.patches.features.premium.premiumPreviewPromotionPatch
 import dev.utaa.linimal.patches.features.premium.premiumSettingsRowPatch
+import dev.utaa.linimal.patches.features.preview.previewDisablePatch
 import dev.utaa.linimal.patches.features.preview.previewScrollPatch
 import dev.utaa.linimal.patches.features.theme.amoledThemeResourcePatch
 import dev.utaa.linimal.patches.features.googleauth.googleAuthMicrogManifestPatch
@@ -118,7 +119,8 @@ class LinimalPatchTest {
         assertEquals(setOf(homeRecentHistoryPatch), homeFeedLoadingIndicatorPatch.dependencies)
         assertEquals(setOf(homeFeaturedCollectionsPatch), homeRecentHistoryPatch.dependencies)
         assertEquals(setOf(amoledThemeResourcePatch), homeFeaturedCollectionsPatch.dependencies)
-        assertEquals(setOf(previewScrollPatch), amoledThemeResourcePatch.dependencies)
+        assertEquals(setOf(previewDisablePatch), amoledThemeResourcePatch.dependencies)
+        assertEquals(setOf(previewScrollPatch), previewDisablePatch.dependencies)
         assertEquals(setOf(premiumPreviewPromotionPatch), previewScrollPatch.dependencies)
         assertEquals(setOf(premiumSettingsRowPatch), premiumPreviewPromotionPatch.dependencies)
         assertEquals(setOf(homeFeedLivePatch), premiumSettingsRowPatch.dependencies)

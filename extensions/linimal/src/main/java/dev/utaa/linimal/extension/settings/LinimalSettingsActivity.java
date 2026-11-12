@@ -445,18 +445,25 @@ public final class LinimalSettingsActivity extends Activity {
         LinimalConfigHealth health = config.getRuntimeHealth();
         for (FeatureRow row : featureRows) {
             boolean available = row.patchStatus == PatchStatus.OK && health == LinimalConfigHealth.OK;
+            // 制約元の機能が ON の間は操作だけを止め、保存値はそのまま表示します。
+            LinimalFeature blocker = row.entry.getBlockedBy();
+            boolean blocked = available && blocker != null
+                    && row.entry.isBlocked(health == LinimalConfigHealth.OK, config.isSuppressionEnabled(blocker));
             String summary = row.entry.getSummary();
             if (config.isRestartPending(row.entry.getFeature())) {
                 summary = summary + "\n" + LinimalText.t(RESTART_PENDING_SUMMARY);
+            }
+            if (blocked) {
+                summary = summary + "\n" + row.entry.getBlockedSummary();
             }
             row.summary.setText(available ? summary : unavailableSummary(row.patchStatus, health));
             row.summary.setTextColor(available ? palette.secondaryText : palette.statusError);
 
             // 再描画で意図しない保存が起きないよう、listener を外してから状態を反映します。
             row.toggle.setOnCheckedChangeListener(null);
-            row.toggle.setEnabled(available);
+            row.toggle.setEnabled(available && !blocked);
             row.toggle.setChecked(available && config.isSuppressionEnabled(row.entry.getFeature()));
-            applySwitchColors(row.toggle, available);
+            applySwitchColors(row.toggle, available && !blocked);
             row.toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override
                 public void onCheckedChanged(CompoundButton button, boolean checked) {

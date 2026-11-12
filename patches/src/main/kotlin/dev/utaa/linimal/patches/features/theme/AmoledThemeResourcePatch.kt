@@ -3,7 +3,7 @@ package dev.utaa.linimal.patches.features.theme
 import app.morphe.patcher.patch.ApkArchitecture
 import app.morphe.patcher.patch.PatchAvailability
 import app.morphe.patcher.patch.resourcePatch
-import dev.utaa.linimal.patches.features.preview.previewScrollPatch
+import dev.utaa.linimal.patches.features.preview.previewDisablePatch
 import dev.utaa.linimal.patches.shared.Constants
 import dev.utaa.linimal.patches.status.PatchId
 import dev.utaa.linimal.patches.status.recordFeatureStatus
@@ -59,7 +59,7 @@ val amoledThemeResourcePatch = resourcePatch(
     availability { _, architecture ->
         if (architecture == ApkArchitecture.ARM64_V8A) PatchAvailability.REQUIRED else PatchAvailability.UNAVAILABLE
     }
-    dependsOn(previewScrollPatch)
+    dependsOn(previewDisablePatch)
 
     execute {
         val defaults = try {
