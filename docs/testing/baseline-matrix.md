@@ -510,6 +510,28 @@ sol のレビューの指摘を受けて、注入の判定（wide 命令によ�
 
 生成 APK はリポジトリ外の `/Users/uta_a/morphe/line-linimal-preview-scroll.apk`。独立検証アプリは LINE 本体とは別 package・別保存先であり、LINE 内の確認は上の 2 行で別に行った。
 
+## トークのプレビュー無効化（2026-11-12）
+
+「一般」に初期 OFF の「トークのプレビューを無効にする」を追加。LINE 26.16.0 の長押しの可否判定 `u42/f.a()` を設定 ON のときだけ false にして、従来の長押しメニューを開く（`docs/analysis/chat-scroll-preview.md`）。ON の間は「プレビューをスクロール可能にする」「プレビューの Premium の案内を表示しない」を操作不能にし、保存値は保つ。
+
+| 確認 | 結果 |
+| --- | --- |
+| Java 17 の全テスト、`buildAndroid` | Pass。patches 421 件、extension 397 件。対象特定・register 検査・`ExternalLabel` が元の先頭命令を指すこと、設定の保存・再起動・fail-open・保存値の維持、操作不能の条件を含む |
+| exact APKM preflight、Morphe Desktop 1.14.0 適用 | Pass |
+| embedded patch-status | 全 81 件 OK。`linimal.patch.preview-disable` は `PreviewDisableGuarded`、1/1。`preview-scroll` などプレビュー関連の既存 status も OK |
+| 全 15 DEX の `dexdump` と `d8 --min-api 28` | Pass |
+| 生成 DEX の注入位置 | `u42/f.a()` の先頭が `invoke-static PreviewDisableHooks` → `move-result v0` → `if-eqz v0` → `const/4 v0, 0` → `return v0`、分岐先は元の `iget-object v0, v4` |
+| sol（omp の `gpt-6.1-sol`）の読み取り専用レビュー | smali・対象特定・干渉・fail-open は問題なし。注入テストと保存値維持テストの不足の指摘を受けてテストを追加した |
+| XIG07 の LINE への上書き | Pass。同一署名でデータを保持したまま上書き、`cmd package compile -f -m verify` 成功 |
+| 設定 OFF の長押し（「Linimal」のトーク） | 公式どおりプレビュー画面が開く |
+| 設定 ON | 再起動案内が出る。2 行は操作不能になり保存値（ON）をグレーで表示、行やスイッチを押しても値は変わらない |
+| 設定 ON・再起動後の長押し | 従来の長押しメニューが開き、先頭に「既読をつけずに読む」。押すと「Linimal」のトークが開く |
+| 設定 OFF に戻す | 2 行はすぐ操作可能になり保存値 ON のまま。再起動後はプレビューが開き、スクロールできる |
+| ライトテーマ（端末の夜間モード OFF） | 従来メニュー、プレビューのメニュー、Linimal の設定画面（操作不能の行を含む）がライトの配色に追従 |
+| logcat | FATAL EXCEPTION、VerifyError、crash buffer の LINE のエラーはいずれも 0 件 |
+
+Square のスレッドホームは同じ判定を通ることをコードで確認したが、実機では確認していない。生成 APK はリポジトリ外の `/Users/uta_a/morphe/line-linimal-preview-disable.apk`。
+
 ## AMOLED テーマ（2026-11-10）
 
 「テーマ」ページを新設し、初期 OFF の「ダークモードの背景を黒にする」を追加。LINE の DEX とリソースは変更せず、夜間設定だけの resource table を `ResourcesLoader` で重ねる（`docs/analysis/amoled-theme.md`）。
