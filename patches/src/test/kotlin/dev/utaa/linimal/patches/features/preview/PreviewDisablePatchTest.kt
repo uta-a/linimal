@@ -12,6 +12,7 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableAnnotation
 import com.android.tools.smali.dexlib2.immutable.ImmutableAnnotationElement
+import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11n
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction11x
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction22c
 import com.android.tools.smali.dexlib2.immutable.instruction.ImmutableInstruction35c
@@ -66,8 +67,10 @@ class PreviewDisablePatchTest {
 
     private val field = ImmutableFieldReference("Lowner;", "c", "Lflag;")
 
+    // 参照を読んだあと boolean を返す、verifier を通る形の元メソッド。
     private fun firstRead(dst: Int, src: Int): List<Instruction> = listOf(
         ImmutableInstruction22c(Opcode.IGET_OBJECT, dst, src, field),
+        ImmutableInstruction11n(Opcode.CONST_4, dst, 0),
         ImmutableInstruction11x(Opcode.RETURN, dst),
     )
 
@@ -101,7 +104,7 @@ class PreviewDisablePatchTest {
         assertEquals(
             listOf(
                 Opcode.INVOKE_STATIC, Opcode.MOVE_RESULT, Opcode.IF_EQZ, Opcode.CONST_4, Opcode.RETURN,
-                Opcode.IGET_OBJECT, Opcode.RETURN,
+                Opcode.IGET_OBJECT, Opcode.CONST_4, Opcode.RETURN,
             ),
             code.map { it.opcode },
         )
