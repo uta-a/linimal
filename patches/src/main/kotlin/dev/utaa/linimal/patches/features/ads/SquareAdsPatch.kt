@@ -76,7 +76,7 @@ val squareAdsPatch = bytecodePatch(
 
         // 型の決定 method は、トークの実装が呼ぶ「Enum を返す 3 引数の invoke-virtual」1 件です。
         val typeGateCall = adTypeCall(baseChat.methods.flatMap { it.instructionList() })
-        // 4 実装すべてがこの method を 1 回ずつ呼ぶことを確かめ、別の経路が増えていないかを見ます。
+        // 4 実装の中で、それぞれがこの method を 1 回ずつ呼ぶことを確かめます（4 実装の外の呼び出しは数えません）。
         val callCounts = implementations.map { impl ->
             impl!!.methods.sumOf { method -> method.instructionList().count { it.invokes(typeGateCall) } }
         }
@@ -88,9 +88,10 @@ val squareAdsPatch = bytecodePatch(
             return@execute
         }
 
-        val typeGate = mutableClassDefByOrNull(typeGateCall.definingClass)?.methods?.singleOrNull {
-            it.matches(typeGateCall)
-        }
+        // override されると、サブクラス経由の呼び出しに注入が効かなくなるため、final の method に限ります。
+        val typeGateClass = mutableClassDefByOrNull(typeGateCall.definingClass)
+        val typeGate = typeGateClass?.methods?.singleOrNull { it.matches(typeGateCall) }
+            ?.takeIf { isNotOverridable(it, typeGateClass.accessFlags) }
         val embedded = mutableClassDefByOrNull(baseChat.type)?.methods?.singleOrNull(::isEmbeddedAdEntry)
         val typeGateRegister = typeGate?.let(::earlyReturnRegister)
         val embeddedRegister = embedded?.let(::earlyReturnRegister)
@@ -168,8 +169,12 @@ internal fun adTypeCall(instructions: List<Instruction>): MethodReference? =
         }
     }.distinct().singleOrNull()
 
-/** 呼び出し結果を check-cast している型。広告の種類の enum です。 */
-private fun adTypeAfterCall(owner: ClassDef, call: MethodReference): String? =
+/** method そのものか、それを持つ class が final なら、override されない。 */
+internal fun isNotOverridable(method: Method, classAccessFlags: Int): Boolean =
+    AccessFlags.FINAL.isSet(method.accessFlags) || AccessFlags.FINAL.isSet(classAccessFlags)
+
+/** 呼び出し結果を、呼び出しのあとで最初に check-cast している型。広告の種類の enum です。 */
+internal fun adTypeAfterCall(owner: ClassDef, call: MethodReference): String? =
     owner.methods.mapNotNull { method ->
         val instructions = method.instructionList()
         val callIndex = instructions.indexOfFirst { it.invokes(call) }
@@ -201,8 +206,8 @@ internal fun isEmbeddedAdEntry(method: Method): Boolean =
  *
  * <p>method の入口では引数以外の register は未初期化で、元の命令列は書き込む前に読むことができません
  * （verifier が拒否します）。先頭が分岐先でないことは [isSafeInjectionIndex] で確かめるので、
- * 引数でない v0 を一時的に使っても元の処理は壊れません。`const` や `if-eqz` の encoding に収まらない
- * register と、引数 register は拒否します。</p>
+ * 引数でない v0 を一時的に使っても元の処理は壊れません。引数以外の register が 1 つ以上あれば 0（v0）を、
+ * なければ null を返します。v0 は `if-eqz` などの 4 bit の encoding に必ず収まります。</p>
  */
 internal fun earlyReturnRegister(method: Method): Int? {
     val implementation = method.implementation ?: return null

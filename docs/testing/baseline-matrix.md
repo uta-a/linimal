@@ -516,7 +516,7 @@ sol のレビューの指摘を受けて、注入の判定（wide 命令によ�
 
 | 確認 | 結果 |
 | --- | --- |
-| Java 17 の全テスト、`buildAndroid` | Pass。patches 428 件、extension 399 件。Factory からの実装の特定、型の決定の呼び出しの一意性、enum の定数、埋め込み入口の形、register の条件、`ExternalLabel` が元の先頭命令を指すこと、既定 ON・再起動反映・patch 不在と保存失敗時の fail-open を含む |
+| Java 17 の全テスト、`buildAndroid` | Pass。patches 430 件、extension 399 件。Factory からの実装の特定、型の決定の呼び出しの一意性と override されないこと、enum の定数、埋め込み入口の形、register の条件、`ExternalLabel` が元の先頭命令を指すこと、既定 ON・再起動反映・patch 不在と保存失敗時の fail-open を含む |
 | Morphe Desktop 1.14.0 適用 | Pass |
 | embedded patch-status | 全 83 件 OK。`linimal.patch.square-ads-type-gate` と `linimal.patch.square-ads-embedded-gate` は `SquareAdsGuarded`、2/2 |
 | 全 15 DEX の `dexdump` と `d8 --min-api 28` | Pass |

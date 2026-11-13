@@ -89,6 +89,36 @@ class SquareAdsPatchTest {
         assertNull(adTypeCall(listOf(invoke(wrongShape))))
     }
 
+    @Test
+    fun `ad type is the first check-cast after the lookup call`() {
+        val caller = method(
+            "c", emptyList(), "Ljava/lang/Object;",
+            listOf(
+                ImmutableInstruction21c(Opcode.CHECK_CAST, 0, ImmutableTypeReference("Lbefore;")),
+                invoke(typeCall),
+                ImmutableInstruction11x(Opcode.MOVE_RESULT_OBJECT, 0),
+                ImmutableInstruction21c(Opcode.CHECK_CAST, 0, ImmutableTypeReference("Lz56/a;")),
+                ImmutableInstruction21c(Opcode.CHECK_CAST, 0, ImmutableTypeReference("Llater;")),
+                ImmutableInstruction11x(Opcode.RETURN_OBJECT, 0),
+            ),
+        )
+        assertEquals("Lz56/a;", adTypeAfterCall(classDef("Lxz5/c;", listOf(caller)), typeCall))
+
+        val noCast = method("c", emptyList(), "Ljava/lang/Object;",
+            listOf(invoke(typeCall), ImmutableInstruction11x(Opcode.RETURN_OBJECT, 0)))
+        assertNull(adTypeAfterCall(classDef("Lxz5/c;", listOf(noCast)), typeCall))
+        assertNull(adTypeAfterCall(classDef("Lxz5/c;"), typeCall))
+    }
+
+    @Test
+    fun `type gate must not be overridable`() {
+        val params = typeCall.parameterTypes.map { it.toString() }
+        assertTrue(isNotOverridable(method("c", params, "Ljava/lang/Enum;"), AccessFlags.PUBLIC.value))
+        val open = method("c", params, "Ljava/lang/Enum;", accessFlags = AccessFlags.PUBLIC.value)
+        assertTrue(isNotOverridable(open, publicFinal))
+        assertFalse(isNotOverridable(open, AccessFlags.PUBLIC.value))
+    }
+
     private fun enumConstant(owner: String, name: String) = ImmutableField(
         owner, name, owner,
         AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.FINAL.value or AccessFlags.ENUM.value,
