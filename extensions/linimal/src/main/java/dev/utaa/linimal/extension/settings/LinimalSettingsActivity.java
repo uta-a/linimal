@@ -54,13 +54,13 @@ import dev.utaa.linimal.extension.i18n.LinimalText;
 /** LINE の設定画面に合わせた見た目で、Linimal の設定と適用状況を表示します。 */
 public final class LinimalSettingsActivity extends Activity {
     private static final String STATE_PAGE_PATH = "linimal.settings.page_path";
-    private static final String KEEP_UNREAD_AFTER_SEND_TITLE = "送信しても既読を有効にしない";
+    private static final String KEEP_UNREAD_AFTER_SEND_TITLE = "送信後も既読をつけない";
     private static final String KEEP_UNREAD_AFTER_SEND_SUMMARY =
-            "既読をつけずに開いたトークで、送信後も既読を無効にします。初期値は OFF です。通常の入室には作用しません。"
-                    + "\n注意：閲覧・返信しても相手側は未読表示のままになり、誤解やトラブルにつながる可能性があります。未読バッジも残ります。";
+            "既読をつけずに開いたトークで、メッセージを送っても既読をつけません。"
+                    + "\n注意：返信しても相手には未読のまま表示され、誤解やトラブルにつながることがあります。未読バッジも残ります。";
 
     static final String RESTART_PENDING_SUMMARY = "アプリを再起動すると反映されます。";
-    private static final String CUSTOM_FONT_FILE_TITLE = "フォントファイルを選ぶ";
+    private static final String CUSTOM_FONT_FILE_TITLE = "フォントファイルを選択";
     private static final int REQUEST_PICK_CUSTOM_FONT = 0x4c46;
 
     /** 描画済みの Switch だけを持ち、画面再構築時に必ず破棄します。 */
@@ -250,19 +250,21 @@ public final class LinimalSettingsActivity extends Activity {
 
     private void addRootPage(LinearLayout parent) {
         addCategoryRow(parent, SettingsPage.ADS,
-                LinimalText.t("広告"), LinimalText.t("広告の表示を止めます。"));
+                LinimalText.t("広告"), LinimalText.t("広告と Premium の案内を非表示にします。"));
         addCategoryRow(parent, SettingsPage.AGENT_I,
-                LinimalText.t("Agent i・LINE AI"), LinimalText.t("Agent i と LINE AI の入口を場所ごとに設定します。"));
+                LinimalText.t("AI 機能"), LinimalText.t("Agent i と LINE AI の入口を非表示にします。"));
         addCategoryRow(parent, SettingsPage.HIDE,
-                LinimalText.t("表示を消す"), LinimalText.t("画面ごとに表示する項目を選びます。"));
+                LinimalText.t("表示項目"), LinimalText.t("タブやメニューの項目を非表示にします。"));
         addCategoryRow(parent, SettingsPage.READ_RECEIPT,
-                LinimalText.t("既読"), LinimalText.t("既読の送信と、既読をつけずに読む機能を設定します。"));
+                LinimalText.t("プライバシー"), LinimalText.t("既読をつけずにトークを読めます。"));
         addCategoryRow(parent, SettingsPage.READ_RECEIPT_READERS,
-                LinimalText.t("既読者"), LinimalText.t("グループで誰がメッセージを読んだかを表示します。"));
+                LinimalText.t("既読者"), LinimalText.t("グループで誰が読んだかを表示します。"));
+        addCategoryRow(parent, SettingsPage.TALK,
+                LinimalText.t("トーク"), LinimalText.t("プレビューとリンクの開き方を設定します。"));
         addCategoryRow(parent, SettingsPage.THEME,
-                LinimalText.t("テーマ"), LinimalText.t("LINE の画面の配色とフォントを設定します。"));
-        addCategoryRow(parent, SettingsPage.GENERAL,
-                LinimalText.t("一般"), LinimalText.t("Premium の案内とリンクの開き方を設定します。"));
+                LinimalText.t("外観"), LinimalText.t("配色とフォントを設定します。"));
+        addCategoryRow(parent, SettingsPage.NOTIFICATIONS,
+                LinimalText.t("通知とログイン"), LinimalText.t("通知と Google ログインを設定します。"));
     }
 
     private void addFeaturePage(LinearLayout parent, SettingsPage page) {
@@ -448,7 +450,7 @@ public final class LinimalSettingsActivity extends Activity {
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.VERTICAL);
 
-        TextView title = createText(LinimalText.t("通常チャットの自動既読を停止"), 16, palette.primaryText);
+        TextView title = createText(LinimalText.t("自動で既読をつけない"), 16, palette.primaryText);
         labels.addView(title, wrap());
 
         readReceiptSummary = createText("", 13, palette.secondaryText);
@@ -460,7 +462,7 @@ public final class LinimalSettingsActivity extends Activity {
         labelParams.gravity = Gravity.CENTER_VERTICAL;
         row.addView(labels, labelParams);
 
-        readReceiptToggle = createSwitch(LinimalText.t("通常チャットの自動既読を停止"));
+        readReceiptToggle = createSwitch(LinimalText.t("自動で既読をつけない"));
         addToggle(row, readReceiptToggle);
         row.setOnClickListener(view -> {
             if (readReceiptToggle.isEnabled()) {
@@ -609,7 +611,7 @@ public final class LinimalSettingsActivity extends Activity {
         }
         if (!CustomFontFiles.hasFont(this)) {
             customFontFileSummary.setText(LinimalText.t(
-                    "まだ選んでいません。TrueType（.ttf）か OpenType（.otf）のファイルを選べます。"));
+                    "未選択です。TrueType（.ttf）か OpenType（.otf）を選べます。"));
             return;
         }
         File file = CustomFontFiles.fontFile(this);
@@ -652,7 +654,7 @@ public final class LinimalSettingsActivity extends Activity {
         boolean available = readReceiptPatchStatus == PatchStatus.OK
                 && health == LinimalConfigHealth.OK;
         readReceiptSummary.setText(available
-                ? LinimalText.t("1対1・グループ・ルームが対象です。LINE の手動既読操作がある場合、その操作だけ送信します。OpenChat、Service Chat、AI Character は対象外です。")
+                ? LinimalText.t("1対1・グループ・ルームで、開いても既読をつけません。LINE の手動既読の操作をしたときだけ送ります。オープンチャット、Service Chat、AI Character は対象外です。")
                 : unavailableSummary(readReceiptPatchStatus, health));
         readReceiptSummary.setTextColor(available ? palette.secondaryText : palette.statusError);
 
@@ -713,17 +715,19 @@ public final class LinimalSettingsActivity extends Activity {
             case ADS:
                 return LinimalText.t("広告");
             case AGENT_I:
-                return LinimalText.t("Agent i・LINE AI");
+                return LinimalText.t("AI 機能");
             case HIDE:
-                return LinimalText.t("表示を消す");
+                return LinimalText.t("表示項目");
             case READ_RECEIPT:
-                return LinimalText.t("既読");
+                return LinimalText.t("プライバシー");
             case READ_RECEIPT_READERS:
                 return LinimalText.t("既読者");
+            case TALK:
+                return LinimalText.t("トーク");
             case THEME:
-                return LinimalText.t("テーマ");
-            case GENERAL:
-                return LinimalText.t("一般");
+                return LinimalText.t("外観");
+            case NOTIFICATIONS:
+                return LinimalText.t("通知とログイン");
             case ROOT:
             default:
                 return "Linimal";
