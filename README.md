@@ -106,6 +106,7 @@ Display settings that hide parts of the screen take effect after the app restart
 | Readers | Add "Readers" to the long-press menu | OFF | Opens the same list from the message long-press menu. Also works on others' messages. |
 | Readers | Sync with the server when opening the list | OFF | See below. |
 | Theme | Pure black background in dark mode | OFF | When the device is in dark mode, makes the screen background, bottom tabs, and navigation bar pure black (`#000000`). Cards and bubbles keep their original colors. Parts colored by themes don't change. Takes effect after a restart. |
+| Theme | Make LINE's font settings work | ON | Lets you choose and use the fonts in LINE's settings even on a re-signed LINE. Only for LINE's own font providers, the signature check is skipped. Which fonts you can use depends on your LINE subscription; this does not unlock fonts you haven't subscribed to. Takes effect after a restart. |
 | General | Hide Premium prompts | OFF | Hides the LINE Premium prompt shown when you unsend a message. |
 | General | Hide Premium in Settings | OFF | Hides the Premium row on LINE's settings screen. |
 | General | Disable chat previews | OFF | Long-pressing a chat in the chat list opens the classic long-press menu instead of the preview. While on, the two preview settings below can't be changed (their saved values are kept). LINE Labs and your Premium subscription don't change. Takes effect after a restart. |

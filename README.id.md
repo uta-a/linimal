@@ -106,6 +106,7 @@ Pengaturan tampilan yang menyembunyikan elemen layar berlaku setelah aplikasi di
 | Pembaca | Tambahkan "Pembaca" ke menu tekan lama | OFF | Membuka daftar yang sama dari menu tekan lama pesan. Juga berfungsi untuk pesan orang lain. |
 | Pembaca | Sinkronkan dengan server saat membuka daftar | OFF | Lihat di bawah. |
 | Tema | Latar hitam pekat di mode gelap | OFF | Saat perangkat dalam mode gelap, latar layar, tab bawah, dan bilah navigasi menjadi hitam pekat (`#000000`). Kartu dan gelembung pesan tetap berwarna seperti semula. Bagian yang warnanya ditentukan oleh tema tidak berubah. Berlaku setelah dimulai ulang. |
+| Tema | Aktifkan pengaturan font LINE | ON | Memungkinkan Anda memilih dan memakai font di pengaturan LINE meskipun LINE ditandatangani ulang. Pemeriksaan tanda tangan hanya dilewati untuk provider font milik LINE sendiri. Font yang bisa dipakai bergantung pada langganan LINE Anda; font yang tidak Anda langgani tidak akan terbuka. Berlaku setelah dimulai ulang. |
 | Umum | Sembunyikan info Premium | OFF | Menyembunyikan info LINE Premium yang muncul saat membatalkan pengiriman pesan. |
 | Umum | Sembunyikan Premium di Pengaturan | OFF | Menyembunyikan baris Premium di layar pengaturan LINE. |
 | Umum | Nonaktifkan pratinjau chat | OFF | Menekan lama chat di daftar chat membuka menu tekan lama klasik, bukan pratinjau. Selama aktif, dua pengaturan pratinjau di bawah tidak dapat diubah (nilai yang tersimpan tetap ada). LINE Labs dan status langganan Premium tidak berubah. Berlaku setelah dimulai ulang. |

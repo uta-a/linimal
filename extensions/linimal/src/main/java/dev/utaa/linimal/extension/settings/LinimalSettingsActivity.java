@@ -241,7 +241,7 @@ public final class LinimalSettingsActivity extends Activity {
         addCategoryRow(parent, SettingsPage.READ_RECEIPT_READERS,
                 LinimalText.t("既読者"), LinimalText.t("グループで誰がメッセージを読んだかを表示します。"));
         addCategoryRow(parent, SettingsPage.THEME,
-                LinimalText.t("テーマ"), LinimalText.t("LINE の画面の配色を設定します。"));
+                LinimalText.t("テーマ"), LinimalText.t("LINE の画面の配色とフォントを設定します。"));
         addCategoryRow(parent, SettingsPage.GENERAL,
                 LinimalText.t("一般"), LinimalText.t("Premium の案内とリンクの開き方を設定します。"));
     }

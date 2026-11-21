@@ -205,13 +205,14 @@ public final class FeatureCatalogTest {
     }
 
     @Test
-    public void themePageHoldsTheAmoledEntry() {
+    public void themePageHoldsTheAmoledAndOfficialFontsEntries() {
         List<FeatureCatalog.Group> groups = FeatureCatalog.installedGroupsForPage(
                 SettingsPage.THEME, allCatalogFeatureIds());
 
         assertEquals(1, groups.size());
-        assertGroup(groups.get(0), null, "linimal.amoled-theme");
+        assertGroup(groups.get(0), null, "linimal.amoled-theme", "linimal.official-fonts");
         assertEquals("ダークモードの背景を黒にする", groups.get(0).getEntries().get(0).getTitle());
+        assertEquals("LINE のフォント設定を使えるようにする", groups.get(0).getEntries().get(1).getTitle());
     }
 
     @Test

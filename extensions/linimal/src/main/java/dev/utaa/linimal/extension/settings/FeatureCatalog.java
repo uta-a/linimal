@@ -291,6 +291,10 @@ public final class FeatureCatalog {
                     "ダークモードの背景を黒にする",
                     "端末がダークモードのとき、画面の背景と下部タブを真っ黒にします。カードや吹き出しは元の色のままです。"
                             + "着せかえが色を決めている部分は変わりません。"),
+            new Entry(LinimalFeature.OFFICIAL_FONTS, SettingsPage.THEME,
+                    "LINE のフォント設定を使えるようにする",
+                    "再署名した LINE でも、LINE の設定にあるフォントを選んで使えるようにします。"
+                            + "使えるフォントは LINE の契約の内容によります。"),
 
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",

@@ -32,6 +32,7 @@ final class PatchStatusRequirements {
         requirements.put("linimal.amoled-theme", ids("linimal.patch.amoled-theme-colors"));
         requirements.put("linimal.external-browser", ids("linimal.patch.external-browser-chat-text-link"));
         requirements.put("linimal.push-notifications", ids("linimal.patch.fis-certificate-header"));
+        requirements.put("linimal.official-fonts", ids("linimal.patch.font-provider-own-certificate"));
         requirements.put("linimal.google-drive-backup",
                 ids("linimal.patch.google-auth-microg-manifest", "linimal.patch.google-auth-token-routing",
                         "linimal.patch.google-auth-sign-in-routing",
