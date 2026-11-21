@@ -25,7 +25,8 @@ public final class FontProviderHooks {
     /**
      * 照合メソッドで、provider の package が要求と一致すると確かめた直後に呼ばれます。
      *
-     * <p>true を返すと、署名を比べずにその provider を使います。設定 OFF、未初期化、条件に当たらない、
+     * <p>「LINE のフォント設定を使えるようにする」か「手持ちのフォントを使う」が ON のときに働きます。
+     * true を返すと、署名を比べずにその provider を使います。設定 OFF、未初期化、条件に当たらない、
      * 例外のときは false を返し、元の照合（再署名版では失敗）を続けます。</p>
      */
     public static boolean trustsOwnProvider(ProviderInfo provider) {
@@ -34,10 +35,11 @@ public final class FontProviderHooks {
                 return false;
             }
             LinimalConfig config = LinimalConfig.get();
-            if (config.getRuntimeHealth() != LinimalConfigHealth.OK || !config.isOfficialFontsEnabled()) {
+            if (config.getRuntimeHealth() != LinimalConfigHealth.OK
+                    || !(config.isOfficialFontsEnabled() || config.isCustomFontEnabled())) {
                 return false;
             }
-            Context application = currentApplication();
+            Context application = FontContext.currentApplication();
             if (application == null) {
                 return false;
             }
@@ -73,16 +75,5 @@ public final class FontProviderHooks {
         }
         return authority.equals(ownPackage + PREMIUM_FONT_AUTHORITY_SUFFIX)
                 || authority.equals(ownPackage + DOWNLOADABLE_FONT_AUTHORITY_SUFFIX);
-    }
-
-    private static Context currentApplication() {
-        try {
-            Object application = Class.forName("android.app.ActivityThread")
-                    .getMethod("currentApplication")
-                    .invoke(null);
-            return application instanceof Context ? (Context) application : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
     }
 }

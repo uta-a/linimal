@@ -295,6 +295,10 @@ public final class FeatureCatalog {
                     "LINE のフォント設定を使えるようにする",
                     "再署名した LINE でも、LINE の設定にあるフォントを選んで使えるようにします。"
                             + "使えるフォントは LINE の契約の内容によります。"),
+            new Entry(LinimalFeature.CUSTOM_FONT, SettingsPage.THEME,
+                    "手持ちのフォントを使う",
+                    "下の「フォントファイルを選ぶ」で取り込んだフォントを、LINE の画面の文字に使います。"
+                            + "LINE の設定で選んだフォントより優先します。"),
 
             new Entry(LinimalFeature.PREMIUM, SettingsPage.GENERAL,
                     "Premium の案内を表示しない",

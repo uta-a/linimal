@@ -90,6 +90,7 @@ public final class LinimalConfigTest {
             LinimalFeature.SQUARE_ADS,
             LinimalFeature.AMOLED_THEME,
             LinimalFeature.OFFICIAL_FONTS,
+            LinimalFeature.CUSTOM_FONT,
             LinimalFeature.READ_RECEIPT_READERS_ICONS,
             LinimalFeature.READ_RECEIPT_READERS_TAP,
             LinimalFeature.READ_RECEIPT_READERS_OTHERS_COUNT,
@@ -120,6 +121,7 @@ public final class LinimalConfigTest {
         assertFalse(config.isPreviewScrollEnabled());
         assertFalse(config.isAmoledThemeEnabled());
         assertFalse(config.isOfficialFontsEnabled());
+        assertFalse(config.isCustomFontEnabled());
         assertFalse(PreviewScrollHooks.allowScroll(false));
         assertTrue(PreviewScrollHooks.allowScroll(true));
         assertFalse(config.isPreviewDisableEnabled());

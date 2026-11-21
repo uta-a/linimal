@@ -117,7 +117,10 @@ class FontProviderOwnCertificatePatchTest {
     }
 
     @Test
-    fun `the patch belongs to the official fonts feature`() {
-        assertEquals(FeatureId.OFFICIAL_FONTS, PatchId.FONT_PROVIDER_OWN_CERTIFICATE.featureId)
+    fun `the certificate hook is recorded for both font features`() {
+        assertEquals(
+            listOf(FeatureId.OFFICIAL_FONTS, FeatureId.CUSTOM_FONT),
+            FONT_PROVIDER_CERTIFICATE_PATCH_IDS.map(PatchId::featureId),
+        )
     }
 }

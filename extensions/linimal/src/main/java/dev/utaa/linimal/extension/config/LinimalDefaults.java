@@ -40,6 +40,7 @@ public final class LinimalDefaults {
             case PREVIEW_SCROLL:
             case PREVIEW_DISABLE:
             case AMOLED_THEME:
+            case CUSTOM_FONT:
             case SHOPPING:
             case NEWS:
             case WALLET:

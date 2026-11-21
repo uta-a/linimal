@@ -143,4 +143,13 @@ fingerprint:
 - `j7.e.b` の `0042` に hook が入り、元の `iget-object v2, v7, packageName` は `004c` に移る
 - 起動して VerifyError、verifier の拒否、クラッシュは出ない
 - 既存のインストールでも、設定「LINE のフォント設定を使えるようにする」は既定 ON で表示される
+
+2026-11-21 に XIG07 で確かめたこと（手持ちのフォントを入れた build）:
+
+- patch-status は `custom-font-theme`、`custom-font-file`、`custom-font-provider-certificate` がいずれも OK（1/1）
+- 端末内蔵の DancingScript（OFL）を Download から取り込み、設定を ON にして再起動すると、ホーム（Compose）とトーク一覧（View）の英数字が DancingScript になる。日本語は字がないため、端末の標準フォントで表示される
+- provider から読み込めたので、照合の hook が LINE 自身の provider を通していることも確かめられた
+- 起動から 10 秒以上たってから終了し、起動し直す操作を 2 回続けても、フォントは当たったまま（通常の起動を失敗と数えない）
+- 設定を OFF にして再起動すると、元のフォントに戻る
+- 起動直後に落ち続けたときに止める動作は、意図的に落とす手段がないため実機では確かめていない（単体テストのみ）
 - テーマの適用より前に作られた View や、Fragment が作り直さない View への反映

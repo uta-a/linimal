@@ -3,13 +3,18 @@ package dev.utaa.linimal.extension.settings;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
+import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Insets;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.format.Formatter;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -25,7 +30,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +41,8 @@ import dev.utaa.linimal.extension.config.LinimalConfigBootstrap;
 import dev.utaa.linimal.extension.config.LinimalConfigHealth;
 import dev.utaa.linimal.extension.config.ReadReceiptMode;
 import dev.utaa.linimal.extension.config.LinimalFeature;
+import dev.utaa.linimal.extension.features.font.CustomFontFiles;
+import dev.utaa.linimal.extension.features.font.CustomFontHooks;
 import dev.utaa.linimal.extension.settings.ui.BackArrowDrawable;
 import dev.utaa.linimal.extension.settings.ui.ChevronDrawable;
 import dev.utaa.linimal.extension.settings.ui.LinimalPalette;
@@ -51,6 +60,8 @@ public final class LinimalSettingsActivity extends Activity {
                     + "\n注意：閲覧・返信しても相手側は未読表示のままになり、誤解やトラブルにつながる可能性があります。未読バッジも残ります。";
 
     static final String RESTART_PENDING_SUMMARY = "アプリを再起動すると反映されます。";
+    private static final String CUSTOM_FONT_FILE_TITLE = "フォントファイルを選ぶ";
+    private static final int REQUEST_PICK_CUSTOM_FONT = 0x4c46;
 
     /** 描画済みの Switch だけを持ち、画面再構築時に必ず破棄します。 */
     private final List<FeatureRow> featureRows = new ArrayList<>();
@@ -67,6 +78,11 @@ public final class LinimalSettingsActivity extends Activity {
     private boolean keepUnreadAfterSendPatchAvailable;
     private TextView keepUnreadAfterSendSummary;
     private Switch keepUnreadAfterSendToggle;
+    private PatchStatus customFontPatchStatus;
+    private LinearLayout customFontFileRow;
+    private TextView customFontFileSummary;
+    /** 取り込みは別スレッドで行うため、画面を描き直しても状態を保ちます。 */
+    private boolean customFontImporting;
 
     private static final class FeatureRow {
         private final FeatureCatalog.Entry entry;
@@ -227,6 +243,9 @@ public final class LinimalSettingsActivity extends Activity {
         keepUnreadAfterSendPatchAvailable = false;
         keepUnreadAfterSendSummary = null;
         keepUnreadAfterSendToggle = null;
+        customFontPatchStatus = null;
+        customFontFileRow = null;
+        customFontFileSummary = null;
     }
 
     private void addRootPage(LinearLayout parent) {
@@ -271,6 +290,9 @@ public final class LinimalSettingsActivity extends Activity {
         if (page == SettingsPage.READ_RECEIPT) {
             hasEntry |= addKeepUnreadAfterSendRow(parent, report);
             hasEntry |= addReadReceiptRow(parent, report);
+        }
+        if (page == SettingsPage.THEME) {
+            hasEntry |= addCustomFontFileRow(parent, report);
         }
 
         if (!hasEntry) {
@@ -326,6 +348,94 @@ public final class LinimalSettingsActivity extends Activity {
             }
         });
         return true;
+    }
+
+    /** 「手持ちのフォントを使う」で使うファイルを選ぶ行。押すと端末のファイル選択を開きます。 */
+    private boolean addCustomFontFileRow(LinearLayout parent, PatchStatusReport report) {
+        customFontPatchStatus = report.getFeatureStatus(LinimalFeature.CUSTOM_FONT.getFeatureId());
+        if (customFontPatchStatus == null) {
+            return false;
+        }
+        LinearLayout row = createInteractiveRow(parent);
+        LinearLayout labels = createLabels(LinimalText.t(CUSTOM_FONT_FILE_TITLE), "");
+        customFontFileSummary = (TextView) labels.getChildAt(1);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        labelParams.gravity = Gravity.CENTER_VERTICAL;
+        row.addView(labels, labelParams);
+        row.setOnClickListener(view -> {
+            if (row.isEnabled()) {
+                pickCustomFont();
+            }
+        });
+        customFontFileRow = row;
+        return true;
+    }
+
+    private void pickCustomFont() {
+        // フォントの MIME type はファイル管理アプリごとに違うため、種類では絞らず、取り込むときに中身を確かめます。
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        try {
+            startActivityForResult(intent, REQUEST_PICK_CUSTOM_FONT);
+        } catch (ActivityNotFoundException | SecurityException exception) {
+            Toast.makeText(this, LinimalText.t("ファイルを選ぶ画面を開けませんでした。"), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_PICK_CUSTOM_FONT || resultCode != RESULT_OK || data == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        if (uri == null || customFontImporting) {
+            return;
+        }
+        customFontImporting = true;
+        renderRuntimeConfig();
+        Context application = getApplicationContext();
+        new Thread(() -> {
+            CustomFontFiles.ImportResult result;
+            try {
+                result = CustomFontFiles.importFont(application, uri);
+            } catch (RuntimeException exception) {
+                result = CustomFontFiles.ImportResult.READ_FAILED;
+            }
+            CustomFontFiles.ImportResult finished = result;
+            runOnUiThread(() -> onCustomFontImported(finished));
+        }, "linimal-custom-font-import").start();
+    }
+
+    private void onCustomFontImported(CustomFontFiles.ImportResult result) {
+        customFontImporting = false;
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        Toast.makeText(this, LinimalText.t(importMessage(result)), Toast.LENGTH_LONG).show();
+        renderRuntimeConfig();
+        LinimalConfig config = LinimalConfig.get();
+        if (result == CustomFontFiles.ImportResult.OK
+                && config.getRuntimeHealth() == LinimalConfigHealth.OK
+                && config.isCustomFontEnabled()) {
+            AppRestarter.confirm(this);
+        }
+    }
+
+    private static String importMessage(CustomFontFiles.ImportResult result) {
+        switch (result) {
+            case OK:
+                return "フォントを取り込みました。";
+            case TOO_LARGE:
+                return "ファイルが大きすぎます。64 MB までのファイルを選んでください。";
+            case NOT_A_FONT:
+                return "フォントファイルとして読み込めませんでした。TrueType か OpenType のファイルを選んでください。";
+            case READ_FAILED:
+            default:
+                return "ファイルを読み込めませんでした。";
+        }
     }
 
     private boolean addReadReceiptRow(LinearLayout parent, PatchStatusReport report) {
@@ -479,6 +589,40 @@ public final class LinimalSettingsActivity extends Activity {
         }
         renderKeepUnreadAfterSendConfig(config, health);
         renderReadReceiptConfig(config, health);
+        renderCustomFontFileConfig(health);
+    }
+
+    private void renderCustomFontFileConfig(LinimalConfigHealth health) {
+        if (customFontFileRow == null || customFontFileSummary == null) {
+            return;
+        }
+        boolean available = customFontPatchStatus == PatchStatus.OK && health == LinimalConfigHealth.OK;
+        customFontFileRow.setEnabled(available && !customFontImporting);
+        customFontFileSummary.setTextColor(available ? palette.secondaryText : palette.statusError);
+        if (!available) {
+            customFontFileSummary.setText(unavailableSummary(customFontPatchStatus, health));
+            return;
+        }
+        if (customFontImporting) {
+            customFontFileSummary.setText(LinimalText.t("取り込んでいます…"));
+            return;
+        }
+        if (!CustomFontFiles.hasFont(this)) {
+            customFontFileSummary.setText(LinimalText.t(
+                    "まだ選んでいません。TrueType（.ttf）か OpenType（.otf）のファイルを選べます。"));
+            return;
+        }
+        File file = CustomFontFiles.fontFile(this);
+        String name = CustomFontFiles.displayName(this);
+        String summary = LinimalText.format("取り込み済み：%s（%s）",
+                name != null ? name : LinimalText.t("名前のないファイル"),
+                Formatter.formatShortFileSize(this, file.length()));
+        if (CustomFontHooks.isStoppedAfterUnstableLaunches(this)) {
+            summary = summary + "\n" + LinimalText.t(
+                    "LINE の起動が続けて止まったため、取り込んだフォントを使うのを止めています。ファイルを選び直すと再開します。");
+            customFontFileSummary.setTextColor(palette.statusError);
+        }
+        customFontFileSummary.setText(summary);
     }
 
     private void renderKeepUnreadAfterSendConfig(LinimalConfig config, LinimalConfigHealth health) {

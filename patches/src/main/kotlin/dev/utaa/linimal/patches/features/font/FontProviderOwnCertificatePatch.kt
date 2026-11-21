@@ -51,6 +51,15 @@ private val fontProviderFingerprint = Fingerprint(
     ),
 )
 
+/**
+ * 照合の hook は、公式フォントの復旧と手持ちのフォントの両方が使います。どちらの機能も、この hook が
+ * 入ったことを自分の patch ID で確かめられるよう、同じ結果を 2 つの ID に記録します。
+ */
+internal val FONT_PROVIDER_CERTIFICATE_PATCH_IDS = listOf(
+    PatchId.FONT_PROVIDER_OWN_CERTIFICATE,
+    PatchId.CUSTOM_FONT_PROVIDER_CERTIFICATE,
+)
+
 internal data class FontProviderInjection(
     val insertionIndex: Int,
     val providerRegister: Int,
@@ -80,7 +89,7 @@ val fontProviderOwnCertificatePatch = bytecodePatch(
         val matches = fontProviderFingerprint.matchAllOrNull().orEmpty()
         if (matches.size != 1) {
             recordFeatureStatus(
-                listOf(PatchId.FONT_PROVIDER_OWN_CERTIFICATE),
+                FONT_PROVIDER_CERTIFICATE_PATCH_IDS,
                 expectedTargetCount = 1,
                 actualTargetCount = matches.size,
                 reason = "FontProviderNotUnique",
@@ -95,7 +104,7 @@ val fontProviderOwnCertificatePatch = bytecodePatch(
         }
         if (injection == null) {
             recordUnsafeFeatureStatus(
-                listOf(PatchId.FONT_PROVIDER_OWN_CERTIFICATE),
+                FONT_PROVIDER_CERTIFICATE_PATCH_IDS,
                 expectedTargetCount = 1,
                 actualTargetCount = 1,
                 reason = "FontProviderShapeMismatch",
@@ -119,7 +128,7 @@ val fontProviderOwnCertificatePatch = bytecodePatch(
             ExternalLabel(ORIGINAL_CHECK_LABEL, method.getInstruction(injection.insertionIndex)),
         )
         recordFeatureStatus(
-            listOf(PatchId.FONT_PROVIDER_OWN_CERTIFICATE),
+            FONT_PROVIDER_CERTIFICATE_PATCH_IDS,
             expectedTargetCount = 1,
             actualTargetCount = 1,
             reason = "FontProviderOwnCertificateGuarded",
