@@ -283,9 +283,9 @@ public final class FeatureCatalog {
                     "メッセージの長押しメニューに、読んだメンバーの一覧を開く項目を追加します。相手のメッセージにも使えます。"),
             new Entry(LinimalFeature.READ_RECEIPT_READERS_SERVER_SYNC, SettingsPage.READ_RECEIPT_READERS,
                     SettingsSection.READ_RECEIPT_READERS_DATA,
-                    "一覧を開くときにサーバーと同期する",
-                    "一覧は LINE がこの端末に保存した既読の記録から作ります。ON にすると、一覧を開くたびに LINE 自身の同期処理で"
-                            + "そのトークの既読の記録を取り直します。OFF のときは通信しません。"),
+                    "開くたびにサーバーと同期",
+                    "一覧は LINE がこの端末に保存した既読の記録から作ります。ON にすると、トークや一覧を開くたびに LINE 自身の同期処理で"
+                            + "そのトークの既読の記録を取り直し、他人のメッセージの既読もトークを開くと表示されます。OFF のときは通信しません。"),
 
             new Entry(LinimalFeature.AMOLED_THEME, SettingsPage.THEME,
                     "ダークモードの背景を黒にする",

@@ -104,7 +104,7 @@ Display settings that hide parts of the screen take effect after the app restart
 | Readers | Show reader icons on others' messages | OFF | Shows the icons of members who read it above the time on others' messages. When both this and the read count are on, the icons appear outside the read count (farther from the bubble). |
 | Readers | Tap the read mark to open the list | OFF | Tapping "Read" on your messages, or the read count or icons on others' messages, opens a list of members who have and haven't read it. |
 | Readers | Add "Readers" to the long-press menu | OFF | Opens the same list from the message long-press menu. Also works on others' messages. |
-| Readers | Sync with the server when opening the list | OFF | See below. |
+| Readers | Sync with server on open | OFF | See below. |
 | Theme | Pure black background in dark mode | OFF | When the device is in dark mode, makes the screen background, bottom tabs, and navigation bar pure black (`#000000`). Cards and bubbles keep their original colors. Parts colored by themes don't change. Takes effect after a restart. |
 | General | Hide Premium prompts | OFF | Hides the LINE Premium prompt shown when you unsend a message. |
 | General | Hide Premium in Settings | OFF | Hides the Premium row on LINE's settings screen. |
@@ -159,7 +159,7 @@ The list is built from the read records LINE saves on this device to show "Read 
 - Groups and multi-person chats are supported. Nothing is shown in one-on-one chats or OpenChat.
 - Members who haven't read it are the current members minus those who have. You and the sender are not included in the list.
 - Display names prefer the names you set. Icons are fetched as thumbnails from the same public CDN LINE uses (`profile.line-scdn.net`) and kept only in memory.
-- When `Sync with the server when opening the list` is on, each time you open the list Linimal runs the same read sync LINE runs periodically, for that chat only, and then refreshes the list. When off, only the records on the device are used and nothing is sent for syncing.
+- When `Sync with server on open` is on, Linimal runs the same read sync LINE runs periodically, for that chat only, when you open the chat and each time you open the list, and then refreshes what is shown. The sync on opening a chat runs once, right after it opens, and only when read count or reader icons on others' messages are on. When off, only the records on the device are used and nothing is sent for syncing.
 
 ## Notifications and Google integration
 

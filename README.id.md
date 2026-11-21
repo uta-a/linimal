@@ -104,7 +104,7 @@ Pengaturan tampilan yang menyembunyikan elemen layar berlaku setelah aplikasi di
 | Pembaca | Tampilkan ikon pembaca di pesan orang lain | OFF | Menampilkan ikon anggota yang telah membaca di atas waktu pada pesan orang lain. Jika jumlah pembaca juga aktif, ikon muncul di sisi luar jumlah pembaca (sisi yang jauh dari gelembung). |
 | Pembaca | Ketuk tanda dibaca untuk membuka daftar | OFF | Mengetuk "Dibaca" di pesan Anda, atau jumlah pembaca dan ikon di pesan orang lain, akan membuka daftar anggota yang sudah dan belum membaca. |
 | Pembaca | Tambahkan "Pembaca" ke menu tekan lama | OFF | Membuka daftar yang sama dari menu tekan lama pesan. Juga berfungsi untuk pesan orang lain. |
-| Pembaca | Sinkronkan dengan server saat membuka daftar | OFF | Lihat di bawah. |
+| Pembaca | Sinkronkan dengan server saat dibuka | OFF | Lihat di bawah. |
 | Tema | Latar hitam pekat di mode gelap | OFF | Saat perangkat dalam mode gelap, latar layar, tab bawah, dan bilah navigasi menjadi hitam pekat (`#000000`). Kartu dan gelembung pesan tetap berwarna seperti semula. Bagian yang warnanya ditentukan oleh tema tidak berubah. Berlaku setelah dimulai ulang. |
 | Umum | Sembunyikan info Premium | OFF | Menyembunyikan info LINE Premium yang muncul saat membatalkan pengiriman pesan. |
 | Umum | Sembunyikan Premium di Pengaturan | OFF | Menyembunyikan baris Premium di layar pengaturan LINE. |
@@ -159,7 +159,7 @@ Daftar dibuat dari catatan baca yang disimpan LINE di perangkat ini untuk menamp
 - Berlaku untuk grup dan chat multi-orang. Tidak ditampilkan di chat pribadi dan OpenChat.
 - Anggota yang belum membaca adalah anggota saat ini dikurangi anggota yang sudah membaca. Anda dan pengirim tidak termasuk dalam daftar.
 - Nama tampilan mengutamakan nama yang Anda tetapkan. Ikon diambil dalam versi kecil dari CDN publik yang sama dengan yang digunakan LINE (`profile.line-scdn.net`) dan hanya disimpan di memori.
-- Jika `Sinkronkan dengan server saat membuka daftar` diaktifkan, setiap kali daftar dibuka, sinkronisasi tanda dibaca yang sama dengan yang dijalankan LINE secara berkala dijalankan hanya untuk chat tersebut, lalu daftar ditampilkan ulang. Jika nonaktif, hanya catatan di perangkat yang digunakan dan tidak ada komunikasi untuk sinkronisasi.
+- Jika `Sinkronkan dengan server saat dibuka` diaktifkan, saat chat dibuka dan setiap kali daftar dibuka, sinkronisasi tanda dibaca yang sama dengan yang dijalankan LINE secara berkala dijalankan hanya untuk chat tersebut, lalu tampilan diperbarui. Sinkronisasi saat chat dibuka hanya dijalankan sekali, tepat setelah chat dibuka, dan hanya jika jumlah atau ikon pembaca pada pesan orang lain diaktifkan. Jika nonaktif, hanya catatan di perangkat yang digunakan dan tidak ada komunikasi untuk sinkronisasi.
 
 ## Notifikasi dan integrasi Google
 
