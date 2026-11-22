@@ -20,8 +20,6 @@ Linimal is an independent project and is not an official project of LINE or Morp
 - **Pure black dark mode**: makes the background and bottom tabs black (`#000000`) for OLED screens.
 - **Other**: hide LINE Premium prompts, disable chat previews or make them scrollable, open links in an external browser, and support for notifications and Google login and backup.
 
-Ads, Premium, and Agent i / LINE AI are only hidden. Ad delivery, billing, and LINE's network traffic are not changed.
-
 ## Supported version
 
 | Item | Value |
@@ -123,7 +121,7 @@ Read receipts and clearing the local unread state are paused only for the readin
 
 ### Opening a chat
 
-In LINE 26.16.0, on accounts that have scroll previews, long-pressing a chat opens a preview screen instead of the menu. In that case, Linimal adds the same row at the top of the menu at the bottom of the preview. If you turn on "Don't use previews" under Chats and restart, a long press opens the classic menu again, and the same row appears in that menu. Tapping it closes the preview and opens the chat without sending a read receipt. By default, whether the preview can be scrolled follows LINE's own logic. Turn on "Make previews scrollable" under Chats and restart to make it scrollable. This does not add previews to accounts that don't have them, and billing and network traffic are not changed. Read receipts stay paused when the app briefly goes to the background, the screen locks, you view photos or videos, or you keep reading for a long time. When the screen is recreated because of a configuration change, the session continues only if its saved marker matches.
+In LINE 26.16.0, on accounts that have scroll previews, long-pressing a chat opens a preview screen instead of the menu. In that case, Linimal adds the same row at the top of the menu at the bottom of the preview. If you turn on "Don't use previews" under Chats and restart, a long press opens the classic menu again, and the same row appears in that menu. Tapping it closes the preview and opens the chat without sending a read receipt. By default, whether the preview can be scrolled follows LINE's own logic. Turn on "Make previews scrollable" under Chats and restart to make it scrollable. This does not add previews to accounts that don't have them. Read receipts stay paused when the app briefly goes to the background, the screen locks, you view photos or videos, or you keep reading for a long time. When the screen is recreated because of a configuration change, the session continues only if its saved marker matches.
 
 ### What you see while reading and "Mark all as read"
 

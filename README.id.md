@@ -20,8 +20,6 @@ Linimal adalah proyek independen dan bukan proyek resmi LINE maupun Morphe.
 - **Mode gelap hitam pekat**: membuat latar dan tab bawah menjadi hitam (`#000000`) untuk layar OLED.
 - **Lainnya**: sembunyikan info LINE Premium, nonaktifkan pratinjau chat atau buat dapat digulir, buka tautan di browser eksternal, serta dukungan untuk notifikasi dan login Google serta cadangan.
 
-Iklan, Premium, dan Agent i / LINE AI hanya disembunyikan. Penayangan iklan, penagihan, dan komunikasi jaringan LINE tidak diubah.
-
 ## Versi yang didukung
 
 | Item | Nilai |
@@ -123,7 +121,7 @@ Pengiriman tanda dibaca dan penghapusan status belum dibaca lokal hanya ditahan 
 
 ### Cara membuka
 
-Di LINE 26.16.0, pada akun yang dapat menggunakan pratinjau gulir, menekan lama chat akan membuka layar pratinjau, bukan menu. Dalam hal ini, Linimal menambahkan baris yang sama di bagian paling atas menu di bawah pratinjau. Jika Anda mengaktifkan "Jangan pakai pratinjau" di "Chat" lalu memulai ulang, tekan lama akan membuka menu klasik, dan baris yang sama muncul di menu tersebut. Mengetuknya akan menutup pratinjau dan membuka chat tanpa tanda dibaca. Secara default, apakah pratinjau dapat digulir mengikuti logika resmi LINE. Aktifkan "Pratinjau dapat digulir" di "Chat" lalu mulai ulang agar dapat digulir. Pengaturan ini tidak menambahkan layar pratinjau ke akun yang tidak menyediakannya, dan tidak mengubah penagihan maupun komunikasi jaringan. Penahanan tidak dilepas saat aplikasi sementara berpindah ke latar belakang, layar terkunci, Anda melihat foto atau video, atau membaca dalam waktu lama. Saat layar dibuat ulang karena perubahan konfigurasi, sesi hanya dilanjutkan jika penanda sesi yang tersimpan cocok.
+Di LINE 26.16.0, pada akun yang dapat menggunakan pratinjau gulir, menekan lama chat akan membuka layar pratinjau, bukan menu. Dalam hal ini, Linimal menambahkan baris yang sama di bagian paling atas menu di bawah pratinjau. Jika Anda mengaktifkan "Jangan pakai pratinjau" di "Chat" lalu memulai ulang, tekan lama akan membuka menu klasik, dan baris yang sama muncul di menu tersebut. Mengetuknya akan menutup pratinjau dan membuka chat tanpa tanda dibaca. Secara default, apakah pratinjau dapat digulir mengikuti logika resmi LINE. Aktifkan "Pratinjau dapat digulir" di "Chat" lalu mulai ulang agar dapat digulir. Pengaturan ini tidak menambahkan layar pratinjau ke akun yang tidak menyediakannya. Penahanan tidak dilepas saat aplikasi sementara berpindah ke latar belakang, layar terkunci, Anda melihat foto atau video, atau membaca dalam waktu lama. Saat layar dibuat ulang karena perubahan konfigurasi, sesi hanya dilanjutkan jika penanda sesi yang tersimpan cocok.
 
 ### Tampilan saat membaca dan "Tandai semua sebagai dibaca"
 

@@ -8,7 +8,7 @@
 
 LINE の公式フォント設定（LYP プレミアム向け）は、選んだフォントを LINE 自身の ContentProvider（`jp.naver.line.android.premiumfont`。exported ではない）から downloadable font として読み込む。androidx の FontProvider は、provider を持つアプリの署名（`PackageInfo.signatures`）を `@array/fonts_certs` の公式証明書 3 件と比べる。再署名した LINE では provider を持つアプリ自体の署名が変わるので、照合に失敗し、フォントを適用できない。
 
-ADR 0001 は「再署名は公式署名または integrity 検査を回避する目的ではない」とし、互換性文書は署名検査が主要機能を妨げた場合に「回避を暗黙に追加せず go/no-go とする」としている。作業ログ（`.linimal-feature-worklog.md`）の制約にも「認証・課金・共通通信・TLS・署名検査を変更しない」とある。この ADR はその判断に当たり、決定 1 の範囲に限ってこれらの例外とする。
+この ADR は決定 1 の範囲に限った例外とする。
 
 ADR 0002 との違い:
 
