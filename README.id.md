@@ -161,7 +161,7 @@ Daftar dibuat dari catatan baca yang disimpan LINE di perangkat ini untuk menamp
 - Berlaku untuk grup dan chat multi-orang. Tidak ditampilkan di chat pribadi dan OpenChat.
 - Anggota yang belum membaca adalah anggota saat ini dikurangi anggota yang sudah membaca. Anda dan pengirim tidak termasuk dalam daftar.
 - Nama tampilan mengutamakan nama yang Anda tetapkan. Ikon diambil dalam versi kecil dari CDN publik yang sama dengan yang digunakan LINE (`profile.line-scdn.net`) dan hanya disimpan di memori.
-- Jika `Sinkronkan dengan server saat dibuka` diaktifkan, setiap kali daftar dibuka, sinkronisasi tanda dibaca yang sama dengan yang dijalankan LINE secara berkala dijalankan hanya untuk chat tersebut, lalu daftar ditampilkan ulang. Jika nonaktif, hanya catatan di perangkat yang digunakan dan tidak ada komunikasi untuk sinkronisasi.
+- Jika `Sinkronkan dengan server saat dibuka` diaktifkan, saat chat dibuka dan setiap kali daftar dibuka, sinkronisasi tanda dibaca yang sama dengan yang dijalankan LINE secara berkala dijalankan hanya untuk chat tersebut, lalu tampilan diperbarui. Sinkronisasi saat chat dibuka hanya dijalankan sekali, tepat setelah chat dibuka, dan hanya jika jumlah atau ikon pembaca pada pesan orang lain diaktifkan. Jika nonaktif, hanya catatan di perangkat yang digunakan dan tidak ada komunikasi untuk sinkronisasi.
 
 ## Notifikasi dan integrasi Google
 

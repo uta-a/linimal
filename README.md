@@ -161,7 +161,7 @@ The list is built from the read records LINE saves on this device to show "Read 
 - Groups and multi-person chats are supported. Nothing is shown in one-on-one chats or OpenChat.
 - Members who haven't read it are the current members minus those who have. You and the sender are not included in the list.
 - Display names prefer the names you set. Icons are fetched as thumbnails from the same public CDN LINE uses (`profile.line-scdn.net`) and kept only in memory.
-- When `Sync with server on open` is on, each time you open the list Linimal runs the same read sync LINE runs periodically, for that chat only, and then refreshes the list. When off, only the records on the device are used and nothing is sent for syncing.
+- When `Sync with server on open` is on, Linimal runs the same read sync LINE runs periodically, for that chat only, when you open the chat and each time you open the list, and then refreshes what is shown. The sync on opening a chat runs once, right after it opens, and only when read count or reader icons on others' messages are on. When off, only the records on the device are used and nothing is sent for syncing.
 
 ## Notifications and Google integration
 
