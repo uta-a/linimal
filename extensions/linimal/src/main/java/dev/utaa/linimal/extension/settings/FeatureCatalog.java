@@ -293,7 +293,7 @@ public final class FeatureCatalog {
             new Entry(LinimalFeature.READ_RECEIPT_READERS_SERVER_SYNC, SettingsPage.READ_RECEIPT_READERS,
                     SettingsSection.READ_RECEIPT_READERS_DATA,
                     "開くたびにサーバーと同期",
-                    "トークや一覧を開くたびに、LINE の同期処理で既読の記録を取り直します。他人のメッセージの既読も、トークを開くと表示されます。OFF のときは端末の記録だけを使い、通信しません。"),
+                    "一覧を開くたびに、LINE の同期処理で既読の記録を取り直します。他人のメッセージの既読数かアイコンが ON なら、トークを開いたときにも同期します。OFF のときは端末の記録だけを使い、通信しません。"),
 
             new Entry(LinimalFeature.PREVIEW_DISABLE, SettingsPage.TALK,
                     SettingsSection.CHAT_PREVIEW,
